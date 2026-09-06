@@ -26,9 +26,10 @@ const MP_MAP = {
   "640p": "0.7",
   "720p": "0.9",
   "1080p": "2.0",
-  "1K": "0.8",
+  "1K": "1.0",
   "2K": "1.5",
-  "4K": "3.0"
+  "4K": "2.5",
+  "6K": "4.0"
 };
 
 app.registerExtension({
@@ -113,7 +114,7 @@ function setupResolutionNode(node) {
     // Both modes have 6 options for symmetry (2 rows x 3 columns)
     const options = isH3 
       ? ["360p", "480p", "540p", "640p", "720p", "1080p"]
-      : ["540p", "720p", "1080p", "1K", "2K", "4K"];
+      : ["540p", "720p", "1K", "2K", "4K", "6K"];
 
     options.forEach(opt => {
       const btn = document.createElement("button");
