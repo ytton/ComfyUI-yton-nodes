@@ -1,0 +1,20 @@
+[project]
+name = "comfyui-yton-nodes"
+version = "0.1.0"
+description = "yton-nodes: Resolution standardizer and media loader for ComfyUI and MiniMax H3"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.0.0",
+    "numpy",
+    "pillow",
+    "torchaudio"
+]
+
+[project.urls]
+Homepage = "https://github.com/your-username/ComfyUI-yton-nodes"
+
+[tool.comfy]
+PublisherId = "yton"
+DisplayName = "yton-nodes"
+Icon = ""
