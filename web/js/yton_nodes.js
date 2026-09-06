@@ -241,6 +241,21 @@ function setupMediaLoaderNode(node) {
   const container = document.createElement("div");
   container.className = "yton-panel";
 
+  // Whole-node drop handler: auto-route files by MIME/extension anywhere on the node
+  container.ondragover = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  container.ondrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    [imageSection, audioSection, videoSection].forEach(s => s?.grid?.classList?.remove("drag-over"));
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await handleFilesUpload(Array.from(e.dataTransfer.files));
+    }
+  };
+
   // Header row
   const header = document.createElement("div");
   header.className = "yton-header-row";
@@ -318,7 +333,7 @@ function setupMediaLoaderNode(node) {
     const grid = document.createElement("div");
     grid.className = "yton-media-grid";
 
-    // Setup drag-and-drop from OS file manager
+    // Setup drag-and-drop visual cue (actual drop handled by container or grid by MIME routing)
     grid.ondragover = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -336,7 +351,8 @@ function setupMediaLoaderNode(node) {
       e.stopPropagation();
       grid.classList.remove("drag-over");
       if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        await handleFilesUpload(Array.from(e.dataTransfer.files), type);
+        // Automatically route all dropped files by their MIME type
+        await handleFilesUpload(Array.from(e.dataTransfer.files));
       }
     };
 
@@ -469,12 +485,18 @@ function setupMediaLoaderNode(node) {
             e.stopPropagation();
             if (!draggedItem || draggedItem.type !== item.type || draggedItem === item) return;
 
-            // Reorder inside mediaList
-            const oldIdx = mediaList.indexOf(draggedItem);
-            const newIdx = mediaList.indexOf(item);
-            if (oldIdx > -1 && newIdx > -1) {
-              mediaList.splice(oldIdx, 1);
-              mediaList.splice(newIdx, 0, draggedItem);
+            // Reorder specifically within the same media type
+            const sameTypeItems = mediaList.filter(m => m.type === item.type);
+            const fromIdx = sameTypeItems.indexOf(draggedItem);
+            const toIdx = sameTypeItems.indexOf(item);
+            if (fromIdx > -1 && toIdx > -1 && fromIdx !== toIdx) {
+              sameTypeItems.splice(fromIdx, 1);
+              sameTypeItems.splice(toIdx, 0, draggedItem);
+              
+              // Rebuild mediaList keeping other types intact
+              const otherItems = mediaList.filter(m => m.type !== item.type);
+              mediaList = [...otherItems, ...sameTypeItems];
+              draggedItem = null;
               syncManifest();
               updateUI();
             }
@@ -525,14 +547,23 @@ function setupMediaLoaderNode(node) {
     });
   }
 
-  // Upload handler shared by click & drop
-  async function handleFilesUpload(files, forcedType = null) {
+  // Upload handler: routes files by extension / MIME to appropriate slot
+  async function handleFilesUpload(files) {
     for (const file of files) {
-      let type = forcedType;
-      if (!type) {
-        type = file.type.startsWith("image/") ? "image"
-             : file.type.startsWith("video/") ? "video"
-             : file.type.startsWith("audio/") ? "audio" : null;
+      const ext = file.name.split(".").pop().toLowerCase();
+      let type = null;
+
+      // 1. Detect image
+      if (file.type.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) {
+        type = "image";
+      }
+      // 2. Detect video
+      else if (file.type.startsWith("video/") || ["mp4", "webm", "mov", "avi", "mkv"].includes(ext)) {
+        type = "video";
+      }
+      // 3. Detect audio
+      else if (file.type.startsWith("audio/") || ["mp3", "wav", "ogg", "flac", "m4a", "aac"].includes(ext)) {
+        type = "audio";
       }
       if (!type) continue;
 
@@ -542,7 +573,7 @@ function setupMediaLoaderNode(node) {
                   : (videoLimitWidget?.value || 3));
 
       if (currentCount >= limit) {
-        alert(`${type} 数量已达上限 (${limit})，无法继续添加！`);
+        alert(`${type === "image" ? "图片" : type === "video" ? "视频" : "音频"} 数量已达上限 (${limit})，无法继续添加！`);
         continue;
       }
 
