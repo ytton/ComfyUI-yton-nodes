@@ -47,12 +47,7 @@ app.registerExtension({
 // ==========================================
 function setupResolutionNode(node) {
   // Hide all underlying default widgets from canvas render
-  if (node.widgets) {
-    for (const w of node.widgets) {
-      w.type = "hidden";
-      w.computeSize = () => [0, -4];
-    }
-  }
+  hideNodeWidgets(node);
 
   const modeWidget = node.widgets?.find(w => w.name === "mode");
   const ratioWidget = node.widgets?.find(w => w.name === "aspect_ratio");
@@ -196,17 +191,21 @@ function setupResolutionNode(node) {
   node.setSize([340, 360]);
 }
 
+function hideNodeWidgets(node) {
+  if (!node.widgets) return;
+  for (const w of node.widgets) {
+    w.type = "hidden";
+    w.computeSize = () => [0, -4];
+    w.draw = () => {}; // suppress LiteGraph canvas drawing
+  }
+}
+
 // ==========================================
 // 2. Media Loader Setup
 // ==========================================
 function setupMediaLoaderNode(node) {
   // Hide all underlying widgets from canvas render
-  if (node.widgets) {
-    for (const w of node.widgets) {
-      w.type = "hidden";
-      w.computeSize = () => [0, -4];
-    }
-  }
+  hideNodeWidgets(node);
 
   const manifestWidget = node.widgets?.find(w => w.name === "media_manifest");
   const imgLimitWidget = node.widgets?.find(w => w.name === "image_limit");
@@ -280,12 +279,12 @@ function setupMediaLoaderNode(node) {
     const input = document.createElement("input");
     input.type = "number";
     input.className = "yton-limit-input";
-    input.value = limitWidget.value;
+    input.value = limitWidget ? limitWidget.value : 1;
     input.min = "1";
     input.max = "16";
 
     input.onchange = () => {
-      limitWidget.value = parseInt(input.value) || 1;
+      if (limitWidget) limitWidget.value = parseInt(input.value) || 1;
       updateUI();
       app.graph.setDirtyCanvas(true, true);
     };
@@ -299,15 +298,92 @@ function setupMediaLoaderNode(node) {
 
     const grid = document.createElement("div");
     grid.className = "yton-media-grid";
+
+    // Setup drag-and-drop from OS file manager
+    grid.ondragover = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grid.classList.add("drag-over");
+    };
+
+    grid.ondragleave = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grid.classList.remove("drag-over");
+    };
+
+    grid.ondrop = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grid.classList.remove("drag-over");
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        await handleFilesUpload(Array.from(e.dataTransfer.files), type);
+      }
+    };
+
     el.appendChild(grid);
 
     return { el, grid, type, limitWidget };
   }
 
   function syncManifest() {
-    manifestWidget.value = JSON.stringify(mediaList);
+    if (manifestWidget) {
+      manifestWidget.value = JSON.stringify(mediaList);
+    }
+    updateDynamicOutputs();
     app.graph.setDirtyCanvas(true, true);
   }
+
+  // Dynamic Output Slots based on actual media count
+  function updateDynamicOutputs() {
+    const images = mediaList.filter(m => m.type === "image");
+    const audios = mediaList.filter(m => m.type === "audio");
+    const videos = mediaList.filter(m => m.type === "video");
+
+    // Desired output schema:
+    // 0: media_bundle (always present)
+    // image_1 ... image_N
+    // audio_1 ... audio_N
+    // video_1_path ... video_N_path
+    const targetOutputs = [
+      { name: "media_bundle", type: "MEDIA_BUNDLE" }
+    ];
+
+    images.forEach((_, idx) => {
+      targetOutputs.push({ name: `image_${idx + 1}`, type: "IMAGE" });
+    });
+    audios.forEach((_, idx) => {
+      targetOutputs.push({ name: `audio_${idx + 1}`, type: "AUDIO" });
+    });
+    videos.forEach((_, idx) => {
+      targetOutputs.push({ name: `video_${idx + 1}_path`, type: "STRING" });
+    });
+
+    // Save existing output links
+    const existingLinks = [];
+    if (node.outputs) {
+      node.outputs.forEach(out => {
+        if (out.links && out.links.length > 0) {
+          existingLinks.push({ name: out.name, type: out.type, links: [...out.links] });
+        }
+      });
+    }
+
+    // Reconstruct node.outputs
+    const newOutputs = [];
+    targetOutputs.forEach(target => {
+      const matchExisting = existingLinks.find(l => l.name === target.name);
+      newOutputs.push({
+        name: target.name,
+        type: target.type,
+        links: matchExisting ? matchExisting.links : null
+      });
+    });
+
+    node.outputs = newOutputs;
+  }
+
+  let draggedItem = null;
 
   function updateUI() {
     [imageSection, audioSection, videoSection].forEach(sec => {
@@ -316,12 +392,47 @@ function setupMediaLoaderNode(node) {
       if (filtered.length === 0) {
         const empty = document.createElement("div");
         empty.className = "yton-media-empty";
-        empty.innerText = "暂无媒体";
+        empty.innerText = "拖拽或上传素材";
         sec.grid.appendChild(empty);
       } else {
         filtered.forEach((item, idx) => {
           const card = document.createElement("div");
           card.className = "yton-media-item";
+          card.draggable = true;
+
+          // Drag-to-reorder events
+          card.ondragstart = (e) => {
+            draggedItem = item;
+            card.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", `${item.type}:${idx}`);
+          };
+
+          card.ondragend = () => {
+            card.classList.remove("dragging");
+            draggedItem = null;
+          };
+
+          card.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          };
+
+          card.ondrop = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!draggedItem || draggedItem.type !== item.type || draggedItem === item) return;
+
+            // Reorder inside mediaList
+            const oldIdx = mediaList.indexOf(draggedItem);
+            const newIdx = mediaList.indexOf(item);
+            if (oldIdx > -1 && newIdx > -1) {
+              mediaList.splice(oldIdx, 1);
+              mediaList.splice(newIdx, 0, draggedItem);
+              syncManifest();
+              updateUI();
+            }
+          };
 
           if (item.type === "image") {
             const img = document.createElement("img");
@@ -368,19 +479,21 @@ function setupMediaLoaderNode(node) {
     });
   }
 
-  // Upload handling
-  fileInput.onchange = async () => {
-    const files = Array.from(fileInput.files);
+  // Upload handler shared by click & drop
+  async function handleFilesUpload(files, forcedType = null) {
     for (const file of files) {
-      const type = file.type.startsWith("image/") ? "image"
-                 : file.type.startsWith("video/") ? "video"
-                 : file.type.startsWith("audio/") ? "audio" : null;
+      let type = forcedType;
+      if (!type) {
+        type = file.type.startsWith("image/") ? "image"
+             : file.type.startsWith("video/") ? "video"
+             : file.type.startsWith("audio/") ? "audio" : null;
+      }
       if (!type) continue;
 
       const currentCount = mediaList.filter(m => m.type === type).length;
-      const limit = (type === "image" ? imgLimitWidget.value
-                  : type === "audio" ? audioLimitWidget.value
-                  : videoLimitWidget.value);
+      const limit = (type === "image" ? (imgLimitWidget?.value || 9)
+                  : type === "audio" ? (audioLimitWidget?.value || 3)
+                  : (videoLimitWidget?.value || 3));
 
       if (currentCount >= limit) {
         alert(`${type} 数量已达上限 (${limit})，无法继续添加！`);
@@ -397,7 +510,7 @@ function setupMediaLoaderNode(node) {
         
         let duration = "";
         if (type === "video") {
-          duration = "0:05"; // default fallback badge
+          duration = "0:05";
         }
 
         mediaList.push({
@@ -410,12 +523,18 @@ function setupMediaLoaderNode(node) {
         console.error("Upload failed", err);
       }
     }
-    fileInput.value = "";
     syncManifest();
     updateUI();
+  }
+
+  // Upload handling via button
+  fileInput.onchange = async () => {
+    await handleFilesUpload(Array.from(fileInput.files));
+    fileInput.value = "";
   };
 
+  updateDynamicOutputs();
   updateUI();
   node.addDOMWidget("media_loader_ui", "custom_ui", container);
-  node.setSize([360, 420]);
+  node.setSize([360, 430]);
 }

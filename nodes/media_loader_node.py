@@ -64,7 +64,6 @@ class YtonEasyMediaLoader:
                 "media_manifest": ("STRING", {
                     "default": "[]",
                     "multiline": True,
-                    "hidden": True
                 }),
                 "image_limit": ("INT", {"default": 9, "min": 0, "max": 16, "step": 1}),
                 "audio_limit": ("INT", {"default": 3, "min": 0, "max": 8, "step": 1}),

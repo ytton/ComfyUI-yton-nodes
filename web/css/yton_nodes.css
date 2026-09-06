@@ -188,6 +188,11 @@
   text-align: center;
 }
 
+.yton-media-grid.drag-over {
+  border-color: #5865f2;
+  background: rgba(88, 101, 242, 0.15);
+}
+
 .yton-media-item {
   position: relative;
   width: 60px;
@@ -196,6 +201,17 @@
   overflow: hidden;
   background: #111214;
   border: 1px solid #35373c;
+  cursor: grab;
+  user-select: none;
+}
+
+.yton-media-item:active {
+  cursor: grabbing;
+}
+
+.yton-media-item.dragging {
+  opacity: 0.4;
+  border: 1px dashed #5865f2;
 }
 
 .yton-media-thumb {
