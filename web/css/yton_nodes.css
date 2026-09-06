@@ -169,25 +169,26 @@
   padding: 2px;
 }
 
+/* Grid layout: 5 items per row */
 .yton-media-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
   background: #232428;
   border-radius: 6px;
-  padding: 8px;
+  padding: 6px;
   border: 1px dashed #35373c;
   box-sizing: border-box;
 }
 
-/* Image grid: fixed 3x3 for exactly 9 items */
+/* Image grid: 2 rows for up to 10 items (9 items fits in 2 rows) */
 .yton-media-grid.image-grid {
-  min-height: 254px;
+  min-height: 148px;
 }
 
-/* Audio & Video grids: 1 row for 3 items */
+/* Audio & Video grids: 1 row for up to 5 items (3 items easily fits) */
 .yton-media-grid.single-row-grid {
-  min-height: 88px;
+  min-height: 74px;
 }
 
 .yton-media-empty {
@@ -199,7 +200,7 @@
 }
 
 .yton-media-grid.single-row-grid .yton-media-empty {
-  padding: 16px 0;
+  padding: 20px 0;
 }
 
 .yton-media-grid.drag-over {

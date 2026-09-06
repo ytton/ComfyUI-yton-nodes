@@ -199,12 +199,26 @@ function setupResolutionNode(node) {
   };
 }
 
+// Suppress native widgets across LiteGraph v1 AND ComfyUI Frontend 2.0 (Vue-based)
 function hideNodeWidgets(node) {
   if (!node.widgets) return;
   for (const w of node.widgets) {
+    if (w.name && w.name.includes("custom_ui")) continue;
     w.type = "hidden";
-    w.computeSize = () => [0, -4];
+    w.computeSize = () => [0, 0];
     w.draw = () => {}; // suppress LiteGraph canvas drawing
+    w.hidden = true;
+    if (w.options) {
+      w.options.hidden = true;
+    }
+    // ComfyUI 2.0 DOM element suppression
+    if (w.element) {
+      w.element.style.display = "none";
+      w.element.style.height = "0px";
+      w.element.style.minHeight = "0px";
+      w.element.style.margin = "0px";
+      w.element.style.padding = "0px";
+    }
   }
 }
 
@@ -617,9 +631,12 @@ function setupMediaLoaderNode(node) {
     fileInput.value = "";
   };
 
-  // Auto size node to comfortably fit content without layout clipping or stretching
-  const FIXED_WIDTH = 360;
-  const FIXED_HEIGHT = 640; // Exact height for header + 3x3 image grid + audio row + video row
+  // Mount custom UI DOM widget
+  node.addDOMWidget("media_loader_ui", "custom_ui", container);
+
+  // Auto size node: comfortably accommodates 5 items per row (2 rows for images, 1 row for audio/video)
+  const FIXED_WIDTH = 420;
+  const FIXED_HEIGHT = 440;
 
   node.setSize([FIXED_WIDTH, FIXED_HEIGHT]);
 
