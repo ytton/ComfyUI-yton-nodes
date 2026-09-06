@@ -170,22 +170,36 @@
 }
 
 .yton-media-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  min-height: 52px;
   background: #232428;
   border-radius: 6px;
   padding: 8px;
   border: 1px dashed #35373c;
-  align-items: center;
+  box-sizing: border-box;
+}
+
+/* Image grid: fixed 3x3 for exactly 9 items */
+.yton-media-grid.image-grid {
+  min-height: 254px;
+}
+
+/* Audio & Video grids: 1 row for 3 items */
+.yton-media-grid.single-row-grid {
+  min-height: 88px;
 }
 
 .yton-media-empty {
   font-size: 12px;
   color: #5c6068;
-  width: 100%;
+  grid-column: 1 / -1;
   text-align: center;
+  padding: 24px 0;
+}
+
+.yton-media-grid.single-row-grid .yton-media-empty {
+  padding: 16px 0;
 }
 
 .yton-media-grid.drag-over {
@@ -195,14 +209,15 @@
 
 .yton-media-item {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: 6px;
   overflow: hidden;
   background: #111214;
   border: 1px solid #35373c;
   cursor: grab;
   user-select: none;
+  box-sizing: border-box;
 }
 
 .yton-media-item:active {

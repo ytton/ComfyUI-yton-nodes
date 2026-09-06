@@ -189,7 +189,14 @@ function setupResolutionNode(node) {
   renderRatios();
 
   node.addDOMWidget("resolution_ui", "custom_ui", container);
-  node.setSize([340, 360]);
+  
+  const RES_W = 340;
+  const RES_H = 360;
+  node.setSize([RES_W, RES_H]);
+  node.onResize = function(size) {
+    size[0] = Math.max(size[0], RES_W);
+    size[1] = Math.max(size[1], RES_H);
+  };
 }
 
 function hideNodeWidgets(node) {
@@ -331,7 +338,7 @@ function setupMediaLoaderNode(node) {
     el.appendChild(row);
 
     const grid = document.createElement("div");
-    grid.className = "yton-media-grid";
+    grid.className = "yton-media-grid " + (type === "image" ? "image-grid" : "single-row-grid");
 
     // Setup drag-and-drop visual cue (actual drop handled by container or grid by MIME routing)
     grid.ondragover = (e) => {
@@ -610,8 +617,15 @@ function setupMediaLoaderNode(node) {
     fileInput.value = "";
   };
 
-  updateDynamicOutputs();
-  updateUI();
-  node.addDOMWidget("media_loader_ui", "custom_ui", container);
-  node.setSize([360, 430]);
+  // Auto size node to comfortably fit content without layout clipping or stretching
+  const FIXED_WIDTH = 360;
+  const FIXED_HEIGHT = 640; // Exact height for header + 3x3 image grid + audio row + video row
+
+  node.setSize([FIXED_WIDTH, FIXED_HEIGHT]);
+
+  // Lock minimum size to prevent accidental squishing
+  node.onResize = function(size) {
+    size[0] = Math.max(size[0], FIXED_WIDTH);
+    size[1] = Math.max(size[1], FIXED_HEIGHT);
+  };
 }
