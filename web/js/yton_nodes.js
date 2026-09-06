@@ -46,15 +46,17 @@ app.registerExtension({
 // 1. Resolution Controller Setup
 // ==========================================
 function setupResolutionNode(node) {
-  // Find underlying widget references
-  const modeWidget = node.widgets.find(w => w.name === "mode");
-  const ratioWidget = node.widgets.find(w => w.name === "aspect_ratio");
-  const resWidget = node.widgets.find(w => w.name === "resolution");
+  // Hide all underlying default widgets from canvas render
+  if (node.widgets) {
+    for (const w of node.widgets) {
+      w.type = "hidden";
+      w.computeSize = () => [0, -4];
+    }
+  }
 
-  // Hide default raw dropdowns
-  if (modeWidget) modeWidget.type = "hidden";
-  if (ratioWidget) ratioWidget.type = "hidden";
-  if (resWidget) resWidget.type = "hidden";
+  const modeWidget = node.widgets?.find(w => w.name === "mode");
+  const ratioWidget = node.widgets?.find(w => w.name === "aspect_ratio");
+  const resWidget = node.widgets?.find(w => w.name === "resolution");
 
   const container = document.createElement("div");
   container.className = "yton-panel";
@@ -112,10 +114,11 @@ function setupResolutionNode(node) {
 
   function renderResolutions() {
     resGrid.innerHTML = "";
-    const isH3 = modeWidget.value.includes("H3");
+    const isH3 = modeWidget?.value?.includes("H3");
+    // Both modes have 6 options for symmetry (2 rows x 3 columns)
     const options = isH3 
       ? ["360p", "480p", "540p", "640p", "720p", "1080p"]
-      : ["360p", "540p", "720p", "1080p", "1K", "2K", "4K"];
+      : ["540p", "720p", "1080p", "1K", "2K", "4K"];
 
     options.forEach(opt => {
       const btn = document.createElement("button");
@@ -197,15 +200,18 @@ function setupResolutionNode(node) {
 // 2. Media Loader Setup
 // ==========================================
 function setupMediaLoaderNode(node) {
-  const manifestWidget = node.widgets.find(w => w.name === "media_manifest");
-  const imgLimitWidget = node.widgets.find(w => w.name === "image_limit");
-  const audioLimitWidget = node.widgets.find(w => w.name === "audio_limit");
-  const videoLimitWidget = node.widgets.find(w => w.name === "video_limit");
+  // Hide all underlying widgets from canvas render
+  if (node.widgets) {
+    for (const w of node.widgets) {
+      w.type = "hidden";
+      w.computeSize = () => [0, -4];
+    }
+  }
 
-  if (manifestWidget) manifestWidget.type = "hidden";
-  if (imgLimitWidget) imgLimitWidget.type = "hidden";
-  if (audioLimitWidget) audioLimitWidget.type = "hidden";
-  if (videoLimitWidget) videoLimitWidget.type = "hidden";
+  const manifestWidget = node.widgets?.find(w => w.name === "media_manifest");
+  const imgLimitWidget = node.widgets?.find(w => w.name === "image_limit");
+  const audioLimitWidget = node.widgets?.find(w => w.name === "audio_limit");
+  const videoLimitWidget = node.widgets?.find(w => w.name === "video_limit");
 
   let mediaList = [];
   try {
