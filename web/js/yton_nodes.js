@@ -207,17 +207,35 @@ function setupMediaLoaderNode(node) {
   // Hide all underlying widgets from canvas render
   hideNodeWidgets(node);
 
-  const manifestWidget = node.widgets?.find(w => w.name === "media_manifest");
   const imgLimitWidget = node.widgets?.find(w => w.name === "image_limit");
   const audioLimitWidget = node.widgets?.find(w => w.name === "audio_limit");
   const videoLimitWidget = node.widgets?.find(w => w.name === "video_limit");
 
-  let mediaList = [];
-  try {
-    mediaList = JSON.parse(manifestWidget.value || "[]");
-  } catch (e) {
-    mediaList = [];
+  // Read current assets from explicit widgets (image_1~9, audio_1~3, video_1~3)
+  function readMediaFromWidgets() {
+    const list = [];
+    for (let i = 1; i <= 9; i++) {
+      const w = node.widgets?.find(x => x.name === `image_${i}`);
+      if (w && w.value && w.value.trim()) {
+        list.push({ type: "image", filename: w.value.trim() });
+      }
+    }
+    for (let i = 1; i <= 3; i++) {
+      const w = node.widgets?.find(x => x.name === `audio_${i}`);
+      if (w && w.value && w.value.trim()) {
+        list.push({ type: "audio", filename: w.value.trim() });
+      }
+    }
+    for (let i = 1; i <= 3; i++) {
+      const w = node.widgets?.find(x => x.name === `video_${i}`);
+      if (w && w.value && w.value.trim()) {
+        list.push({ type: "video", filename: w.value.trim() });
+      }
+    }
+    return list;
   }
+
+  let mediaList = readMediaFromWidgets();
 
   const container = document.createElement("div");
   container.className = "yton-panel";
@@ -279,9 +297,9 @@ function setupMediaLoaderNode(node) {
     const input = document.createElement("input");
     input.type = "number";
     input.className = "yton-limit-input";
-    input.value = limitWidget ? limitWidget.value : 1;
+    input.value = limitWidget ? limitWidget.value : (type === "image" ? 9 : 3);
     input.min = "1";
-    input.max = "16";
+    input.max = (type === "image" ? "9" : "3");
 
     input.onchange = () => {
       if (limitWidget) limitWidget.value = parseInt(input.value) || 1;
@@ -323,16 +341,43 @@ function setupMediaLoaderNode(node) {
 
     el.appendChild(grid);
 
-    return { el, grid, type, limitWidget };
+    return { el, grid, type, limitWidget, input };
   }
 
+  // Write mediaList back to discrete standard widgets: image_1~9, audio_1~3, video_1~3
   function syncManifest() {
-    if (manifestWidget) {
-      manifestWidget.value = JSON.stringify(mediaList);
+    const images = mediaList.filter(m => m.type === "image");
+    const audios = mediaList.filter(m => m.type === "audio");
+    const videos = mediaList.filter(m => m.type === "video");
+
+    for (let i = 1; i <= 9; i++) {
+      const w = node.widgets?.find(x => x.name === `image_${i}`);
+      if (w) w.value = (i <= images.length) ? images[i - 1].filename : "";
     }
+    for (let i = 1; i <= 3; i++) {
+      const w = node.widgets?.find(x => x.name === `audio_${i}`);
+      if (w) w.value = (i <= audios.length) ? audios[i - 1].filename : "";
+    }
+    for (let i = 1; i <= 3; i++) {
+      const w = node.widgets?.find(x => x.name === `video_${i}`);
+      if (w) w.value = (i <= videos.length) ? videos[i - 1].filename : "";
+    }
+
     updateDynamicOutputs();
     app.graph.setDirtyCanvas(true, true);
   }
+
+  // Hook for workflow JSON load / configure
+  const origOnConfigure = node.onConfigure;
+  node.onConfigure = function() {
+    if (origOnConfigure) origOnConfigure.apply(this, arguments);
+    mediaList = readMediaFromWidgets();
+    if (imgLimitWidget && imageSection.input) imageSection.input.value = imgLimitWidget.value;
+    if (audioLimitWidget && audioSection.input) audioSection.input.value = audioLimitWidget.value;
+    if (videoLimitWidget && videoSection.input) videoSection.input.value = videoLimitWidget.value;
+    updateDynamicOutputs();
+    updateUI();
+  };
 
   // Dynamic Output Slots based on actual media count
   function updateDynamicOutputs() {

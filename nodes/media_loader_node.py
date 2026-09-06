@@ -1,25 +1,21 @@
 """
-Media loader node for images, audio, and video assets with strict quota enforcement.
+Media loader node with explicit standard inputs for easy JSON / API workflow manipulation.
 """
 import os
-import json
 import torch
 import numpy as np
 from PIL import Image, ImageOps
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Dict, Any, Tuple, List
 import folder_paths
 
 def empty_image_tensor() -> torch.Tensor:
-    """Returns a dummy 1x1x3 empty float tensor [B, H, W, C]"""
     return torch.zeros((1, 64, 64, 3), dtype=torch.float32)
 
 def empty_audio_dict() -> Dict[str, Any]:
-    """Returns an empty audio structure compatible with ComfyUI Audio nodes"""
     return {"waveform": torch.zeros((1, 1, 1024), dtype=torch.float32), "sample_rate": 44100}
 
 def load_image_tensor(filepath: str) -> torch.Tensor:
-    """Load image from disk and return torch tensor in ComfyUI format [B, H, W, C]"""
-    if not os.path.exists(filepath):
+    if not filepath or not os.path.exists(filepath):
         return empty_image_tensor()
     try:
         img = Image.open(filepath)
@@ -33,8 +29,7 @@ def load_image_tensor(filepath: str) -> torch.Tensor:
         return empty_image_tensor()
 
 def load_audio_dict(filepath: str) -> Dict[str, Any]:
-    """Load audio from disk using torchaudio or return dummy structure"""
-    if not os.path.exists(filepath):
+    if not filepath or not os.path.exists(filepath):
         return empty_audio_dict()
     try:
         import torchaudio
@@ -47,8 +42,9 @@ def load_audio_dict(filepath: str) -> Dict[str, Any]:
 
 class YtonEasyMediaLoader:
     """
-    Unified Media Loader supporting multi-image, audio, and video assets
-    with client-side UI and server-side quota validation.
+    Unified Media Loader supporting multi-image, audio, and video assets.
+    Inputs are standard individual slots (image_1~9, audio_1~3, video_1~3)
+    allowing seamless JSON / API modification from external software.
     """
 
     MAX_IMAGES = 9
@@ -57,29 +53,37 @@ class YtonEasyMediaLoader:
 
     @classmethod
     def INPUT_TYPES(cls) -> Dict[str, Any]:
+        required = {
+            "image_limit": ("INT", {"default": 9, "min": 0, "max": 9, "step": 1}),
+            "audio_limit": ("INT", {"default": 3, "min": 0, "max": 3, "step": 1}),
+            "video_limit": ("INT", {"default": 3, "min": 0, "max": 3, "step": 1}),
+        }
+
+        # Explicit image inputs (filenames or paths relative to input folder)
+        for i in range(1, cls.MAX_IMAGES + 1):
+            required[f"image_{i}"] = ("STRING", {"default": "", "multiline": False})
+
+        # Explicit audio inputs
+        for i in range(1, cls.MAX_AUDIOS + 1):
+            required[f"audio_{i}"] = ("STRING", {"default": "", "multiline": False})
+
+        # Explicit video inputs
+        for i in range(1, cls.MAX_VIDEOS + 1):
+            required[f"video_{i}"] = ("STRING", {"default": "", "multiline": False})
+
         return {
-            "required": {
-                # JSON string containing array of media items:
-                # [{"type": "image"|"audio"|"video", "filename": "...", "subfolder": "...", "duration": 24}]
-                "media_manifest": ("STRING", {
-                    "default": "[]",
-                    "multiline": True,
-                }),
-                "image_limit": ("INT", {"default": 9, "min": 0, "max": 16, "step": 1}),
-                "audio_limit": ("INT", {"default": 3, "min": 0, "max": 8, "step": 1}),
-                "video_limit": ("INT", {"default": 3, "min": 0, "max": 8, "step": 1}),
-            },
+            "required": required,
             "optional": {
                 "strict_quota_error": ("BOOLEAN", {"default": False, "label_on": "Throw Error", "label_off": "Auto Truncate"}),
             }
         }
 
     RETURN_TYPES = (
-        "MEDIA_BUNDLE",  # Dictionary containing all lists and metadata
-        "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", # 9 image slots
-        "AUDIO", "AUDIO", "AUDIO", # 3 audio slots
-        "STRING", "STRING", "STRING", # 3 video path slots
-        "INT", "INT", "INT" # counts
+        "MEDIA_BUNDLE",
+        "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE",
+        "AUDIO", "AUDIO", "AUDIO",
+        "STRING", "STRING", "STRING",
+        "INT", "INT", "INT"
     )
 
     RETURN_NAMES = (
@@ -93,111 +97,87 @@ class YtonEasyMediaLoader:
     FUNCTION = "load_media"
     CATEGORY = "yton-nodes/Media"
 
+    def _resolve_file_path(self, filename: str) -> str:
+        if not filename or not filename.strip():
+            return ""
+        clean_name = filename.strip()
+        # Direct absolute path
+        if os.path.isabs(clean_name) and os.path.exists(clean_name):
+            return clean_name
+        # ComfyUI input folder
+        input_dir = folder_paths.get_input_directory()
+        candidate = os.path.join(input_dir, clean_name)
+        if os.path.exists(candidate):
+            return candidate
+        return candidate
+
     def load_media(
         self,
-        media_manifest: str,
         image_limit: int,
         audio_limit: int,
         video_limit: int,
-        strict_quota_error: bool = False
+        strict_quota_error: bool = False,
+        **kwargs
     ) -> Tuple:
-        try:
-            items = json.loads(media_manifest) if media_manifest.strip() else []
-        except Exception:
-            items = []
+        raw_images = [kwargs.get(f"image_{i}", "").strip() for i in range(1, self.MAX_IMAGES + 1)]
+        raw_audios = [kwargs.get(f"audio_{i}", "").strip() for i in range(1, self.MAX_AUDIOS + 1)]
+        raw_videos = [kwargs.get(f"video_{i}", "").strip() for i in range(1, self.MAX_VIDEOS + 1)]
 
-        images_info: List[Dict[str, Any]] = []
-        audios_info: List[Dict[str, Any]] = []
-        videos_info: List[Dict[str, Any]] = []
-
-        for item in items:
-            mtype = item.get("type", "").lower()
-            if mtype == "image":
-                images_info.append(item)
-            elif mtype == "audio":
-                audios_info.append(item)
-            elif mtype == "video":
-                videos_info.append(item)
+        # Filter active non-empty items
+        active_images = [p for p in raw_images if p]
+        active_audios = [p for p in raw_audios if p]
+        active_videos = [p for p in raw_videos if p]
 
         # Quota validation
         if strict_quota_error:
-            if len(images_info) > image_limit:
-                raise ValueError(f"[yton-nodes] Image count ({len(images_info)}) exceeded limit ({image_limit})")
-            if len(audios_info) > audio_limit:
-                raise ValueError(f"[yton-nodes] Audio count ({len(audios_info)}) exceeded limit ({audio_limit})")
-            if len(videos_info) > video_limit:
-                raise ValueError(f"[yton-nodes] Video count ({len(videos_info)}) exceeded limit ({video_limit})")
+            if len(active_images) > image_limit:
+                raise ValueError(f"[yton-nodes] Image count ({len(active_images)}) exceeded limit ({image_limit})")
+            if len(active_audios) > audio_limit:
+                raise ValueError(f"[yton-nodes] Audio count ({len(active_audios)}) exceeded limit ({audio_limit})")
+            if len(active_videos) > video_limit:
+                raise ValueError(f"[yton-nodes] Video count ({len(active_videos)}) exceeded limit ({video_limit})")
         else:
-            images_info = images_info[:image_limit]
-            audios_info = audios_info[:audio_limit]
-            videos_info = videos_info[:video_limit]
+            active_images = active_images[:image_limit]
+            active_audios = active_audios[:audio_limit]
+            active_videos = active_videos[:video_limit]
 
-        input_dir = folder_paths.get_input_directory()
+        # Load images
+        loaded_image_tensors: List[torch.Tensor] = []
+        for path in active_images:
+            full_path = self._resolve_file_path(path)
+            loaded_image_tensors.append(load_image_tensor(full_path))
 
-        # Resolve paths
-        def resolve_path(info: Dict[str, Any]) -> str:
-            filename = info.get("filename", "")
-            subfolder = info.get("subfolder", "")
-            if subfolder:
-                return os.path.join(input_dir, subfolder, filename)
-            return os.path.join(input_dir, filename)
-
-        # Load image tensors
-        loaded_images: List[torch.Tensor] = []
-        for info in images_info:
-            full_path = resolve_path(info)
-            loaded_images.append(load_image_tensor(full_path))
-
-        # Load audio dicts
-        loaded_audios: List[Dict[str, Any]] = []
-        for info in audios_info:
-            full_path = resolve_path(info)
-            loaded_audios.append(load_audio_dict(full_path))
+        # Load audios
+        loaded_audio_dicts: List[Dict[str, Any]] = []
+        for path in active_audios:
+            full_path = self._resolve_file_path(path)
+            loaded_audio_dicts.append(load_audio_dict(full_path))
 
         # Video paths
-        loaded_videos: List[str] = [resolve_path(info) for info in videos_info]
+        resolved_video_paths = [self._resolve_file_path(p) for p in active_videos]
 
-        # Prepare 9 image slots
-        img_slots: List[torch.Tensor] = []
-        for i in range(self.MAX_IMAGES):
-            if i < len(loaded_images):
-                img_slots.append(loaded_images[i])
-            else:
-                img_slots.append(empty_image_tensor())
-
-        # Prepare 3 audio slots
-        audio_slots: List[Dict[str, Any]] = []
-        for i in range(self.MAX_AUDIOS):
-            if i < len(loaded_audios):
-                audio_slots.append(loaded_audios[i])
-            else:
-                audio_slots.append(empty_audio_dict())
-
-        # Prepare 3 video slots
-        video_slots: List[str] = []
-        for i in range(self.MAX_VIDEOS):
-            if i < len(loaded_videos):
-                video_slots.append(loaded_videos[i])
-            else:
-                video_slots.append("")
+        # Populate output slots
+        img_slots = [loaded_image_tensors[i] if i < len(loaded_image_tensors) else empty_image_tensor() for i in range(self.MAX_IMAGES)]
+        audio_slots = [loaded_audio_dicts[i] if i < len(loaded_audio_dicts) else empty_audio_dict() for i in range(self.MAX_AUDIOS)]
+        video_slots = [resolved_video_paths[i] if i < len(resolved_video_paths) else "" for i in range(self.MAX_VIDEOS)]
 
         media_bundle = {
-            "images": loaded_images,
-            "audios": loaded_audios,
-            "video_paths": loaded_videos,
-            "raw_manifest": items,
+            "images": loaded_image_tensors,
+            "audios": loaded_audio_dicts,
+            "video_paths": resolved_video_paths,
             "counts": {
-                "images": len(loaded_images),
-                "audios": len(loaded_audios),
-                "videos": len(loaded_videos)
+                "images": len(active_images),
+                "audios": len(active_audios),
+                "videos": len(active_videos)
             }
         }
 
         return (
             media_bundle,
-            img_slots[0], img_slots[1], img_slots[2], img_slots[3], img_slots[4],
-            img_slots[5], img_slots[6], img_slots[7], img_slots[8],
-            audio_slots[0], audio_slots[1], audio_slots[2],
-            video_slots[0], video_slots[1], video_slots[2],
-            len(loaded_images), len(loaded_audios), len(loaded_videos)
+            *img_slots,
+            *audio_slots,
+            *video_slots,
+            len(active_images),
+            len(active_audios),
+            len(active_videos)
         )
