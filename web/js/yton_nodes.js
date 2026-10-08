@@ -1,5 +1,6 @@
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
+import { mountNodePanel } from "./node_panel.js";
 
 // Load external CSS
 const link = document.createElement("link");
@@ -55,7 +56,7 @@ function setupResolutionNode(node) {
   const resWidget = node.widgets?.find(w => w.name === "resolution");
 
   const container = document.createElement("div");
-  container.className = "yton-panel";
+  container.className = "yton-panel yton-resolution-panel";
 
   // Header & Mode segmented switch
   const header = document.createElement("div");
@@ -69,11 +70,13 @@ function setupResolutionNode(node) {
   segmented.className = "yton-segmented";
 
   const h3Btn = document.createElement("button");
-  h3Btn.className = "yton-segment-btn" + (modeWidget.value.includes("H3") ? " active" : "");
+  h3Btn.className = "yton-segment-btn";
+  h3Btn.type = "button";
   h3Btn.innerText = "MiniMax H3";
 
   const normalBtn = document.createElement("button");
-  normalBtn.className = "yton-segment-btn" + (!modeWidget.value.includes("H3") ? " active" : "");
+  normalBtn.className = "yton-segment-btn";
+  normalBtn.type = "button";
   normalBtn.innerText = "普通 / 图片";
 
   segmented.appendChild(h3Btn);
@@ -108,17 +111,23 @@ function setupResolutionNode(node) {
   ratioSection.appendChild(ratioGrid);
   container.appendChild(ratioSection);
 
+  function resolutionOptions() {
+    return modeWidget.value.includes("H3")
+      ? ["360p", "480p", "540p", "640p", "720p", "1080p"]
+      : ["360p", "480p", "540p", "640p", "720p", "1080p", "1K", "2K", "4K", "6K"];
+  }
+
   function renderResolutions() {
     resGrid.innerHTML = "";
     const isH3 = modeWidget?.value?.includes("H3");
-    // Both modes have 6 options for symmetry (2 rows x 3 columns)
-    const options = isH3 
-      ? ["360p", "480p", "540p", "640p", "720p", "1080p"]
-      : ["540p", "720p", "1K", "2K", "4K", "6K"];
+    const options = resolutionOptions();
+    if (!options.includes(resWidget.value)) options.push(resWidget.value);
 
     options.forEach(opt => {
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.className = "yton-pill-btn" + (resWidget.value === opt ? " active" : "");
+      btn.setAttribute("aria-pressed", String(resWidget.value === opt));
       
       const text = document.createElement("span");
       text.innerText = opt;
@@ -132,9 +141,7 @@ function setupResolutionNode(node) {
       }
 
       btn.onclick = () => {
-        resWidget.value = opt;
-        renderResolutions();
-        app.graph.setDirtyCanvas(true, true);
+        changeValue(resWidget, opt);
       };
       resGrid.appendChild(btn);
     });
@@ -144,7 +151,10 @@ function setupResolutionNode(node) {
     ratioGrid.innerHTML = "";
     const ratios = ["16:9", "9:16", "1:1", "4:3", "3:4", "2:3", "3:2", "21:9"];
     ratios.forEach(r => {
-      const card = document.createElement("div");
+      const card = document.createElement("button");
+      card.type = "button";
+      card.setAttribute("aria-label", `画面比例 ${r}`);
+      card.setAttribute("aria-pressed", String(ratioWidget.value === r));
       card.className = "yton-ratio-card" + (ratioWidget.value === r ? " active" : "");
 
       const icon = document.createElement("div");
@@ -161,42 +171,51 @@ function setupResolutionNode(node) {
       card.appendChild(txt);
 
       card.onclick = () => {
-        ratioWidget.value = r;
-        renderRatios();
-        app.graph.setDirtyCanvas(true, true);
+        changeValue(ratioWidget, r);
       };
       ratioGrid.appendChild(card);
     });
   }
 
-  h3Btn.onclick = () => {
-    modeWidget.value = "MiniMax H3 (Video)";
-    h3Btn.classList.add("active");
-    normalBtn.classList.remove("active");
+  function render() {
+    const isH3 = modeWidget.value.includes("H3");
+    h3Btn.classList.toggle("active", isH3);
+    normalBtn.classList.toggle("active", !isH3);
+    h3Btn.setAttribute("aria-pressed", String(isH3));
+    normalBtn.setAttribute("aria-pressed", String(!isH3));
     renderResolutions();
-    app.graph.setDirtyCanvas(true, true);
+    renderRatios();
+    node.setDirtyCanvas(true, true);
+  }
+
+  function changeValue(widget, value) {
+    if (widget.value === value) return;
+    node.graph?.beforeChange();
+    widget.value = value;
+    widget.callback?.(value);
+    node.graph?.afterChange();
+  }
+
+  h3Btn.onclick = () => changeValue(modeWidget, "MiniMax H3 (Video)");
+  normalBtn.onclick = () => changeValue(modeWidget, "Normal (Standard Image/Video)");
+
+  for (const widget of [modeWidget, ratioWidget, resWidget]) {
+    const callback = widget.callback;
+    widget.callback = function () {
+      const result = callback?.apply(this, arguments);
+      render();
+      return result;
+    };
+  }
+  const onConfigure = node.onConfigure;
+  node.onConfigure = function () {
+    const result = onConfigure?.apply(this, arguments);
+    render();
+    return result;
   };
 
-  normalBtn.onclick = () => {
-    modeWidget.value = "Normal (Standard Image/Video)";
-    normalBtn.classList.add("active");
-    h3Btn.classList.remove("active");
-    renderResolutions();
-    app.graph.setDirtyCanvas(true, true);
-  };
-
-  renderResolutions();
-  renderRatios();
-
-  node.addDOMWidget("resolution_ui", "custom_ui", container);
-  
-  const RES_W = 340;
-  const RES_H = 360;
-  node.setSize([RES_W, RES_H]);
-  node.onResize = function(size) {
-    size[0] = Math.max(size[0], RES_W);
-    size[1] = Math.max(size[1], RES_H);
-  };
+  render();
+  mountNodePanel(node, "resolution_ui", container, 360, 310);
 }
 
 // Suppress native widgets across LiteGraph v1 AND ComfyUI Frontend 2.0 (Vue-based)
@@ -206,6 +225,7 @@ function hideNodeWidgets(node) {
     if (w.name && w.name.includes("custom_ui")) continue;
     w.type = "hidden";
     w.computeSize = () => [0, 0];
+    w.computeLayoutSize = () => ({ minHeight: 0, maxHeight: 0, minWidth: 0 });
     w.draw = () => {}; // suppress LiteGraph canvas drawing
     w.hidden = true;
     if (w.options) {
@@ -632,17 +652,6 @@ function setupMediaLoaderNode(node) {
   };
 
   // Mount custom UI DOM widget
-  node.addDOMWidget("media_loader_ui", "custom_ui", container);
-
-  // Auto size node: comfortably accommodates 5 items per row (2 rows for images, 1 row for audio/video)
-  const FIXED_WIDTH = 420;
-  const FIXED_HEIGHT = 440;
-
-  node.setSize([FIXED_WIDTH, FIXED_HEIGHT]);
-
-  // Lock minimum size to prevent accidental squishing
-  node.onResize = function(size) {
-    size[0] = Math.max(size[0], FIXED_WIDTH);
-    size[1] = Math.max(size[1], FIXED_HEIGHT);
-  };
+  updateUI();
+  mountNodePanel(node, "media_loader_ui", container, 420, 420);
 }

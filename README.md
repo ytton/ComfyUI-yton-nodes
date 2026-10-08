@@ -26,3 +26,18 @@ git clone https://github.com/your-username/ComfyUI-yton-nodes.git
 
 ### Method 2: RunningHub
 Submit the git repository URL into RunningHub custom node management or clone inside your personal container.
+
+## Node panels
+
+- Panels grow with their content and follow node resizing in both canvas and Vue node renderers.
+- Resolution and aspect-ratio selections refresh when reopening a workflow or changing widget values.
+- Custom panels are excluded from workflow input serialization.
+- After updating frontend files, refresh the ComfyUI page with Ctrl+F5.
+
+### Browser regression
+
+With ComfyUI on `127.0.0.1:8188`, serve the edited assets using
+`python -m http.server 8192 --bind 127.0.0.1 --directory web`.
+Run `tests/node_panels.browser.js` as a Playwright function with a `page` argument.
+It uses an isolated browser context to check layout, zoom, resizing, restored
+selections, prompt serialization, and the media loader's initial display.
