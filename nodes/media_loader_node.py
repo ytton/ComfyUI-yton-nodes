@@ -42,11 +42,12 @@ class YtonEasyMediaLoader:
             for index in range(1, count + 1)
         }}
 
-    RETURN_TYPES = ("MEDIA_BUNDLE", "YTON_IMAGE_LIST", "YTON_VIDEO_LIST", "YTON_AUDIO_LIST")
-    RETURN_NAMES = ("media", "image_list", "video_list", "audio_list")
+    RETURN_TYPES = ("IMAGE", "VIDEO", "AUDIO")
+    RETURN_NAMES = ("image", "video", "audio")
+    OUTPUT_IS_LIST = (True, True, True)
     FUNCTION = "load_media"
     CATEGORY = "yton-nodes/Media"
-    DESCRIPTION = "固定 9 张图片、3 个视频、3 个音频。点击或拖入素材，列表中的位置对应面板槽位。"
+    DESCRIPTION = "固定 9 张图片、3 个视频、3 个音频。按槽位顺序输出原生媒体列表，空槽位不加入列表。"
 
     @classmethod
     def IS_CHANGED(cls, **slots):
@@ -66,58 +67,65 @@ class YtonEasyMediaLoader:
             items = []
             for index in range(1, count + 1):
                 filename = slots.get(f"{kind}_{index}", "").strip()
-                items.append({"kind": kind, "filename": filename,
-                              "path": resolve_media_file(filename), "slot": index} if filename else None)
+                if not filename:
+                    continue
+                path = resolve_media_file(filename)
+                if kind == "image":
+                    with Image.open(path) as source:
+                        source = ImageOps.exif_transpose(source)
+                        rgb = np.array(source.convert("RGB"), dtype=np.float32) / 255.0
+                    items.append(torch.from_numpy(rgb).unsqueeze(0))
+                elif kind == "video":
+                    from comfy_api.latest import InputImpl
+
+                    items.append(InputImpl.VideoFromFile(path))
+                else:
+                    from comfy_extras.nodes_audio import load
+
+                    waveform, sample_rate = load(path)
+                    items.append({"waveform": waveform.unsqueeze(0), "sample_rate": sample_rate})
             lists[kind] = items
-        media = {"images": lists["image"], "videos": lists["video"], "audios": lists["audio"]}
-        return media, lists["image"], lists["video"], lists["audio"]
+        return lists["image"], lists["video"], lists["audio"]
 
 
 class _MediaListParser:
     FUNCTION = "parse_list"
     CATEGORY = "yton-nodes/Media/解析"
     KIND = ""
+    INPUT_IS_LIST = True
 
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {f"{cls.KIND}_list": (f"YTON_{cls.KIND.upper()}_LIST", {"forceInput": True})}}
+        return {"required": {f"{cls.KIND}_list": (cls.KIND.upper(), {"forceInput": True})}}
 
     def parse_list(self, **inputs):
         items = inputs[f"{self.KIND}_list"]
         count = MEDIA_SLOTS[self.KIND]
-        if not isinstance(items, (list, tuple)) or len(items) != count:
-            raise ValueError(f"{self.KIND} 列表应包含 {count} 个固定槽位")
-        return tuple(item if item is not None else ExecutionBlocker(None) for item in items)
+        return tuple(items[index] if index < len(items) else ExecutionBlocker(None) for index in range(count))
 
 
 class YtonImageListParser(_MediaListParser):
     KIND = "image"
-    RETURN_TYPES = ("YTON_IMAGE",) * 9
+    RETURN_TYPES = ("IMAGE",) * 9
     RETURN_NAMES = tuple(f"image_{index}" for index in range(1, 10))
 
 
 class YtonVideoListParser(_MediaListParser):
     KIND = "video"
-    RETURN_TYPES = ("YTON_VIDEO",) * 3
+    RETURN_TYPES = ("VIDEO",) * 3
     RETURN_NAMES = ("video_1", "video_2", "video_3")
 
 
 class YtonAudioListParser(_MediaListParser):
     KIND = "audio"
-    RETURN_TYPES = ("YTON_AUDIO",) * 3
+    RETURN_TYPES = ("AUDIO",) * 3
     RETURN_NAMES = ("audio_1", "audio_2", "audio_3")
-
-
-def checked_media_path(media, kind):
-    if not isinstance(media, dict) or media.get("kind") != kind:
-        raise ValueError(f"需要 {kind} 素材")
-    return resolve_media_file(media["filename"])
 
 
 class YtonImageParser:
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"image": ("YTON_IMAGE", {"forceInput": True})}}
+        return {"required": {"image": ("IMAGE", {"forceInput": True})}}
 
     RETURN_TYPES = ("IMAGE", "MASK")
     RETURN_NAMES = ("image", "mask")
@@ -125,20 +133,14 @@ class YtonImageParser:
     CATEGORY = "yton-nodes/Media/解析"
 
     def parse_image(self, image):
-        with Image.open(checked_media_path(image, "image")) as source:
-            source = ImageOps.exif_transpose(source)
-            rgb = np.array(source.convert("RGB"), dtype=np.float32) / 255.0
-            if "A" in source.getbands():
-                mask = 1.0 - np.array(source.getchannel("A"), dtype=np.float32) / 255.0
-            else:
-                mask = np.zeros(rgb.shape[:2], dtype=np.float32)
-        return torch.from_numpy(rgb).unsqueeze(0), torch.from_numpy(mask).unsqueeze(0)
+        mask = 1.0 - image[..., 3] if image.shape[-1] == 4 else torch.zeros(image.shape[:3], dtype=image.dtype, device=image.device)
+        return image[..., :3], mask
 
 
 class YtonVideoParser:
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"video": ("YTON_VIDEO", {"forceInput": True})}}
+        return {"required": {"video": ("VIDEO", {"forceInput": True})}}
 
     RETURN_TYPES = ("VIDEO",)
     RETURN_NAMES = ("video",)
@@ -146,15 +148,13 @@ class YtonVideoParser:
     CATEGORY = "yton-nodes/Media/解析"
 
     def parse_video(self, video):
-        from comfy_api.latest import InputImpl
-
-        return (InputImpl.VideoFromFile(checked_media_path(video, "video")),)
+        return (video,)
 
 
 class YtonAudioParser:
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"audio": ("YTON_AUDIO", {"forceInput": True})}}
+        return {"required": {"audio": ("AUDIO", {"forceInput": True})}}
 
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("audio",)
@@ -162,7 +162,4 @@ class YtonAudioParser:
     CATEGORY = "yton-nodes/Media/解析"
 
     def parse_audio(self, audio):
-        from comfy_extras.nodes_audio import load
-
-        waveform, sample_rate = load(checked_media_path(audio, "audio"))
-        return ({"waveform": waveform.unsqueeze(0), "sample_rate": sample_rate},)
+        return (audio,)

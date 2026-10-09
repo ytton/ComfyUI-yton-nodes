@@ -21,34 +21,31 @@
       "inputs": [],
       "outputs": [
         {
-          "localized_name": "media",
-          "name": "media",
-          "type": "MEDIA_BUNDLE",
-          "links": null
-        },
-        {
-          "localized_name": "image_list",
-          "name": "image_list",
-          "type": "YTON_IMAGE_LIST",
+          "localized_name": "image",
+          "name": "image",
+          "type": "IMAGE",
           "links": [
             1
-          ]
+          ],
+          "shape": 6
         },
         {
-          "localized_name": "video_list",
-          "name": "video_list",
-          "type": "YTON_VIDEO_LIST",
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
           "links": [
             3
-          ]
+          ],
+          "shape": 6
         },
         {
-          "localized_name": "audio_list",
-          "name": "audio_list",
-          "type": "YTON_AUDIO_LIST",
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
           "links": [
             5
-          ]
+          ],
+          "shape": 6
         }
       ],
       "properties": {
@@ -115,7 +112,7 @@
         {
           "localized_name": "image_list",
           "name": "image_list",
-          "type": "YTON_IMAGE_LIST",
+          "type": "IMAGE",
           "link": 1
         }
       ],
@@ -123,7 +120,7 @@
         {
           "localized_name": "image_1",
           "name": "image_1",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "links": [
             7
           ]
@@ -131,49 +128,49 @@
         {
           "localized_name": "image_2",
           "name": "image_2",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "links": null
         },
         {
           "localized_name": "image_3",
           "name": "image_3",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "links": null
         },
         {
           "localized_name": "image_4",
           "name": "image_4",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "links": null
         },
         {
           "localized_name": "image_5",
           "name": "image_5",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "links": null
         },
         {
           "localized_name": "image_6",
           "name": "image_6",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "links": null
         },
         {
           "localized_name": "image_7",
           "name": "image_7",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "links": null
         },
         {
           "localized_name": "image_8",
           "name": "image_8",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "links": null
         },
         {
           "localized_name": "image_9",
           "name": "image_9",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "links": null
         }
       ],
@@ -204,7 +201,7 @@
         {
           "localized_name": "image",
           "name": "image",
-          "type": "YTON_IMAGE",
+          "type": "IMAGE",
           "link": 7
         }
       ],
@@ -249,7 +246,7 @@
         {
           "localized_name": "video_list",
           "name": "video_list",
-          "type": "YTON_VIDEO_LIST",
+          "type": "VIDEO",
           "link": 3
         }
       ],
@@ -257,7 +254,7 @@
         {
           "localized_name": "video_1",
           "name": "video_1",
-          "type": "YTON_VIDEO",
+          "type": "VIDEO",
           "links": [
             8
           ]
@@ -265,13 +262,13 @@
         {
           "localized_name": "video_2",
           "name": "video_2",
-          "type": "YTON_VIDEO",
+          "type": "VIDEO",
           "links": null
         },
         {
           "localized_name": "video_3",
           "name": "video_3",
-          "type": "YTON_VIDEO",
+          "type": "VIDEO",
           "links": null
         }
       ],
@@ -302,7 +299,7 @@
         {
           "localized_name": "video",
           "name": "video",
-          "type": "YTON_VIDEO",
+          "type": "VIDEO",
           "link": 8
         }
       ],
@@ -341,7 +338,7 @@
         {
           "localized_name": "audio_list",
           "name": "audio_list",
-          "type": "YTON_AUDIO_LIST",
+          "type": "AUDIO",
           "link": 5
         }
       ],
@@ -349,7 +346,7 @@
         {
           "localized_name": "audio_1",
           "name": "audio_1",
-          "type": "YTON_AUDIO",
+          "type": "AUDIO",
           "links": [
             9
           ]
@@ -357,13 +354,13 @@
         {
           "localized_name": "audio_2",
           "name": "audio_2",
-          "type": "YTON_AUDIO",
+          "type": "AUDIO",
           "links": null
         },
         {
           "localized_name": "audio_3",
           "name": "audio_3",
-          "type": "YTON_AUDIO",
+          "type": "AUDIO",
           "links": null
         }
       ],
@@ -394,7 +391,7 @@
         {
           "localized_name": "audio",
           "name": "audio",
-          "type": "YTON_AUDIO",
+          "type": "AUDIO",
           "link": 9
         }
       ],
@@ -420,26 +417,26 @@
     [
       1,
       1,
-      1,
+      0,
       2,
       0,
-      "YTON_IMAGE_LIST"
+      "IMAGE"
     ],
     [
       3,
       1,
-      2,
+      1,
       4,
       0,
-      "YTON_VIDEO_LIST"
+      "VIDEO"
     ],
     [
       5,
       1,
-      3,
+      2,
       6,
       0,
-      "YTON_AUDIO_LIST"
+      "AUDIO"
     ],
     [
       7,
@@ -447,7 +444,7 @@
       0,
       3,
       0,
-      "YTON_IMAGE"
+      "IMAGE"
     ],
     [
       8,
@@ -455,7 +452,7 @@
       0,
       5,
       0,
-      "YTON_VIDEO"
+      "VIDEO"
     ],
     [
       9,
@@ -463,7 +460,7 @@
       0,
       7,
       0,
-      "YTON_AUDIO"
+      "AUDIO"
     ]
   ],
   "groups": [],

@@ -48,9 +48,11 @@ async (page) => {
     await panel.waitFor({ state: "visible", timeout: 8000 }).catch(error => { throw new Error(`${error.message}\n${errors.join("\n")}`); });
     assert(await panel.locator(".yton-media-item").count() === 15, "Fifteen fixed slots must be visible");
     assert(await panel.locator(".image-grid .yton-media-item").count() === 9, "Images must have nine slots");
-    const schema = await target.evaluate(() => ({ inputCount: window.ytonMediaTestNode.inputs?.length || 0, outputNames: window.ytonMediaTestNode.outputs.map(output => output.name) }));
+    const schema = await target.evaluate(() => ({ inputCount: window.ytonMediaTestNode.inputs?.length || 0, outputs: window.ytonMediaTestNode.outputs.map(output => ({ name: output.name, type: output.type, shape: output.shape })) }));
     assert(schema.inputCount === 0, "The loader must have no input sockets");
-    assert(schema.outputNames.join(",") === "media,image_list,video_list,audio_list", "The four output sockets must be fixed");
+    assert(schema.outputs.map(output => output.name).join(",") === "image,video,audio", "The three output sockets must be fixed");
+    assert(schema.outputs.map(output => output.type).join(",") === "IMAGE,VIDEO,AUDIO", "Lists must use standard media types");
+    assert(schema.outputs.every(output => output.shape === 6), "List sockets must use ComfyUI's grid shape");
     const chooserPromise = target.waitForEvent("filechooser");
     await panel.locator('[data-slot="image_7"]').click();
     const chooser = await chooserPromise;
@@ -85,16 +87,20 @@ async (page) => {
       const app = window.comfyAPI.app.app;
       const loader = window.ytonMediaTestNode;
       const result = [];
-      for (const [kind, count, slot] of [["Image", 9, 1], ["Video", 3, 2], ["Audio", 3, 3]]) {
+      for (const [kind, count, slot] of [["Image", 9, 0], ["Video", 3, 1], ["Audio", 3, 2]]) {
         const list = LiteGraph.createNode(`Yton${kind}ListParser`);
         const item = LiteGraph.createNode(`Yton${kind}Parser`);
         app.graph.add(list); app.graph.add(item);
         loader.connect(slot, list, 0); list.connect(count - 1, item, 0);
-        result.push({ kind, count: list.outputs.length, connected: item.inputs[0].link != null, output: item.outputs[0].type });
+        const easy = LiteGraph.createNode(`easy split${kind === "Image" ? "Images" : kind === "Video" ? "Videos" : "Audios"}`);
+        if (!easy) throw new Error(`Missing EasyMedia ${kind} parser`);
+        app.graph.add(easy);
+        loader.connect(slot, easy, 0);
+        result.push({ kind, count: list.outputs.length, connected: item.inputs[0].link != null, output: item.outputs[0].type, easyConnected: easy.inputs[0].link != null });
       }
       return result;
     });
-    assert(parsers.every(parser => parser.connected && parser.output === parser.kind.toUpperCase()), "All three parser chains must connect with standard output types");
+    assert(parsers.every(parser => parser.connected && parser.easyConnected && parser.output === parser.kind.toUpperCase()), "Yton and EasyMedia parser chains must connect with standard output types");
     for (const vue of [false, true]) {
       await target.evaluate(vue => window.comfyAPI.app.app.extensionManager.setting.set("Comfy.VueNodes.Enabled", vue), vue);
       for (const width of [420, 600]) {

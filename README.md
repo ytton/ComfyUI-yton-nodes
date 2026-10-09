@@ -15,18 +15,18 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
 2. **媒体加载器 (`YtonEasyMediaLoader`)**
    - 固定三列卡片：9 张图片、3 个视频、3 个音频，分类支持折叠。
    - 没有输入连线端口。点击槽位选择文件，或直接拖入文件；支持多文件上传、预览、播放、删除及同类槽位交换。
-   - 四个固定输出：`media`、`image_list`、`video_list`、`audio_list`。
+   - 三个原生列表输出：`image`（IMAGE）、`video`（VIDEO）、`audio`（AUDIO），端口显示 ComfyUI 列表图标。
    - 文件名保存在 `image_1`～`image_9`、`video_1`～`video_3`、`audio_1`～`audio_3` 的 widget 值中，外部 API 可直接填写。
-   - 空槽位保持原位置，删除第 2 个素材不会改变第 3 个素材的编号。素材只在单项解析节点中解码。
+   - 面板的槽位编号固定；输出列表仅包含已加载的素材，按槽位顺序排列。图片为张量、视频为原生 VIDEO 对象、音频为 waveform/sample_rate 字典，可以直接连接 EasyMedia 的列表处理节点。
 
 3. **素材解析节点**
-   - 图片列表解析：`image_list` → `image_1`～`image_9`。
-   - 视频列表解析：`video_list` → `video_1`～`video_3`。
-   - 音频列表解析：`audio_list` → `audio_1`～`audio_3`。
-   - 图片解析：单个图片素材 → 标准 `IMAGE`、`MASK`（透明区域）。
+   - 图片列表解析：IMAGE 列表 → `image_1`～`image_9`。
+   - 视频列表解析：VIDEO 列表 → `video_1`～`video_3`。
+   - 音频列表解析：AUDIO 列表 → `audio_1`～`audio_3`。
+   - 图片解析：标准 `IMAGE` → RGB 图片、`MASK`；RGBA 输入会解析透明区域，RGB 输入的遮罩全为零。
    - 视频解析：单个视频素材 → 标准 `VIDEO`；需要帧序列时连接 ComfyUI 自带的「获取视频组件」。
    - 音频解析：单个音频素材 → 标准 `AUDIO`。
-   - 连接方式：加载器 → 对应列表解析 → 单项解析 → 生成或处理节点。空槽位不会伪造黑图或静音。
+   - 连接方式：加载器 → 对应列表解析 → 生成或处理节点；单项解析按需使用。列表解析按有效素材顺序拆分，余下端口跳过执行。
 
 ## Installation
 
