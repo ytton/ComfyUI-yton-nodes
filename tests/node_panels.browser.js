@@ -95,15 +95,20 @@ async (page) => {
     assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p|^768p/ }).count() === 0, "Image mode must omit 360p and the H3-only 768p preset");
     const imagePrompt = await target.evaluate(async () => (await window.comfyAPI.app.app.graphToPrompt()).output[window.ytonTestNode.id]);
     assert(imagePrompt.inputs.resolution === "480p", "Switching from H3 768p must select the first valid image preset");
+    assert(await panel.getByRole("button", { name: "1K", exact: true }).count() === 0, "Image mode must omit 1K");
+    await panel.getByRole("button", { name: "2.5K", exact: true }).click();
+    const image25kPrompt = await target.evaluate(async () => (await window.comfyAPI.app.app.graphToPrompt()).output[window.ytonTestNode.id]);
+    assert(image25kPrompt.inputs.resolution === "2.5K", "The 2.5K selection must reach the submitted prompt");
     await panel.getByRole("button", { name: "MiniMax H3", exact: true }).click();
     assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).count() === 0, "H3 mode must omit 360p after switching modes");
     assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^768p/ }).count() === 1, "H3 mode must include 768p after switching modes");
     await panel.getByRole("button", { name: "普通 / 图片", exact: true }).click();
-    await panel.getByRole("button", { name: "6K", exact: true }).click();
+    assert(await panel.getByRole("button", { name: "2.5K", exact: true }).count() === 1, "Image mode must show 2.5K after switching modes");
+    await panel.getByRole("button", { name: "2.5K", exact: true }).click();
     await panel.getByRole("button", { name: "画面比例 9:16", exact: true }).click();
     checks.push({ name: "normal-mode", ...await fit() });
     const saved = await target.evaluate(() => window.ytonTestNode.serialize());
-    assert(JSON.stringify(saved.widgets_values) === JSON.stringify(["Normal (Standard Image/Video)", "9:16", "6K", 0, 0]), "UI must serialize only the five backend inputs");
+    assert(JSON.stringify(saved.widgets_values) === JSON.stringify(["Normal (Standard Image/Video)", "9:16", "2.5K", 0, 0]), "UI must serialize only the five backend inputs");
     await target.evaluate(saved => {
       const node = window.ytonTestNode;
       node.widgets.find(w => w.name === "mode").value = "MiniMax H3 (Video)";
@@ -112,7 +117,7 @@ async (page) => {
       node.configure(saved);
     }, saved);
     assert(await panel.getByRole("button", { name: "普通 / 图片", exact: true }).getAttribute("aria-pressed") === "true", "Restored mode must be selected");
-    assert(await panel.getByRole("button", { name: "6K", exact: true }).getAttribute("aria-pressed") === "true", "Restored resolution must be selected");
+    assert(await panel.getByRole("button", { name: "2.5K", exact: true }).getAttribute("aria-pressed") === "true", "Restored resolution must be selected");
     assert(await panel.getByRole("button", { name: "画面比例 9:16", exact: true }).getAttribute("aria-pressed") === "true", "Restored ratio must be selected");
     await panel.getByRole("button", { name: "MiniMax H3", exact: true }).click();
     assert(await panel.locator(".yton-pill-btn.active").innerText().then(text => text.startsWith("480p")), "Switching modes must select a valid preset in the new mode");

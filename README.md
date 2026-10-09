@@ -9,6 +9,7 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - H3 mode strictly enforces 16/32-pixel macroblock alignment (e.g. 1080p -> 1088h, 540p -> 544h).
    - Both modes start at 480p and show nine presets in a three-row grid. H3 mode includes 768p (1.0), 848p (1.2), 944p (1.5), and 1024p (1.8). Provides presets across 8 aspect ratios (16:9, 9:16, 1:1, 4:3, 3:4, 2:3, 3:2, 21:9).
    - The added H3 presets use 768p as the 1.0 baseline: short side = 768 × √multiplier, rounded to a multiple of 16. Width/height adapt to the selected aspect ratio; multiplier labels follow the existing 16:9 convention.
+   - Image presets: 480p, 540p, 640p, 720p, 1080p, 2K, 2.5K, 4K, and 6K. The 2.5K tier scales the existing 2K dimensions by approximately 1.25 (16:9: 3200×1800; 1:1: 2560×2560), using even dimensions.
    - Outputs: `width`, `height`, `aspect_ratio`, `max_side`, `min_side`, `h3_mp` (compute multiplier), `resolution_str`.
 
 2. **yton Easy Media Loader (`YtonEasyMediaLoader`)**
