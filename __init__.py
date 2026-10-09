@@ -10,7 +10,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "YtonResolutionSelector": "yton 分辨率与比例控制器 (Resolution)",
+    "YtonResolutionSelector": "分辨率比例控件",
     "YtonEasyMediaLoader": "yton Easy 媒体加载器 (Media Loader)",
 }
 

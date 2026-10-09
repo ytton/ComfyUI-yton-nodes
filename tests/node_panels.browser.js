@@ -45,6 +45,13 @@ async (page) => {
       return panel.evaluate(el => ({ width: el.offsetWidth, height: el.offsetHeight }));
     };
     checks.push({ name: "new-node", ...await fit() });
+    await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).click();
+    await panel.getByRole("button", { name: "普通 / 图片", exact: true }).click();
+    assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).count() === 0, "Image mode must omit 360p even when selected in H3 mode");
+    const imagePrompt = await target.evaluate(async () => (await window.comfyAPI.app.app.graphToPrompt()).output[window.ytonTestNode.id]);
+    assert(imagePrompt.inputs.resolution === "480p", "Switching from H3 360p must select the first valid image preset");
+    await panel.getByRole("button", { name: "MiniMax H3", exact: true }).click();
+    assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).count() === 1, "H3 mode must retain 360p");
     await panel.getByRole("button", { name: "普通 / 图片", exact: true }).click();
     await panel.getByRole("button", { name: "6K", exact: true }).click();
     await panel.getByRole("button", { name: "画面比例 9:16", exact: true }).click();

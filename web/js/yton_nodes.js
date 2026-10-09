@@ -114,12 +114,13 @@ function setupResolutionNode(node) {
   function resolutionOptions() {
     return modeWidget.value.includes("H3")
       ? ["360p", "480p", "540p", "640p", "720p", "1080p"]
-      : ["360p", "480p", "540p", "640p", "720p", "1080p", "1K", "2K", "4K", "6K"];
+      : ["480p", "540p", "640p", "720p", "1080p", "1K", "2K", "4K", "6K"];
   }
 
   function renderResolutions() {
     resGrid.innerHTML = "";
     const isH3 = modeWidget?.value?.includes("H3");
+    if (!isH3 && resWidget.value === "360p") resWidget.value = "480p";
     const options = resolutionOptions();
     if (!options.includes(resWidget.value)) options.push(resWidget.value);
 
