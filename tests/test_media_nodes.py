@@ -16,7 +16,6 @@ import folder_paths
 import numpy as np
 import torch
 from PIL import Image
-from comfy_execution.graph_utils import ExecutionBlocker
 
 
 NODE_FILE = Path(__file__).resolve().parents[1] / "nodes" / "media_loader_node.py"
@@ -69,8 +68,98 @@ class MediaNodesTests(unittest.TestCase):
             outputs = parser().parse_list(**{kind: items})
             self.assertEqual(len(outputs), media_nodes.MEDIA_SLOTS[kind])
             self.assertIs(outputs[0], items[0])
-            self.assertIsInstance(outputs[1], ExecutionBlocker)
+            self.assertTrue(all(output is None for output in outputs[1:]))
+            self.assertTrue(all(output is None for output in parser().parse_list(**{kind: []})))
         self.assertEqual(loader.load_media(), ([], [], []))
+
+    def test_empty_media_passes_through_item_parsers(self):
+        self.assertEqual(media_nodes.YtonImageParser().parse_image(None), (None, None))
+        self.assertEqual(media_nodes.YtonVideoParser().parse_video(None), (None, None, None, None))
+        self.assertEqual(media_nodes.YtonAudioParser().parse_audio(None), (None,))
+
+    def test_qwen_encoder_accepts_all_nine_connected_outputs(self):
+        import execution
+        import nodes
+        from comfy_extras.nodes_qwen import TextEncodeQwenImage21
+
+        encoded_counts = []
+        completed = []
+
+        class Clip:
+            def tokenize(self, text, images, **kwargs):
+                encoded_counts.append(len(images))
+                return text
+
+            def encode_from_tokens_scheduled(self, tokens):
+                return [[torch.zeros(1, 1, 4), {}]]
+
+        class ClipLoader:
+            @classmethod
+            def INPUT_TYPES(cls):
+                return {"required": {}}
+
+            RETURN_TYPES = ("CLIP",)
+            FUNCTION = "load"
+
+            def load(self):
+                return (Clip(),)
+
+        class Output:
+            @classmethod
+            def INPUT_TYPES(cls):
+                return {"required": {"positive": ("CONDITIONING",), "latent": ("LATENT",)}}
+
+            RETURN_TYPES = ()
+            FUNCTION = "consume"
+            OUTPUT_NODE = True
+
+            def consume(self, positive, latent):
+                completed.append(tuple(latent["samples"].shape))
+                return ()
+
+        class Server:
+            client_id = None
+            last_node_id = None
+
+            def send_sync(self, *args):
+                pass
+
+        nodes.NODE_CLASS_MAPPINGS.update({
+            "YtonEasyMediaLoader": media_nodes.YtonEasyMediaLoader,
+            "YtonImageListParser": media_nodes.YtonImageListParser,
+            "YtonTestClipLoader": ClipLoader,
+            "YtonTestQwenEncoder": TextEncodeQwenImage21,
+            "YtonTestQwenOutput": Output,
+        })
+
+        async def run():
+            for count in [0, 1, 3, 9]:
+                with self.subTest(images=count):
+                    files = {name: "" for name in media_nodes.YtonEasyMediaLoader.INPUT_TYPES()["required"]}
+                    # Fill from the end to also verify sparse media-loader slots.
+                    for index in range(10 - count, 10):
+                        files[f"image_{index}"] = "nested/alpha.png"
+                    prompt = {
+                        "1": {"class_type": "YtonEasyMediaLoader", "inputs": files},
+                        "2": {"class_type": "YtonImageListParser", "inputs": {"image": ["1", 0]}},
+                        "3": {"class_type": "YtonTestClipLoader", "inputs": {}},
+                        "4": {"class_type": "YtonTestQwenEncoder", "inputs": {
+                            "clip": ["3", 0], "prompt": "编辑已有参考图", "negative_prompt": "", "resolution": 64,
+                            **{f"images.image_{index}": ["2", index - 1] for index in range(1, 10)},
+                        }},
+                        "5": {"class_type": "YtonTestQwenOutput", "inputs": {"positive": ["4", 0], "latent": ["4", 2]}},
+                    }
+                    prompt_id = f"yton-qwen-{count}"
+                    valid, errors, outputs, node_errors = await execution.validate_prompt(prompt_id, prompt, None)
+                    self.assertTrue(valid, (errors, node_errors))
+                    executor = execution.PromptExecutor(Server(), cache_type=execution.CacheType.CLASSIC,
+                                                        cache_args={"ram": 0, "ram_inactive": 0})
+                    await executor.execute_async(prompt, prompt_id, execute_outputs=outputs)
+                    self.assertTrue(executor.success, executor.status_messages)
+                    self.assertEqual(encoded_counts[-2:], [count, count])
+                    self.assertEqual(len(completed), [0, 1, 3, 9].index(count) + 1)
+
+        asyncio.run(run())
 
     def test_image_alpha_audio_and_native_video(self):
         images, videos, audios = media_nodes.YtonEasyMediaLoader().load_media(
@@ -172,7 +261,7 @@ class MediaNodesTests(unittest.TestCase):
         self.assertNotEqual(before, loader.IS_CHANGED(image_1="nested/alpha.png"))
         self.assertEqual(loader.VALIDATE_INPUTS(), True)
 
-    def test_comfy_execution_graph_and_empty_branch(self):
+    def test_comfy_execution_graph_keeps_populated_and_empty_inputs(self):
         import execution
         import nodes
 
@@ -189,7 +278,7 @@ class MediaNodesTests(unittest.TestCase):
             OUTPUT_NODE = True
 
             def consume(self, image, frames, frame_count, video_info, audio):
-                received.append((tuple(image.shape), tuple(frames.shape), frame_count,
+                received.append((tuple(image.shape) if image is not None else None, tuple(frames.shape), frame_count,
                                  video_info["loaded_fps"], audio["sample_rate"]))
                 return ()
 
@@ -226,7 +315,8 @@ class MediaNodesTests(unittest.TestCase):
             self.assertTrue(executor.success, executor.status_messages)
 
         asyncio.run(run())
-        self.assertEqual(received, [((1, 6, 8, 3), (3, 16, 16, 3), 3, 5.0, 16000)])
+        self.assertCountEqual(received, [((1, 6, 8, 3), (3, 16, 16, 3), 3, 5.0, 16000),
+                                         (None, (3, 16, 16, 3), 3, 5.0, 16000)])
 
     def test_easy_media_split_nodes_receive_native_lists(self):
         import execution

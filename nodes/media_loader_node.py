@@ -6,7 +6,6 @@ import folder_paths
 import numpy as np
 import torch
 from PIL import Image, ImageOps
-from comfy_execution.graph_utils import ExecutionBlocker
 
 
 MEDIA_SLOTS = {"image": 9, "video": 3, "audio": 3}
@@ -99,6 +98,7 @@ class _MediaListParser:
     CATEGORY = "yton-nodes/Media/解析"
     KIND = ""
     INPUT_IS_LIST = True
+    DESCRIPTION = "按有效素材顺序拆分列表。可提前连接全部输出，未填充的输出传递空值，由支持可选素材的下游节点忽略。"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -107,7 +107,10 @@ class _MediaListParser:
     def parse_list(self, **inputs):
         items = inputs[self.KIND]
         count = MEDIA_SLOTS[self.KIND]
-        return tuple(items[index] if index < len(items) else ExecutionBlocker(None) for index in range(count))
+        # An execution blocker cancels the entire downstream call, including
+        # its populated inputs. None lets optional-media consumers skip only
+        # the missing item while keeping every socket connected.
+        return tuple(items[index] if index < len(items) else None for index in range(count))
 
 
 class YtonImageListParser(_MediaListParser):
@@ -139,6 +142,8 @@ class YtonImageParser:
     CATEGORY = "yton-nodes/Media/解析"
 
     def parse_image(self, image):
+        if image is None:
+            return None, None
         mask = getattr(image, "yton_mask", None)
         if mask is None:
             mask = 1.0 - image[..., 3] if image.shape[-1] == 4 else torch.zeros(image.shape[:3], dtype=image.dtype, device=image.device)
@@ -157,6 +162,8 @@ class YtonVideoParser:
     DESCRIPTION = "解析单个视频的全部图像帧、实际帧数、原音轨和视频信息。视频信息可连接 Video Helper Suite 节点；无音轨时音频为空。"
 
     def parse_video(self, video):
+        if video is None:
+            return None, None, None, None
         components = video.get_components()
         images = components.images
         frame_count, height, width = map(int, images.shape[:3])
