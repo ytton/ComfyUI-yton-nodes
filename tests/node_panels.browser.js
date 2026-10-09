@@ -8,8 +8,13 @@ async (page) => {
   // Serve the edited extension against the running ComfyUI without installing it.
   await context.route("**/extensions/ComfyUI-yton-nodes/**", async route => {
     const relative = new URL(route.request().url()).pathname.split("/extensions/ComfyUI-yton-nodes/")[1];
-    const response = await context.request.get(`http://127.0.0.1:8192/${relative}`);
+    const response = await context.request.get(`http://127.0.0.1:8192/web/${relative}`);
     await route.fulfill({ response });
+  });
+  await context.route("**/object_info**", async route => {
+    const response = await route.fetch();
+    const definitions = await context.request.get("http://127.0.0.1:8192/temp/node-definitions.json").then(result => result.json());
+    await route.fulfill({ response, json: { ...await response.json(), ...definitions } });
   });
   // Renderer preferences stay within this isolated browser session.
   await context.route("**/settings**", async route => {
@@ -175,7 +180,7 @@ async (page) => {
     });
     await target.waitForFunction(() => [...document.querySelectorAll(".yton-panel:not(.yton-resolution-panel)")].some(el => el.parentElement.clientHeight >= el.offsetHeight));
     const empty = target.locator(".yton-media-empty");
-    assert(await empty.count() === 3, "New media loader must render all three empty categories");
+    assert(await empty.count() === 15, "New media loader must render all fifteen fixed empty slots");
     assert(errors.length === 0, `Extension errors: ${errors.join(", ")}`);
     return { passed: true, checks, promptInputs: prompt.inputs };
   } finally {

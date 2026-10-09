@@ -12,11 +12,21 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - Image presets: 480p, 540p, 640p, 720p, 1080p, 2K, 2.5K, 4K, and 6K. The 2.5K tier scales the existing 2K dimensions by approximately 1.25 (16:9: 3200×1800; 1:1: 2560×2560), using even dimensions.
    - Outputs: `width`, `height`, `aspect_ratio`, `max_side`, `min_side`, `h3_mp` (compute multiplier), `resolution_str`.
 
-2. **yton Easy Media Loader (`YtonEasyMediaLoader`)**
-   - Clean UI inspired by canvas tools with quota counters for Images, Audios, and Videos (default H3 quotas: 9 images, 3 audios, 3 videos).
-   - Card previews for images, video thumbnails with duration badge, and audio rows.
-   - Outputs unified `media_bundle` dict plus discrete slots: `image_1`~`image_9`, `audio_1`~`audio_3`, `video_1`~`video_3`.
-   - Fail-safe quota validation in Python backend.
+2. **媒体加载器 (`YtonEasyMediaLoader`)**
+   - 固定三列卡片：9 张图片、3 个视频、3 个音频，分类支持折叠。
+   - 没有输入连线端口。点击槽位选择文件，或直接拖入文件；支持多文件上传、预览、播放、删除及同类槽位交换。
+   - 四个固定输出：`media`、`image_list`、`video_list`、`audio_list`。
+   - 文件名保存在 `image_1`～`image_9`、`video_1`～`video_3`、`audio_1`～`audio_3` 的 widget 值中，外部 API 可直接填写。
+   - 空槽位保持原位置，删除第 2 个素材不会改变第 3 个素材的编号。素材只在单项解析节点中解码。
+
+3. **素材解析节点**
+   - 图片列表解析：`image_list` → `image_1`～`image_9`。
+   - 视频列表解析：`video_list` → `video_1`～`video_3`。
+   - 音频列表解析：`audio_list` → `audio_1`～`audio_3`。
+   - 图片解析：单个图片素材 → 标准 `IMAGE`、`MASK`（透明区域）。
+   - 视频解析：单个视频素材 → 标准 `VIDEO`；需要帧序列时连接 ComfyUI 自带的「获取视频组件」。
+   - 音频解析：单个音频素材 → 标准 `AUDIO`。
+   - 连接方式：加载器 → 对应列表解析 → 单项解析 → 生成或处理节点。空槽位不会伪造黑图或静音。
 
 ## Installation
 
@@ -39,8 +49,14 @@ Submit the git repository URL into RunningHub custom node management or clone in
 
 ### Browser regression
 
-With ComfyUI on `127.0.0.1:8188`, serve the edited assets using
-`python -m http.server 8192 --bind 127.0.0.1 --directory web`.
-Run `tests/node_panels.browser.js` as a Playwright function with a `page` argument.
-It uses an isolated browser context to check layout, zoom, resizing, restored
-selections, prompt serialization, and the media loader's initial display.
+With ComfyUI on `127.0.0.1:8188`, export the edited node schemas with
+`tests/export_node_definitions.py` using ComfyUI's Python and its root on `PYTHONPATH`.
+Serve this repository with `python -m http.server 8192 --bind 127.0.0.1`.
+Run `tests/node_panels.browser.js` or `tests/media_loader.browser.js` as a Playwright
+function with a `page` argument. These use isolated browser contexts to check layout,
+both node renderers, restored selections, prompt serialization, fixed slots,
+uploading, drag exchanges, and all three parser chains.
+
+Run `tests/test_media_nodes.py -v` with the same Python environment for real image,
+audio, and video parsing checks. Restart ComfyUI after updating the Python node files,
+then refresh the browser with Ctrl+F5.

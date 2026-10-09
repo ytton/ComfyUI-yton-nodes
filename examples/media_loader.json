@@ -1,0 +1,482 @@
+{
+  "id": "ef853df2-849d-4bc2-817e-9678dd46e2f0",
+  "revision": 0,
+  "last_node_id": 7,
+  "last_link_id": 9,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "YtonEasyMediaLoader",
+      "pos": [
+        100,
+        120
+      ],
+      "size": [
+        520,
+        857
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "localized_name": "media",
+          "name": "media",
+          "type": "MEDIA_BUNDLE",
+          "links": null
+        },
+        {
+          "localized_name": "image_list",
+          "name": "image_list",
+          "type": "YTON_IMAGE_LIST",
+          "links": [
+            1
+          ]
+        },
+        {
+          "localized_name": "video_list",
+          "name": "video_list",
+          "type": "YTON_VIDEO_LIST",
+          "links": [
+            3
+          ]
+        },
+        {
+          "localized_name": "audio_list",
+          "name": "audio_list",
+          "type": "YTON_AUDIO_LIST",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "YtonEasyMediaLoader",
+        "ytonMediaCollapsed": {
+          "video": false
+        }
+      },
+      "widgets_values": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "image_1": "",
+        "image_2": "",
+        "image_3": "",
+        "image_4": "",
+        "image_5": "",
+        "image_6": "",
+        "image_7": "",
+        "image_8": "",
+        "image_9": "",
+        "video_1": "",
+        "video_2": "",
+        "video_3": "",
+        "audio_1": "",
+        "audio_2": "",
+        "audio_3": ""
+      }
+    },
+    {
+      "id": 2,
+      "type": "YtonImageListParser",
+      "pos": [
+        760,
+        100
+      ],
+      "size": [
+        230,
+        260
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "image_list",
+          "name": "image_list",
+          "type": "YTON_IMAGE_LIST",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "image_1",
+          "name": "image_1",
+          "type": "YTON_IMAGE",
+          "links": [
+            7
+          ]
+        },
+        {
+          "localized_name": "image_2",
+          "name": "image_2",
+          "type": "YTON_IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "image_3",
+          "name": "image_3",
+          "type": "YTON_IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "image_4",
+          "name": "image_4",
+          "type": "YTON_IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "image_5",
+          "name": "image_5",
+          "type": "YTON_IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "image_6",
+          "name": "image_6",
+          "type": "YTON_IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "image_7",
+          "name": "image_7",
+          "type": "YTON_IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "image_8",
+          "name": "image_8",
+          "type": "YTON_IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "image_9",
+          "name": "image_9",
+          "type": "YTON_IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "YtonImageListParser"
+      }
+    },
+    {
+      "id": 3,
+      "type": "YtonImageParser",
+      "pos": [
+        1080,
+        100
+      ],
+      "size": [
+        230,
+        140
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "image",
+          "name": "image",
+          "type": "YTON_IMAGE",
+          "link": 7
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "image",
+          "name": "image",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "mask",
+          "name": "mask",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "YtonImageParser"
+      }
+    },
+    {
+      "id": 4,
+      "type": "YtonVideoListParser",
+      "pos": [
+        760,
+        430
+      ],
+      "size": [
+        230,
+        140
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "video_list",
+          "name": "video_list",
+          "type": "YTON_VIDEO_LIST",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "video_1",
+          "name": "video_1",
+          "type": "YTON_VIDEO",
+          "links": [
+            8
+          ]
+        },
+        {
+          "localized_name": "video_2",
+          "name": "video_2",
+          "type": "YTON_VIDEO",
+          "links": null
+        },
+        {
+          "localized_name": "video_3",
+          "name": "video_3",
+          "type": "YTON_VIDEO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "YtonVideoListParser"
+      }
+    },
+    {
+      "id": 5,
+      "type": "YtonVideoParser",
+      "pos": [
+        1080,
+        430
+      ],
+      "size": [
+        230,
+        140
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "YTON_VIDEO",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "YtonVideoParser"
+      }
+    },
+    {
+      "id": 6,
+      "type": "YtonAudioListParser",
+      "pos": [
+        760,
+        660
+      ],
+      "size": [
+        230,
+        140
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "audio_list",
+          "name": "audio_list",
+          "type": "YTON_AUDIO_LIST",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "audio_1",
+          "name": "audio_1",
+          "type": "YTON_AUDIO",
+          "links": [
+            9
+          ]
+        },
+        {
+          "localized_name": "audio_2",
+          "name": "audio_2",
+          "type": "YTON_AUDIO",
+          "links": null
+        },
+        {
+          "localized_name": "audio_3",
+          "name": "audio_3",
+          "type": "YTON_AUDIO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "YtonAudioListParser"
+      }
+    },
+    {
+      "id": 7,
+      "type": "YtonAudioParser",
+      "pos": [
+        1080,
+        660
+      ],
+      "size": [
+        230,
+        140
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "YTON_AUDIO",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "YtonAudioParser"
+      }
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      1,
+      2,
+      0,
+      "YTON_IMAGE_LIST"
+    ],
+    [
+      3,
+      1,
+      2,
+      4,
+      0,
+      "YTON_VIDEO_LIST"
+    ],
+    [
+      5,
+      1,
+      3,
+      6,
+      0,
+      "YTON_AUDIO_LIST"
+    ],
+    [
+      7,
+      2,
+      0,
+      3,
+      0,
+      "YTON_IMAGE"
+    ],
+    [
+      8,
+      4,
+      0,
+      5,
+      0,
+      "YTON_VIDEO"
+    ],
+    [
+      9,
+      6,
+      0,
+      7,
+      0,
+      "YTON_AUDIO"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ue_links": [],
+    "ds": {
+      "scale": 0.85,
+      "offset": [
+        0,
+        0
+      ]
+    }
+  },
+  "version": 0.4
+}
