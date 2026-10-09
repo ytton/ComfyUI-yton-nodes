@@ -9,6 +9,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import wave
+from fractions import Fraction
 
 import av
 import folder_paths
@@ -64,7 +65,8 @@ class MediaNodesTests(unittest.TestCase):
         for kind, parser, items in [("image", media_nodes.YtonImageListParser, images),
                                     ("video", media_nodes.YtonVideoListParser, videos),
                                     ("audio", media_nodes.YtonAudioListParser, audios)]:
-            outputs = parser().parse_list(**{f"{kind}_list": items})
+            self.assertEqual(list(parser.INPUT_TYPES()["required"]), [kind])
+            outputs = parser().parse_list(**{kind: items})
             self.assertEqual(len(outputs), media_nodes.MEDIA_SLOTS[kind])
             self.assertIs(outputs[0], items[0])
             self.assertIsInstance(outputs[1], ExecutionBlocker)
@@ -83,9 +85,64 @@ class MediaNodesTests(unittest.TestCase):
         audio, = media_nodes.YtonAudioParser().parse_audio(audios[0])
         self.assertEqual(audio["sample_rate"], 16000)
         self.assertEqual(tuple(audio["waveform"].shape), (1, 1, 1600))
-        video, = media_nodes.YtonVideoParser().parse_video(videos[0])
-        self.assertEqual(video.get_dimensions(), (16, 16))
-        self.assertEqual(tuple(video.get_components().images.shape), (3, 16, 16, 3))
+        frames, count, track, info = media_nodes.YtonVideoParser().parse_video(videos[0])
+        self.assertEqual(tuple(frames.shape), (3, 16, 16, 3))
+        self.assertEqual(count, 3)
+        self.assertIsNone(track)
+        self.assertEqual(media_nodes.YtonVideoParser.RETURN_TYPES, ("IMAGE", "INT", "AUDIO", "VHS_VIDEOINFO"))
+        self.assertEqual(info, {
+            "source_fps": 5.0, "source_frame_count": 3, "source_duration": 0.6,
+            "source_width": 16, "source_height": 16, "loaded_fps": 5.0,
+            "loaded_frame_count": 3, "loaded_duration": 0.6, "loaded_width": 16, "loaded_height": 16,
+        })
+
+    def test_video_audio_extraction_and_vhs_info(self):
+        with av.open(str(self.root / "with-audio.mkv"), "w") as output:
+            video_stream = output.add_stream("mpeg4", rate=5)
+            video_stream.width, video_stream.height, video_stream.pix_fmt = 16, 16, "yuv420p"
+            audio_stream = output.add_stream("pcm_s16le", rate=16000)
+            audio_stream.layout = "mono"
+            for _ in range(3):
+                frame = av.VideoFrame.from_ndarray(np.full((16, 16, 3), 150, dtype=np.uint8), format="rgb24")
+                for packet in video_stream.encode(frame):
+                    output.mux(packet)
+            for packet in video_stream.encode():
+                output.mux(packet)
+            audio_frame = av.AudioFrame.from_ndarray(np.arange(9600, dtype=np.int16).reshape(1, -1), format="s16", layout="mono")
+            audio_frame.sample_rate, audio_frame.pts, audio_frame.time_base = 16000, 0, Fraction(1, 16000)
+            for packet in audio_stream.encode(audio_frame):
+                output.mux(packet)
+            for packet in audio_stream.encode():
+                output.mux(packet)
+        _, videos, _ = media_nodes.YtonEasyMediaLoader().load_media(video_1="with-audio.mkv")
+        frames, count, audio, info = media_nodes.YtonVideoParser().parse_video(videos[0])
+        self.assertEqual(tuple(frames.shape), (3, 16, 16, 3))
+        self.assertEqual(count, 3)
+        self.assertEqual(audio["sample_rate"], 16000)
+        self.assertEqual(tuple(audio["waveform"].shape), (1, 1, 9600))
+        torch.testing.assert_close(audio["waveform"][0, 0], torch.arange(9600).float() / 32768)
+        # Feed the resulting dictionary into the installed VHS information parser.
+        path = Path(folder_paths.base_path) / "custom_nodes" / "ComfyUI-VideoHelperSuite" / "videohelpersuite" / "nodes.py"
+        if path.is_file():
+            definition = next(item for item in ast.parse(path.read_text(encoding="utf-8")).body
+                              if isinstance(item, ast.ClassDef) and item.name == "VideoInfo")
+            scope = {}
+            exec(compile(ast.Module(body=[definition], type_ignores=[]), str(path), "exec"), scope)
+            result = scope["VideoInfo"]().get_video_info(info)
+            self.assertEqual(result, (5.0, 3, 0.6, 16, 16, 5.0, 3, 0.6, 16, 16))
+
+    def test_in_memory_video_and_fractional_fps(self):
+        from comfy_api.latest import InputImpl, Types
+
+        video = InputImpl.VideoFromComponents(Types.VideoComponents(
+            images=torch.zeros(30, 12, 20, 3), frame_rate=Fraction(30000, 1001)))
+        frames, count, audio, info = media_nodes.YtonVideoParser().parse_video(video)
+        self.assertEqual(tuple(frames.shape), (30, 12, 20, 3))
+        self.assertEqual(count, 30)
+        self.assertIsNone(audio)
+        self.assertEqual(info["loaded_fps"], float(Fraction(30000, 1001)))
+        self.assertAlmostEqual(info["loaded_duration"], 1.001)
+        self.assertEqual((info["loaded_width"], info["loaded_height"]), (20, 12))
 
     def test_missing_files_and_modified_files(self):
         loader = media_nodes.YtonEasyMediaLoader
@@ -106,14 +163,16 @@ class MediaNodesTests(unittest.TestCase):
         class OutputCheck:
             @classmethod
             def INPUT_TYPES(cls):
-                return {"required": {"image": ("IMAGE",), "video": ("VIDEO",), "audio": ("AUDIO",)}}
+                return {"required": {"image": ("IMAGE",), "frames": ("IMAGE",), "frame_count": ("INT",),
+                                     "video_info": ("VHS_VIDEOINFO",), "audio": ("AUDIO",)}}
 
             RETURN_TYPES = ()
             FUNCTION = "consume"
             OUTPUT_NODE = True
 
-            def consume(self, image, video, audio):
-                received.append((tuple(image.shape), video.get_dimensions(), audio["sample_rate"]))
+            def consume(self, image, frames, frame_count, video_info, audio):
+                received.append((tuple(image.shape), tuple(frames.shape), frame_count,
+                                 video_info["loaded_fps"], audio["sample_rate"]))
                 return ()
 
         for name in ["YtonEasyMediaLoader", "YtonImageListParser", "YtonVideoListParser",
@@ -126,11 +185,12 @@ class MediaNodesTests(unittest.TestCase):
         for kind, list_id, item_id, loader_slot, item_slot in [
             ("Image", "2", "3", 0, 0), ("Video", "4", "5", 1, 0), ("Audio", "6", "7", 2, 0),
         ]:
-            prompt[list_id] = {"class_type": f"Yton{kind}ListParser", "inputs": {f"{kind.lower()}_list": ["1", loader_slot]}}
+            prompt[list_id] = {"class_type": f"Yton{kind}ListParser", "inputs": {kind.lower(): ["1", loader_slot]}}
             prompt[item_id] = {"class_type": f"Yton{kind}Parser", "inputs": {kind.lower(): [list_id, item_slot]}}
-        prompt["8"] = {"class_type": "YtonTestOutput", "inputs": {"image": ["3", 0], "video": ["5", 0], "audio": ["7", 0]}}
+        video_outputs = {"frames": ["5", 0], "frame_count": ["5", 1], "video_info": ["5", 3], "audio": ["7", 0]}
+        prompt["8"] = {"class_type": "YtonTestOutput", "inputs": {"image": ["3", 0], **video_outputs}}
         prompt["9"] = {"class_type": "YtonImageParser", "inputs": {"image": ["2", 1]}}
-        prompt["10"] = {"class_type": "YtonTestOutput", "inputs": {"image": ["9", 0], "video": ["5", 0], "audio": ["7", 0]}}
+        prompt["10"] = {"class_type": "YtonTestOutput", "inputs": {"image": ["9", 0], **video_outputs}}
 
         class TestServer:
             client_id = None
@@ -148,7 +208,7 @@ class MediaNodesTests(unittest.TestCase):
             self.assertTrue(executor.success, executor.status_messages)
 
         asyncio.run(run())
-        self.assertEqual(received, [((1, 6, 8, 3), (16, 16), 16000)])
+        self.assertEqual(received, [((1, 6, 8, 3), (3, 16, 16, 3), 3, 5.0, 16000)])
 
     def test_easy_media_split_nodes_receive_native_lists(self):
         import execution

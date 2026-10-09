@@ -112,8 +112,9 @@
       "mode": 0,
       "inputs": [
         {
-          "localized_name": "image_list",
-          "name": "image_list",
+          "localized_name": "image",
+          "name": "image",
+          "shape": 6,
           "type": "IMAGE",
           "link": 1
         }
@@ -246,8 +247,9 @@
       "mode": 0,
       "inputs": [
         {
-          "localized_name": "video_list",
-          "name": "video_list",
+          "localized_name": "video",
+          "name": "video",
+          "shape": 6,
           "type": "VIDEO",
           "link": 3
         }
@@ -307,9 +309,27 @@
       ],
       "outputs": [
         {
-          "localized_name": "video",
-          "name": "video",
-          "type": "VIDEO",
+          "localized_name": "图像",
+          "name": "图像",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "帧计数",
+          "name": "帧计数",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "音频",
+          "name": "音频",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "localized_name": "视频信息",
+          "name": "视频信息",
+          "type": "VHS_VIDEOINFO",
           "links": null
         }
       ],
@@ -338,8 +358,9 @@
       "mode": 0,
       "inputs": [
         {
-          "localized_name": "audio_list",
-          "name": "audio_list",
+          "localized_name": "audio",
+          "name": "audio",
+          "shape": 6,
           "type": "AUDIO",
           "link": 5
         }

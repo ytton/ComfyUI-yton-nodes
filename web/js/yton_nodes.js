@@ -35,6 +35,8 @@ const MP_MAP = {
   "6K": "4.0"
 };
 
+const LIST_PARSERS = new Set(["YtonImageListParser", "YtonVideoListParser", "YtonAudioListParser"]);
+
 app.registerExtension({
   name: "yton.nodes",
   async nodeCreated(node) {
@@ -42,6 +44,18 @@ app.registerExtension({
       setupResolutionNode(node);
     } else if (node.comfyClass === "YtonEasyMediaLoader") {
       setupMediaLoaderNode(node);
+    } else if (LIST_PARSERS.has(node.comfyClass)) {
+      const showListInput = () => {
+        for (const input of node.inputs || []) input.shape = LiteGraph.GRID_SHAPE;
+        node.setDirtyCanvas(true, true);
+      };
+      const configure = node.onConfigure;
+      node.onConfigure = function () {
+        const result = configure?.apply(this, arguments);
+        showListInput();
+        return result;
+      };
+      showListInput();
     }
   }
 });

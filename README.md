@@ -22,11 +22,12 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - 面板的槽位编号固定；输出列表仅包含已加载的素材，按槽位顺序排列。图片为张量、视频为原生 VIDEO 对象、音频为 waveform/sample_rate 字典，可以直接连接 EasyMedia 的列表处理节点。
 
 3. **素材解析节点**
+   - 三个列表解析节点的输入分别为 `image`、`video`、`audio`，使用 ComfyUI 原生列表图标；输出为各个单项素材。
    - 图片列表解析：IMAGE 列表 → `image_1`～`image_9`。
    - 视频列表解析：VIDEO 列表 → `video_1`～`video_3`。
    - 音频列表解析：AUDIO 列表 → `audio_1`～`audio_3`。
    - 图片解析：标准 `IMAGE` → RGB 图片、`MASK`；RGBA 输入会解析透明区域，RGB 输入的遮罩全为零。
-   - 视频解析：单个视频素材 → 标准 `VIDEO`；需要帧序列时连接 ComfyUI 自带的「获取视频组件」。
+   - 视频解析：单个 `VIDEO` → 图像帧批次（IMAGE）、帧计数（INT）、原音轨（AUDIO）、视频信息（VHS_VIDEOINFO）。视频信息包含源视频与解析结果的帧率、帧数、时长和宽高，可连接 Video Helper Suite 的视频信息节点；没有音轨时音频为空。
    - 音频解析：单个音频素材 → 标准 `AUDIO`。
    - 连接方式：加载器 → 对应列表解析 → 生成或处理节点；单项解析按需使用。列表解析按有效素材顺序拆分，余下端口跳过执行。
 

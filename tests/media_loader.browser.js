@@ -104,11 +104,17 @@ async (page) => {
         if (!easy) throw new Error(`Missing EasyMedia ${kind} parser`);
         app.graph.add(easy);
         loader.connect(slot, easy, 0);
-        result.push({ kind, count: list.outputs.length, connected: item.inputs[0].link != null, output: item.outputs[0].type, easyConnected: easy.inputs[0].link != null });
+        const savedList = list.serialize();
+        list.configure(savedList);
+        result.push({ kind, count: list.outputs.length, inputName: list.inputs[0].name, inputShape: list.inputs[0].shape, connected: item.inputs[0].link != null, outputs: item.outputs.map(output => output.type), names: item.outputs.map(output => output.name), easyConnected: easy.inputs[0].link != null });
       }
       return result;
     });
-    assert(parsers.every(parser => parser.connected && parser.easyConnected && parser.output === parser.kind.toUpperCase()), "Yton and EasyMedia parser chains must connect with standard output types");
+    assert(parsers.every(parser => parser.connected && parser.easyConnected), "Yton and EasyMedia parser chains must connect with standard input types");
+    assert(parsers.every(parser => parser.inputName === parser.kind.toLowerCase() && parser.inputShape === 6), "List parser inputs must have short media names and native grid sockets after restoring");
+    assert(parsers.find(parser => parser.kind === "Image").outputs.join(",") === "IMAGE,MASK" && parsers.find(parser => parser.kind === "Audio").outputs.join(",") === "AUDIO", "Image and audio parser outputs must use standard types");
+    const videoParser = parsers.find(parser => parser.kind === "Video");
+    assert(videoParser.outputs.join(",") === "IMAGE,INT,AUDIO,VHS_VIDEOINFO" && videoParser.names.join(",") === "图像,帧计数,音频,视频信息", "Video parsers must expose frames, frame count, audio, and VHS video information");
     const pasteFiles = async (files, editable = false) => target.evaluate(({ files, editable }) => {
       const data = new DataTransfer();
       for (const { name, type } of files) data.items.add(new File(["clipboard-test"], name, { type }));

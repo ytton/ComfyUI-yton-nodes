@@ -96,10 +96,10 @@ class _MediaListParser:
 
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {f"{cls.KIND}_list": (cls.KIND.upper(), {"forceInput": True})}}
+        return {"required": {cls.KIND: (cls.KIND.upper(), {"forceInput": True})}}
 
     def parse_list(self, **inputs):
-        items = inputs[f"{self.KIND}_list"]
+        items = inputs[self.KIND]
         count = MEDIA_SLOTS[self.KIND]
         return tuple(items[index] if index < len(items) else ExecutionBlocker(None) for index in range(count))
 
@@ -142,13 +142,36 @@ class YtonVideoParser:
     def INPUT_TYPES(cls):
         return {"required": {"video": ("VIDEO", {"forceInput": True})}}
 
-    RETURN_TYPES = ("VIDEO",)
-    RETURN_NAMES = ("video",)
+    RETURN_TYPES = ("IMAGE", "INT", "AUDIO", "VHS_VIDEOINFO")
+    RETURN_NAMES = ("图像", "帧计数", "音频", "视频信息")
     FUNCTION = "parse_video"
     CATEGORY = "yton-nodes/Media/解析"
+    DESCRIPTION = "解析单个视频的全部图像帧、实际帧数、原音轨和视频信息。视频信息可连接 Video Helper Suite 节点；无音轨时音频为空。"
 
     def parse_video(self, video):
-        return (video,)
+        components = video.get_components()
+        images = components.images
+        frame_count, height, width = map(int, images.shape[:3])
+        fps = float(components.frame_rate)
+        if not frame_count:
+            raise ValueError("视频中没有可解析的图像帧")
+        if fps <= 0:
+            raise ValueError("视频帧率必须大于 0")
+        source_width, source_height = video.get_dimensions()
+        video_info = {
+            "source_fps": float(video.get_frame_rate()),
+            # All input frames are decoded; container frame counts can be estimates.
+            "source_frame_count": frame_count,
+            "source_duration": float(video.get_duration()),
+            "source_width": int(source_width),
+            "source_height": int(source_height),
+            "loaded_fps": fps,
+            "loaded_frame_count": frame_count,
+            "loaded_duration": frame_count / fps,
+            "loaded_width": width,
+            "loaded_height": height,
+        }
+        return images, frame_count, components.audio, video_info
 
 
 class YtonAudioParser:
