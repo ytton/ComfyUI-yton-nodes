@@ -3,6 +3,7 @@ import { api } from "../../../scripts/api.js";
 import { mountNodePanel } from "./node_panel.js";
 import { editSlotMask } from "./media_mask_editor.js";
 import { openImagePreview } from "./media_image_preview.js";
+import { imageChannelURL, showMaskPreview } from "./media_mask_preview.js";
 
 const CATEGORIES = [
   { kind: "image", label: "参考图片", count: 9, accept: "image/*", icon: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 6-6 4 4 3-3 5 5"/>' },
@@ -199,7 +200,7 @@ export function setupMediaLoaderNode(node) {
       card.draggable = true;
       const source = document.createElement(section.kind === "image" ? "img" : section.kind);
       source.className = "yton-media-thumb";
-      source.src = fileURL(filename);
+      source.src = section.kind === "image" ? imageChannelURL(fileURL(filename), "rgb") : fileURL(filename);
       source.draggable = false;
       if (section.kind === "image") source.alt = filename.split("/").pop();
       else {
@@ -232,18 +233,15 @@ export function setupMediaLoaderNode(node) {
         card.append(play, duration);
       }
       card.append(source);
-      const label = document.createElement("span");
-      label.className = "yton-media-filename";
-      label.textContent = filename.split("/").pop();
-      label.title = filename;
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "yton-remove-btn";
       remove.innerHTML = svg('<path d="m6 6 12 12M18 6 6 18"/>');
       remove.setAttribute("aria-label", `移除${section.label.slice(2)} ${index + 1}`);
       remove.onclick = event => { event.stopPropagation(); changeSlots([[`${section.kind}_${index + 1}`, ""]]); };
-      card.append(label, remove);
+      card.append(remove);
       if (section.kind === "image") {
+        showMaskPreview(card, fileURL(filename));
         const preview = document.createElement("button");
         preview.type = "button";
         preview.className = "yton-preview-btn";
@@ -257,7 +255,7 @@ export function setupMediaLoaderNode(node) {
           event.preventDefault();
           event.stopPropagation();
           closePreview?.();
-          closePreview = openImagePreview(`${fileURL(filename)}&channel=rgb`, filename, preview);
+          closePreview = openImagePreview(fileURL(filename), filename, preview);
         };
         const mask = document.createElement("button");
         mask.type = "button";

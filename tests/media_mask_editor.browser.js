@@ -31,7 +31,9 @@ async (page) => {
     const filename = [uploaded.subfolder, uploaded.name].filter(Boolean).join("/");
     files.push(filename);
     await target.goto("http://127.0.0.1:8188");
+    await target.getByRole("button", { name: "运行", exact: true }).first().waitFor();
     await target.getByRole("button", { name: "Yuan-Director 插件信息", exact: true }).waitFor();
+    await target.waitForTimeout(1000);
     await target.evaluate(async filename => {
       const { app } = await import("/scripts/app.js");
       app.graph.clear();
@@ -48,6 +50,9 @@ async (page) => {
       window.ytonMaskTestNode = node;
     }, filename);
     const first = target.locator('[data-slot="image_1"]');
+    assert(await target.locator(".yton-media-filename").count() === 0, "Thumbnails do not cover images with filenames");
+    assert(await first.locator("img").evaluate(img => new URL(img.src).searchParams.get("channel")) === "rgb", "Thumbnail shows the original RGB image");
+    assert(await first.locator(".yton-image-mask-preview").count() === 0, "An unmasked image has no coloured overlay");
     assert(await target.locator(".yton-mask-btn").count() === 2, "Only occupied image slots have mask actions");
     assert(await first.locator(".yton-mask-btn").evaluate(el => getComputedStyle(el).opacity) === "0", "Mask icon starts hidden");
     await first.hover();
@@ -73,6 +78,30 @@ async (page) => {
     assert((await values())[1] === filename, "Saving one slot leaves the other slot intact");
     const thumb = await first.locator("img").getAttribute("src");
     assert(thumb.includes(saved.split(" [")[0]), "The card previews the saved image");
+    await first.locator(".yton-image-mask-preview").waitFor();
+    const overlay = await first.locator(".yton-image-mask-preview").evaluate(canvas => {
+      const pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      let strongest = [];
+      for (let i = 0; i < pixels.length; i += 4) {
+        if (pixels[i + 3] > (strongest[3] || 0)) strongest = Array.from(pixels.slice(i, i + 4));
+      }
+      return strongest;
+    });
+    // Canvas stores premultiplied alpha, so reading translucent RGB can round.
+    assert(Math.abs(overlay[0] - 57) <= 2 && overlay[1] === 255 && Math.abs(overlay[2] - 116) <= 2 && overlay[3] > 0 && overlay[3] <= 102,
+      "Saved mask is a translucent fluorescent green overlay");
+    await first.hover();
+    await first.locator(".yton-preview-btn").click();
+    await target.locator(".yton-image-preview-frame .yton-image-mask-preview").waitFor();
+    const preview = await target.locator(".yton-image-preview-frame").evaluate(frame => {
+      const img = frame.querySelector("img"), mask = frame.querySelector("canvas");
+      const a = img.getBoundingClientRect(), b = mask.getBoundingClientRect();
+      return { image: [a.x, a.y, a.width, a.height], mask: [b.x, b.y, b.width, b.height],
+        fit: getComputedStyle(mask).objectFit, channel: new URL(img.src).searchParams.get("channel") };
+    });
+    assert(preview.image.every((value, i) => Math.abs(value - preview.mask[i]) < 1), "Large image and mask share the same bounds");
+    assert(preview.image[3] > 200 && preview.fit === "contain" && preview.channel === "rgb", "Large preview preserves image proportions and colours");
+    await target.getByRole("button", { name: "关闭预览", exact: true }).click();
     await open(1);
     const paintedPixels = await target.locator(".mask-editor-dialog canvas").nth(2).evaluate(canvas => {
       const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
@@ -89,7 +118,7 @@ async (page) => {
     assert((await values())[1] === filename, "The mask action also works in the Vue node renderer");
     assert(fileChoosers === 0, "Mask actions do not open the upload picker");
     assert(errors.length === 0, errors.join("\n"));
-    return { checks: ["hover/focus icon", "native editor", "cancel", "paint/save", "correct slot", "reopen mask", "workflow serialization", "Vue renderer", "no extra nodes or file chooser"], files, paintedPixels };
+    return { checks: ["hover/focus icon", "native editor", "cancel", "paint/save", "correct slot", "reopen mask", "fluorescent mask preview", "no filename overlay", "large preview alignment", "workflow serialization", "Vue renderer", "no extra nodes or file chooser"], files, paintedPixels, overlay, preview };
   } finally {
     await context.close();
   }

@@ -1,3 +1,5 @@
+import { imageChannelURL, showMaskPreview } from "./media_mask_preview.js";
+
 export function openImagePreview(url, filename, trigger) {
   const dialog = document.createElement("dialog");
   dialog.className = "yton-image-preview";
@@ -35,8 +37,12 @@ export function openImagePreview(url, filename, trigger) {
     status.hidden = true;
   };
   image.onerror = () => { status.textContent = "图片加载失败"; };
-  image.src = url;
-  body.append(image, status);
+  image.src = imageChannelURL(url, "rgb");
+  const imageFrame = document.createElement("div");
+  imageFrame.className = "yton-image-preview-frame";
+  imageFrame.append(image);
+  showMaskPreview(imageFrame, url);
+  body.append(imageFrame, status);
   dialog.append(header, body);
 
   let disposed = false;

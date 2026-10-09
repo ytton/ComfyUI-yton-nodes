@@ -223,11 +223,7 @@
   position: absolute; left: 6px; right: 6px; bottom: 14px;
   color: #727981; font-size: clamp(10px, 2.7cqw, 13px); text-align: center;
 }
-.yton-media-filename {
-  position: absolute; bottom: 7px; left: 7px; right: 7px; border-radius: 5px;
-  padding: 3px 5px; color: #d5d9dd; background: #080b0cba;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px;
-}
+.yton-image-mask-preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 1; }
 .yton-badge-index {
   position: absolute; top: 7px; left: 7px; z-index: 2; border-radius: 5px;
   padding: 2px 6px; background: #070a0ed9; color: #dee4e7; font-size: 11px;
@@ -279,6 +275,8 @@
 .yton-image-preview-close svg { width: 20px; height: 20px; }
 .yton-image-preview-body { position: relative; display: grid; place-items: center; flex: 1; min-height: 0; padding: 12px; }
 .yton-image-preview-body img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.yton-image-preview-frame { position: relative; width: 100%; height: 100%; min-height: 0; }
+.yton-image-preview-frame .yton-image-mask-preview { object-fit: contain; }
 .yton-image-preview-status { position: absolute; padding: 8px 12px; border-radius: 6px; background: var(--comfy-menu-bg, #1e1f22); }
 .yton-media-play {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -287,7 +285,7 @@
 }
 .yton-media-play svg { width: 100%; height: 100%; }
 .yton-badge-duration {
-  position: absolute; right: 6px; bottom: 32px; padding: 2px 4px;
+  position: absolute; right: 6px; bottom: 6px; padding: 2px 4px;
   color: #e2e7e8; background: #080b0cba; border-radius: 4px; font-size: 10px;
 }
 .yton-badge-duration:empty { display: none; }
