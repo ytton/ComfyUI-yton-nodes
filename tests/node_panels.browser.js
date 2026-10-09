@@ -73,6 +73,15 @@ async (page) => {
       return dimensions;
     };
     checks.push({ name: "new-node", ...await fit() });
+    assert(await panel.locator(".yton-pill-btn").count() === 9, "H3 mode must show nine resolution presets");
+    const h3GridHeight = await panel.locator(".yton-grid-pills").evaluate(el => el.offsetHeight);
+    for (const [resolution, multiplier] of [["848p", "1.2"], ["944p", "1.5"], ["1024p", "1.8"]]) {
+      const preset = panel.locator(".yton-pill-btn").filter({ hasText: new RegExp(`^${resolution}`) });
+      assert(await preset.innerText() === `${resolution}\n(${multiplier})`, "H3 presets must display their multiplier");
+      await preset.click();
+      const submitted = await target.evaluate(async () => (await window.comfyAPI.app.app.graphToPrompt()).output[window.ytonTestNode.id]);
+      assert(submitted.inputs.resolution === resolution, "The added H3 selection must reach the submitted prompt");
+    }
     assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).count() === 0, "H3 mode must omit 360p");
     const h3Preset = panel.locator(".yton-pill-btn").filter({ hasText: /^768p/ });
     assert(await h3Preset.innerText() === "768p\n(1.0)", "H3 mode must show the 768p multiplier as 1.0");
@@ -80,6 +89,9 @@ async (page) => {
     const h3Prompt = await target.evaluate(async () => (await window.comfyAPI.app.app.graphToPrompt()).output[window.ytonTestNode.id]);
     assert(h3Prompt.inputs.resolution === "768p", "The 768p selection must reach the generated prompt");
     await panel.getByRole("button", { name: "普通 / 图片", exact: true }).click();
+    assert(await panel.locator(".yton-pill-btn").count() === 9, "Image mode must show nine resolution presets");
+    const imageGridHeight = await panel.locator(".yton-grid-pills").evaluate(el => el.offsetHeight);
+    assert(h3GridHeight === imageGridHeight, "Both resolution grids must have equal height");
     assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p|^768p/ }).count() === 0, "Image mode must omit 360p and the H3-only 768p preset");
     const imagePrompt = await target.evaluate(async () => (await window.comfyAPI.app.app.graphToPrompt()).output[window.ytonTestNode.id]);
     assert(imagePrompt.inputs.resolution === "480p", "Switching from H3 768p must select the first valid image preset");
