@@ -7,7 +7,7 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
 1. **分辨率比例控件 (`YtonResolutionSelector`)**
    - Dual-mode switching: **Normal (Standard Image/Video)** vs **MiniMax H3 (Video)**
    - H3 mode strictly enforces 16/32-pixel macroblock alignment (e.g. 1080p -> 1088h, 540p -> 544h).
-   - Image mode starts at 480p; H3 mode includes 360p. Provides presets across 8 aspect ratios (16:9, 9:16, 1:1, 4:3, 3:4, 2:3, 3:2, 21:9).
+   - Both modes start at 480p; H3 mode includes 768p (1.0). Provides presets across 8 aspect ratios (16:9, 9:16, 1:1, 4:3, 3:4, 2:3, 3:2, 21:9).
    - Outputs: `width`, `height`, `aspect_ratio`, `max_side`, `min_side`, `h3_mp` (compute multiplier), `resolution_str`.
 
 2. **yton Easy Media Loader (`YtonEasyMediaLoader`)**

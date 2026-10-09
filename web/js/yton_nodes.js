@@ -21,11 +21,11 @@ const RATIO_DIMS = {
 };
 
 const MP_MAP = {
-  "360p": "0.2",
   "480p": "0.4",
   "540p": "0.5",
   "640p": "0.7",
   "720p": "0.9",
+  "768p": "1.0",
   "1080p": "2.0",
   "1K": "1.0",
   "2K": "1.5",
@@ -113,16 +113,15 @@ function setupResolutionNode(node) {
 
   function resolutionOptions() {
     return modeWidget.value.includes("H3")
-      ? ["360p", "480p", "540p", "640p", "720p", "1080p"]
+      ? ["480p", "540p", "640p", "720p", "768p", "1080p"]
       : ["480p", "540p", "640p", "720p", "1080p", "1K", "2K", "4K", "6K"];
   }
 
   function renderResolutions() {
     resGrid.innerHTML = "";
     const isH3 = modeWidget?.value?.includes("H3");
-    if (!isH3 && resWidget.value === "360p") resWidget.value = "480p";
     const options = resolutionOptions();
-    if (!options.includes(resWidget.value)) options.push(resWidget.value);
+    if (!options.includes(resWidget.value)) resWidget.value = options[0];
 
     options.forEach(opt => {
       const btn = document.createElement("button");

@@ -45,13 +45,19 @@ async (page) => {
       return panel.evaluate(el => ({ width: el.offsetWidth, height: el.offsetHeight }));
     };
     checks.push({ name: "new-node", ...await fit() });
-    await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).click();
+    assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).count() === 0, "H3 mode must omit 360p");
+    const h3Preset = panel.locator(".yton-pill-btn").filter({ hasText: /^768p/ });
+    assert(await h3Preset.innerText() === "768p\n(1.0)", "H3 mode must show the 768p multiplier as 1.0");
+    await h3Preset.click();
+    const h3Prompt = await target.evaluate(async () => (await window.comfyAPI.app.app.graphToPrompt()).output[window.ytonTestNode.id]);
+    assert(h3Prompt.inputs.resolution === "768p", "The 768p selection must reach the generated prompt");
     await panel.getByRole("button", { name: "普通 / 图片", exact: true }).click();
-    assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).count() === 0, "Image mode must omit 360p even when selected in H3 mode");
+    assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p|^768p/ }).count() === 0, "Image mode must omit 360p and the H3-only 768p preset");
     const imagePrompt = await target.evaluate(async () => (await window.comfyAPI.app.app.graphToPrompt()).output[window.ytonTestNode.id]);
-    assert(imagePrompt.inputs.resolution === "480p", "Switching from H3 360p must select the first valid image preset");
+    assert(imagePrompt.inputs.resolution === "480p", "Switching from H3 768p must select the first valid image preset");
     await panel.getByRole("button", { name: "MiniMax H3", exact: true }).click();
-    assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).count() === 1, "H3 mode must retain 360p");
+    assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).count() === 0, "H3 mode must omit 360p after switching modes");
+    assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^768p/ }).count() === 1, "H3 mode must include 768p after switching modes");
     await panel.getByRole("button", { name: "普通 / 图片", exact: true }).click();
     await panel.getByRole("button", { name: "6K", exact: true }).click();
     await panel.getByRole("button", { name: "画面比例 9:16", exact: true }).click();
@@ -69,7 +75,7 @@ async (page) => {
     assert(await panel.getByRole("button", { name: "6K", exact: true }).getAttribute("aria-pressed") === "true", "Restored resolution must be selected");
     assert(await panel.getByRole("button", { name: "画面比例 9:16", exact: true }).getAttribute("aria-pressed") === "true", "Restored ratio must be selected");
     await panel.getByRole("button", { name: "MiniMax H3", exact: true }).click();
-    assert(await panel.locator(".yton-pill-btn.active").innerText().then(text => text.startsWith("6K")), "Switching modes must keep the current resolution visible");
+    assert(await panel.locator(".yton-pill-btn.active").innerText().then(text => text.startsWith("480p")), "Switching modes must select a valid preset in the new mode");
     await panel.locator(".yton-pill-btn").filter({ hasText: /^720p/ }).click();
     const prompt = await target.evaluate(async () => {
       const app = window.comfyAPI.app.app;
