@@ -239,18 +239,47 @@
 }
 .yton-remove-btn:hover { color: #fff; background: #ba4444; }
 .yton-remove-btn svg { width: 15px; height: 15px; }
-.yton-mask-btn {
+.yton-mask-btn, .yton-preview-btn {
   position: absolute; top: 5px; right: 33px; z-index: 3; width: 24px; height: 24px;
   display: grid; place-items: center; padding: 4px; border: 0; border-radius: 6px;
   background: #080b0cba; color: #edf0f3; cursor: pointer;
   opacity: 0; pointer-events: none;
 }
 .yton-media-item:hover .yton-mask-btn,
-.yton-media-item:focus-within .yton-mask-btn { opacity: 1; pointer-events: auto; }
-.yton-mask-btn:hover { color: #fff; background: #258575; }
-.yton-mask-btn:focus-visible { outline: 2px solid #46c4b0; outline-offset: 1px; }
+.yton-media-item:focus-within .yton-mask-btn,
+.yton-media-item:hover .yton-preview-btn,
+.yton-media-item:focus-within .yton-preview-btn { opacity: 1; pointer-events: auto; }
+.yton-preview-btn { right: 61px; }
+.yton-mask-btn:hover, .yton-preview-btn:hover { color: #fff; background: #258575; }
+.yton-mask-btn:focus-visible, .yton-preview-btn:focus-visible { outline: 2px solid #46c4b0; outline-offset: 1px; }
 .yton-mask-btn:disabled { cursor: progress; opacity: .5; }
-.yton-mask-btn svg { width: 15px; height: 15px; }
+.yton-mask-btn span, .yton-preview-btn svg { width: 15px; height: 15px; }
+
+.yton-image-preview {
+  box-sizing: border-box; width: min(1100px, 94vw); height: min(820px, 92vh);
+  max-width: none; max-height: none; padding: 0; overflow: hidden;
+  border: 1px solid var(--border-color, #353a40); border-radius: 12px;
+  background: var(--comfy-menu-bg, #1e1f22); color: var(--fg-color, #e3e5e8);
+  font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.yton-image-preview[open] { display: flex; flex-direction: column; }
+.yton-image-preview::backdrop { background: #000b; }
+.yton-image-preview-header {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px;
+  border-bottom: 1px solid var(--border-color, #353a40); flex-shrink: 0;
+}
+.yton-image-preview-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yton-image-preview-size { flex-shrink: 0; color: var(--descrip-text, #949ba4); }
+.yton-image-preview-close {
+  display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0;
+  border: 0; border-radius: 6px; padding: 6px; background: transparent; color: inherit; cursor: pointer;
+}
+.yton-image-preview-close:hover { background: var(--comfy-input-bg, #35373c); }
+.yton-image-preview-close:focus-visible { outline: 2px solid #46c4b0; }
+.yton-image-preview-close svg { width: 20px; height: 20px; }
+.yton-image-preview-body { position: relative; display: grid; place-items: center; flex: 1; min-height: 0; padding: 12px; }
+.yton-image-preview-body img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.yton-image-preview-status { position: absolute; padding: 8px 12px; border-radius: 6px; background: var(--comfy-menu-bg, #1e1f22); }
 .yton-media-play {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   z-index: 2; width: 32px; height: 32px; padding: 8px; border: 1px solid #ffffff40;

@@ -2,6 +2,7 @@ import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 import { mountNodePanel } from "./node_panel.js";
 import { editSlotMask } from "./media_mask_editor.js";
+import { openImagePreview } from "./media_image_preview.js";
 
 const CATEGORIES = [
   { kind: "image", label: "参考图片", count: 9, accept: "image/*", icon: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 6-6 4 4 3-3 5 5"/>' },
@@ -50,6 +51,7 @@ export function setupMediaLoaderNode(node) {
   let uploading = false;
   let draggedSlot = null;
   let removed = false;
+  let closePreview = null;
 
   function value(kind, index) { return String(widgets.get(`${kind}_${index + 1}`)?.value || "").trim(); }
   function changeSlots(changes, expandedKind) {
@@ -242,13 +244,29 @@ export function setupMediaLoaderNode(node) {
       remove.onclick = event => { event.stopPropagation(); changeSlots([[`${section.kind}_${index + 1}`, ""]]); };
       card.append(label, remove);
       if (section.kind === "image") {
+        const preview = document.createElement("button");
+        preview.type = "button";
+        preview.className = "yton-preview-btn";
+        preview.title = `查看图片 ${index + 1} 大图`;
+        preview.setAttribute("aria-label", preview.title);
+        preview.innerHTML = svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>');
+        preview.onpointerdown = event => event.stopPropagation();
+        preview.onkeydown = event => event.stopPropagation();
+        preview.ondragstart = event => { event.preventDefault(); event.stopPropagation(); };
+        preview.onclick = event => {
+          event.preventDefault();
+          event.stopPropagation();
+          closePreview?.();
+          closePreview = openImagePreview(`${fileURL(filename)}&channel=rgb`, filename, preview);
+        };
         const mask = document.createElement("button");
         mask.type = "button";
         mask.className = "yton-mask-btn";
         mask.title = `编辑图片 ${index + 1} 遮罩`;
         mask.setAttribute("aria-label", mask.title);
-        mask.innerHTML = svg('<path d="m14 4 6 6M4 20l4-1 12-12a2.8 2.8 0 0 0-4-4L4 15z"/><path d="M3 3h6M3 3v6M15 21h6v-6"/>');
+        mask.innerHTML = '<span class="icon-[comfy--mask]" aria-hidden="true"></span>';
         mask.onpointerdown = event => event.stopPropagation();
+        mask.onkeydown = event => event.stopPropagation();
         mask.ondragstart = event => { event.preventDefault(); event.stopPropagation(); };
         mask.onclick = async event => {
           event.stopPropagation();
@@ -266,7 +284,7 @@ export function setupMediaLoaderNode(node) {
             mask.disabled = false;
           }
         };
-        card.append(mask);
+        card.append(preview, mask);
       }
       card.ondragstart = event => {
         draggedSlot = { kind: section.kind, index };
@@ -323,6 +341,7 @@ export function setupMediaLoaderNode(node) {
   const onRemoved = node.onRemoved;
   node.onRemoved = function () {
     removed = true;
+    closePreview?.();
     window.removeEventListener("paste", pasteMedia, true);
     panel.querySelectorAll("audio, video").forEach(source => source.pause());
     return onRemoved?.apply(this, arguments);
