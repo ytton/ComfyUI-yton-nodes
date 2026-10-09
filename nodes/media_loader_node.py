@@ -74,7 +74,13 @@ class YtonEasyMediaLoader:
                     with Image.open(path) as source:
                         source = ImageOps.exif_transpose(source)
                         rgb = np.array(source.convert("RGB"), dtype=np.float32) / 255.0
-                    items.append(torch.from_numpy(rgb).unsqueeze(0))
+                        alpha = np.array(source.getchannel("A"), dtype=np.float32) / 255.0 if "A" in source.getbands() else None
+                    image = torch.from_numpy(rgb).unsqueeze(0)
+                    # Keep standard IMAGE consumers on RGB. The item parser reads
+                    # the slot's native editor mask from this same tensor.
+                    if alpha is not None:
+                        image.yton_mask = torch.from_numpy(1.0 - alpha).unsqueeze(0)
+                    items.append(image)
                 elif kind == "video":
                     from comfy_api.latest import InputImpl
 
@@ -133,7 +139,9 @@ class YtonImageParser:
     CATEGORY = "yton-nodes/Media/解析"
 
     def parse_image(self, image):
-        mask = 1.0 - image[..., 3] if image.shape[-1] == 4 else torch.zeros(image.shape[:3], dtype=image.dtype, device=image.device)
+        mask = getattr(image, "yton_mask", None)
+        if mask is None:
+            mask = 1.0 - image[..., 3] if image.shape[-1] == 4 else torch.zeros(image.shape[:3], dtype=image.dtype, device=image.device)
         return image[..., :3], mask
 
 

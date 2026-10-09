@@ -78,7 +78,7 @@ class MediaNodesTests(unittest.TestCase):
         image, mask = media_nodes.YtonImageParser().parse_image(images[0])
         self.assertEqual(tuple(image.shape), (1, 6, 8, 3))
         self.assertEqual(tuple(mask.shape), (1, 6, 8))
-        self.assertEqual(mask[0, 0, 0].item(), 0)
+        self.assertAlmostEqual(mask[0, 0, 0].item(), 1 - 128 / 255, places=5)
         rgba = torch.full((1, 6, 8, 4), 128 / 255)
         _, alpha_mask = media_nodes.YtonImageParser().parse_image(rgba)
         self.assertAlmostEqual(alpha_mask[0, 0, 0].item(), 1 - 128 / 255, places=5)
@@ -95,6 +95,24 @@ class MediaNodesTests(unittest.TestCase):
             "source_width": 16, "source_height": 16, "loaded_fps": 5.0,
             "loaded_frame_count": 3, "loaded_duration": 0.6, "loaded_width": 16, "loaded_height": 16,
         })
+
+    def test_mask_editor_image_keeps_rgb_and_mask_through_list_parser(self):
+        rgba = np.full((6, 8, 4), 255, dtype=np.uint8)
+        rgba[:, :, :3] = (220, 120, 40)
+        rgba[1:4, 2:6, 3] = 0
+        Image.fromarray(rgba).save(self.root / "masked.png")
+        Image.new("RGB", (8, 6), (30, 80, 140)).save(self.root / "plain.png")
+        images, _, _ = media_nodes.YtonEasyMediaLoader().load_media(
+            image_1="masked.png [input]", image_2="plain.png")
+        self.assertEqual(tuple(images[0].shape), (1, 6, 8, 3))
+        first, second, *_ = media_nodes.YtonImageListParser().parse_list(image=images)
+        image, mask = media_nodes.YtonImageParser().parse_image(first)
+        torch.testing.assert_close(image, torch.tensor([220, 120, 40]).float().div(255).expand(1, 6, 8, 3))
+        expected_mask = torch.zeros(1, 6, 8)
+        expected_mask[:, 1:4, 2:6] = 1
+        torch.testing.assert_close(mask, expected_mask)
+        _, plain_mask = media_nodes.YtonImageParser().parse_image(second)
+        torch.testing.assert_close(plain_mask, torch.zeros(1, 6, 8))
 
     def test_video_audio_extraction_and_vhs_info(self):
         with av.open(str(self.root / "with-audio.mkv"), "w") as output:

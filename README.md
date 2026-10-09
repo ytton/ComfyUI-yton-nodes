@@ -17,6 +17,7 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - 新建节点默认宽度 640，图片展开，视频和音频折叠；保存后保留用户选择的尺寸与折叠状态。
    - 没有输入连线端口。点击槽位选择文件，或直接拖入文件；支持多文件上传、预览、播放、删除及同类槽位交换。
    - 选中节点后按 Ctrl+V，可粘贴剪贴板中的图片、视频或音频文件，自动分类并填入第一个空槽位，不覆盖已有素材；视频和音频粘贴后自动展开。支持同时粘贴多个文件，槽位满时提示先移除素材；在文本输入框中粘贴仍保留原有行为。
+   - 悬停图片槽位时，删除按钮左侧显示遮罩编辑图标，点击打开 ComfyUI 原生遮罩编辑器。保存后更新当前槽位，取消保留原图；遮罩可通过“图片列表解析 → 图片解析”的 `mask` 输出取得。
    - 三个原生列表输出：`image`（IMAGE）、`video`（VIDEO）、`audio`（AUDIO），端口显示 ComfyUI 列表图标。
    - 文件名保存在 `image_1`～`image_9`、`video_1`～`video_3`、`audio_1`～`audio_3` 的 widget 值中，外部 API 可直接填写。
    - 面板的槽位编号固定；输出列表仅包含已加载的素材，按槽位顺序排列。图片为张量、视频为原生 VIDEO 对象、音频为 waveform/sample_rate 字典，可以直接连接 EasyMedia 的列表处理节点。
@@ -26,7 +27,7 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - 图片列表解析：IMAGE 列表 → `image_1`～`image_9`。
    - 视频列表解析：VIDEO 列表 → `video_1`～`video_3`。
    - 音频列表解析：AUDIO 列表 → `audio_1`～`audio_3`。
-   - 图片解析：标准 `IMAGE` → RGB 图片、`MASK`；RGBA 输入会解析透明区域，RGB 输入的遮罩全为零。
+   - 图片解析：标准 `IMAGE` → RGB 图片、`MASK`；读取媒体加载器保留的图片遮罩，也可解析 RGBA 输入的透明区域。没有遮罩的 RGB 输入输出全零遮罩。
    - 视频解析：单个 `VIDEO` → 图像帧批次（IMAGE）、帧计数（INT）、原音轨（AUDIO）、视频信息（VHS_VIDEOINFO）。视频信息包含源视频与解析结果的帧率、帧数、时长和宽高，可连接 Video Helper Suite 的视频信息节点；没有音轨时音频为空。
    - 音频解析：单个音频素材 → 标准 `AUDIO`。
    - 连接方式：加载器 → 对应列表解析 → 生成或处理节点；单项解析按需使用。列表解析按有效素材顺序拆分，余下端口跳过执行。
@@ -59,6 +60,9 @@ Run `tests/node_panels.browser.js` or `tests/media_loader.browser.js` as a Playw
 function with a `page` argument. These use isolated browser contexts to check layout,
 both node renderers, restored selections, prompt serialization, fixed slots,
 uploading, drag exchanges, and all three parser chains.
+
+Run `tests/media_mask_editor.browser.js` against the installed plugin to check native
+mask painting, saving, cancelling, reopening, and slot/workflow serialization.
 
 Run `tests/test_media_nodes.py -v` with the same Python environment for real image,
 audio, and video parsing checks. Restart ComfyUI after updating the Python node files,

@@ -1,6 +1,7 @@
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 import { mountNodePanel } from "./node_panel.js";
+import { editSlotMask } from "./media_mask_editor.js";
 
 const CATEGORIES = [
   { kind: "image", label: "参考图片", count: 9, accept: "image/*", icon: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m3 17 6-6 4 4 3-3 5 5"/>' },
@@ -240,6 +241,33 @@ export function setupMediaLoaderNode(node) {
       remove.setAttribute("aria-label", `移除${section.label.slice(2)} ${index + 1}`);
       remove.onclick = event => { event.stopPropagation(); changeSlots([[`${section.kind}_${index + 1}`, ""]]); };
       card.append(label, remove);
+      if (section.kind === "image") {
+        const mask = document.createElement("button");
+        mask.type = "button";
+        mask.className = "yton-mask-btn";
+        mask.title = `编辑图片 ${index + 1} 遮罩`;
+        mask.setAttribute("aria-label", mask.title);
+        mask.innerHTML = svg('<path d="m14 4 6 6M4 20l4-1 12-12a2.8 2.8 0 0 0-4-4L4 15z"/><path d="M3 3h6M3 3v6M15 21h6v-6"/>');
+        mask.onpointerdown = event => event.stopPropagation();
+        mask.ondragstart = event => { event.preventDefault(); event.stopPropagation(); };
+        mask.onclick = async event => {
+          event.stopPropagation();
+          section.error.textContent = "";
+          mask.disabled = true;
+          try {
+            await editSlotMask(filename, saved => {
+              if (!removed && value("image", index) === filename) {
+                changeSlots([[`image_${index + 1}`, saved]]);
+              }
+            });
+          } catch (error) {
+            section.error.textContent = `遮罩编辑器打开失败：${error.message}`;
+          } finally {
+            mask.disabled = false;
+          }
+        };
+        card.append(mask);
+      }
       card.ondragstart = event => {
         draggedSlot = { kind: section.kind, index };
         event.dataTransfer.setData(DRAG_TYPE, `${section.kind}:${index}`);
