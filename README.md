@@ -30,6 +30,7 @@ Submit the git repository URL into RunningHub custom node management or clone in
 ## Node panels
 
 - Panels grow with their content and follow node resizing in both canvas and Vue node renderers.
+- Traditional node panels keep their width aligned with the node when the selected-node inspector opens.
 - Resolution and aspect-ratio selections refresh when reopening a workflow or changing widget values.
 - Custom panels are excluded from workflow input serialization.
 - After updating frontend files, refresh the ComfyUI page with Ctrl+F5.

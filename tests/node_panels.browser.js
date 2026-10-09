@@ -44,6 +44,34 @@ async (page) => {
       });
       return panel.evaluate(el => ({ width: el.offsetWidth, height: el.offsetHeight }));
     };
+    const checkWidth = async (selected) => {
+      await target.evaluate(selected => {
+        const app = window.comfyAPI.app.app;
+        if (selected) app.canvas.selectNode(window.ytonTestNode);
+        else app.canvas.deselectAllNodes();
+        app.canvas.setDirty(true, true);
+      }, selected);
+      // The selected-node inspector mounts asynchronously and writes widget.width.
+      await target.waitForTimeout(400);
+      const dimensions = await panel.evaluate(el => {
+        const node = window.ytonTestNode;
+        const shell = el.parentElement;
+        const widget = node.widgets.find(w => w.name === "resolution_ui");
+        const vueNode = el.closest("[data-node-id]");
+        const expectedWidth = node.size[0] - (vueNode ? 24 : 28);
+        return {
+          nodeWidth: node.size[0],
+          widgetWidth: widget.width,
+          panelWidth: el.offsetWidth,
+          expectedWidth,
+          shellOverflow: shell.scrollWidth > shell.clientWidth + 1,
+        };
+      });
+      assert(Math.abs(dimensions.panelWidth - dimensions.expectedWidth) <= 1,
+        `Panel must fill the node when selected=${selected}: ${JSON.stringify(dimensions)}`);
+      assert(!dimensions.shellOverflow, "Panel must not overflow horizontally");
+      return dimensions;
+    };
     checks.push({ name: "new-node", ...await fit() });
     assert(await panel.locator(".yton-pill-btn").filter({ hasText: /^360p/ }).count() === 0, "H3 mode must omit 360p");
     const h3Preset = panel.locator(".yton-pill-btn").filter({ hasText: /^768p/ });
@@ -101,6 +129,9 @@ async (page) => {
           app.canvas.setDirty(true, true);
         }, scale);
         checks.push({ name: vue ? "vue-node" : "canvas-node", viewport: [width, height], scale, ...await fit() });
+        for (const selected of [true, false, true]) {
+          checks.push({ name: vue ? "vue-selection" : "canvas-selection", scale, selected, ...await checkWidth(selected) });
+        }
         if (vue) {
           const bounds = await panel.evaluate(el => {
             const node = el.closest("[data-node-id]");
@@ -110,6 +141,11 @@ async (page) => {
           });
           assert(bounds.bottom && bounds.right, "Vue panel must stay inside its node");
         }
+      }
+      for (const nodeWidth of [540, 420, 360]) {
+        await target.evaluate(width => window.ytonTestNode.setSize([width, 600]), nodeWidth);
+        checks.push({ name: vue ? "vue-resize-selected" : "canvas-resize-selected", ...await checkWidth(true) });
+        checks.push({ name: vue ? "vue-resize-deselected" : "canvas-resize-deselected", ...await checkWidth(false) });
       }
     }
     await target.evaluate(() => {

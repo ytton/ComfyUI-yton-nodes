@@ -12,10 +12,14 @@ export function mountNodePanel(node, name, panel, minWidth, initialHeight) {
     getHeight: () => contentHeight + 20,
   });
   widget.serialize = false;
+  // The inspector writes its own width into legacy widgets when a node is
+  // selected. This DOM panel must follow the node, not the inspector canvas.
+  Object.defineProperty(widget, "width", {
+    get: () => node.size[0],
+    set: () => {},
+  });
 
   function fitContent() {
-    // A newly created node may leave the widget's width at its pre-panel size.
-    delete widget.width;
     if (panel.offsetHeight) contentHeight = panel.offsetHeight;
     const minimum = node.computeSize();
     const width = Math.max(node.size[0], minWidth);
@@ -29,7 +33,6 @@ export function mountNodePanel(node, name, panel, minWidth, initialHeight) {
   const onResize = node.onResize;
   node.onResize = function (size) {
     onResize?.apply(this, arguments);
-    delete widget.width;
     size[0] = Math.max(size[0], minWidth);
     size[1] = Math.max(size[1], this.computeSize()[1]);
   };
