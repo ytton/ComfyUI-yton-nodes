@@ -14,6 +14,7 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
 
 2. **媒体加载器 (`YtonEasyMediaLoader`)**
    - 固定三列卡片：9 张图片、3 个视频、3 个音频，分类支持折叠。
+   - 新建节点默认宽度 640，图片展开，视频和音频折叠；保存后保留用户选择的尺寸与折叠状态。
    - 没有输入连线端口。点击槽位选择文件，或直接拖入文件；支持多文件上传、预览、播放、删除及同类槽位交换。
    - 三个原生列表输出：`image`（IMAGE）、`video`（VIDEO）、`audio`（AUDIO），端口显示 ComfyUI 列表图标。
    - 文件名保存在 `image_1`～`image_9`、`video_1`～`video_3`、`audio_1`～`audio_3` 的 widget 值中，外部 API 可直接填写。

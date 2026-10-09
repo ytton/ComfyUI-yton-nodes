@@ -12,8 +12,8 @@
         120
       ],
       "size": [
-        520,
-        857
+        640,
+        619
       ],
       "flags": {},
       "order": 0,
@@ -56,7 +56,9 @@
         },
         "Node name for S&R": "YtonEasyMediaLoader",
         "ytonMediaCollapsed": {
-          "video": false
+          "image": false,
+          "video": true,
+          "audio": true
         }
       },
       "widgets_values": [

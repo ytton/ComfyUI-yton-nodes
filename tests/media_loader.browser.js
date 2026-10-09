@@ -46,7 +46,12 @@ async (page) => {
     });
     const panel = target.locator(".yton-media-panel");
     await panel.waitFor({ state: "visible", timeout: 8000 }).catch(error => { throw new Error(`${error.message}\n${errors.join("\n")}`); });
-    assert(await panel.locator(".yton-media-item").count() === 15, "Fifteen fixed slots must be visible");
+    await panel.locator(".image-grid").waitFor({ state: "visible" });
+    assert(await panel.locator(".yton-media-item").count() === 15, "Fifteen fixed slots must exist");
+    assert(await panel.locator(".image-grid").isVisible(), "Images must be expanded on new nodes");
+    assert(await panel.locator(".video-grid").isHidden() && await panel.locator(".audio-grid").isHidden(), "Video and audio must be collapsed on new nodes");
+    const initialSize = await target.evaluate(() => Array.from(window.ytonMediaTestNode.size));
+    assert(initialSize[0] === 640, "New media nodes must start at the larger width");
     assert(await panel.locator(".image-grid .yton-media-item").count() === 9, "Images must have nine slots");
     const schema = await target.evaluate(() => ({ inputCount: window.ytonMediaTestNode.inputs?.length || 0, outputs: window.ytonMediaTestNode.outputs.map(output => ({ name: output.name, type: output.type, shape: output.shape })) }));
     assert(schema.inputCount === 0, "The loader must have no input sockets");
@@ -66,16 +71,18 @@ async (page) => {
     assert(paths[7] === "" && paths[8] === "yton-media/reference-1.png", "Removing a file must preserve the other slot indexes");
     assert(await panel.locator(".yton-media-item").count() === 15, "Deleting must retain all fifteen slots");
     await panel.getByRole("button", { name: "参考视频 · 3", exact: true }).click();
-    assert(await panel.locator(".video-grid").isHidden(), "Categories must collapse");
-    await panel.getByRole("button", { name: "参考视频 · 3", exact: true }).click();
+    assert(await panel.locator(".video-grid").isVisible(), "Collapsed categories must expand when clicked");
     const saved = await target.evaluate(() => window.ytonMediaTestNode.serialize());
     assert(saved.widgets_values.length === 15, "The custom panel must not serialize as an input");
     await target.evaluate(saved => {
       const node = window.ytonMediaTestNode;
       node.widgets.find(widget => widget.name === "image_9").value = "";
+      node.properties.ytonMediaCollapsed = { image: true, video: true, audio: false };
       node.configure(saved);
     }, saved);
     assert(await panel.locator('[data-slot="image_9"] img').getAttribute("src").then(url => url.includes("subfolder=yton-media")), "Restoring must preserve the uploaded subfolder and preview");
+    assert(await panel.locator(".video-grid").isVisible() && await panel.locator(".audio-grid").isHidden(), "Restoring must preserve saved collapse choices");
+    await panel.getByRole("button", { name: "参考视频 · 3", exact: true }).click();
     const prompt = await target.evaluate(async () => {
       const result = await window.comfyAPI.app.app.graphToPrompt();
       const node = window.ytonMediaTestNode;
@@ -124,7 +131,7 @@ async (page) => {
     }
     assert(errors.length === 0, `Extension errors: ${errors.join(", ")}`);
     await target.screenshot({ path: "E:/vibeRepo/ComfyUI-yton-nodes/temp/media-loader-preview.png" });
-    return { passed: true, checks, parsers, promptInputs: Object.keys(prompt.inputs).length };
+    return { passed: true, initialSize, checks, parsers, promptInputs: Object.keys(prompt.inputs).length };
   } catch (error) {
     throw new Error(`${error.stack || error.message}\nExtension errors: ${errors.join("\n")}`);
   } finally {
