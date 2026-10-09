@@ -1,5 +1,5 @@
 async (page) => {
-  const context = await page.context().browser().newContext({ viewport: { width: 1440, height: 1100 } });
+  const context = await page.context().browser().newContext({ viewport: { width: 1440, height: 1100 }, permissions: ["clipboard-read", "clipboard-write"] });
   const target = await context.newPage();
   const errors = [];
   target.on("pageerror", error => { if (/yton|media_loader|node_panel/i.test(error.stack || "")) errors.push(error.stack || error.message); });
@@ -23,7 +23,8 @@ async (page) => {
   let uploadCount = 0;
   await context.route("**/upload/image", async route => {
     uploadCount++;
-    await route.fulfill({ json: { name: `reference-${uploadCount}.png`, subfolder: "yton-media", type: "input" } });
+    const extension = route.request().postDataBuffer()?.toString().match(/filename="[^"\r\n]+\.([^".\r\n]+)"/)?.[1] || "png";
+    await route.fulfill({ json: { name: `reference-${uploadCount}.${extension}`, subfolder: "yton-media", type: "input" } });
   });
   await context.route("**/view?**", async route => {
     await route.fulfill({ contentType: "image/png", body: imageBuffer });
@@ -108,6 +109,63 @@ async (page) => {
       return result;
     });
     assert(parsers.every(parser => parser.connected && parser.easyConnected && parser.output === parser.kind.toUpperCase()), "Yton and EasyMedia parser chains must connect with standard output types");
+    const pasteFiles = async (files, editable = false) => target.evaluate(({ files, editable }) => {
+      const data = new DataTransfer();
+      for (const { name, type } of files) data.items.add(new File(["clipboard-test"], name, { type }));
+      const event = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
+      const field = editable ? document.body.appendChild(document.createElement("textarea")) : document.body;
+      field.dispatchEvent(event);
+      if (editable) field.remove();
+      return event.defaultPrevented;
+    }, { files, editable });
+    await target.evaluate(() => window.comfyAPI.app.app.canvas.selectNode(window.ytonMediaTestNode));
+    const nodeCount = await target.evaluate(() => window.comfyAPI.app.app.graph._nodes.length);
+    // Exercise a real OS clipboard image and native Ctrl+V, not only synthetic paste events.
+    await target.evaluate(async () => {
+      document.activeElement?.blur();
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 2;
+      const image = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": image })]);
+    });
+    await target.keyboard.press("Control+v");
+    await target.waitForFunction(() => window.ytonMediaTestNode.widgets.find(widget => widget.name === "image_1").value === "yton-media/reference-3.png");
+    assert(await pasteFiles([{ name: "clip.mp4", type: "video/mp4" }, { name: "clip.wav", type: "audio/wav" }, { name: "clip.png", type: "image/png" }]), "Selected loaders must consume mixed media paste");
+    await target.waitForFunction(() => window.ytonMediaTestNode.widgets.find(widget => widget.name === "audio_1").value === "yton-media/reference-6.wav");
+    const pasted = await target.evaluate(() => Object.fromEntries(window.ytonMediaTestNode.widgets.map(widget => [widget.name, widget.value])));
+    assert(pasted.image_1 === "yton-media/reference-3.png" && pasted.image_2 === "yton-media/reference-4.png" && pasted.image_9 === "yton-media/reference-1.png", "Clipboard images must fill empty slots without overwriting existing media");
+    assert(pasted.video_1 === "yton-media/reference-5.mp4" && pasted.audio_1 === "yton-media/reference-6.wav", "Clipboard files must be assigned to their media categories");
+    assert(await panel.locator(".video-grid").isVisible() && await panel.locator(".audio-grid").isVisible(), "Pasting must expand video and audio categories");
+    assert(await target.evaluate(() => window.comfyAPI.app.app.graph._nodes.length) === nodeCount, "Media paste must not create stock LoadImage nodes or duplicate graph nodes");
+    const beforeIgnoredPaste = await target.evaluate(() => window.ytonMediaTestNode.widgets.map(widget => widget.value));
+    assert(!await pasteFiles([{ name: "editing.png", type: "image/png" }], true), "Text editing must retain its own paste behavior");
+    await target.evaluate(() => window.comfyAPI.app.app.canvas.deselectAllNodes());
+    await pasteFiles([{ name: "unselected.wav", type: "audio/wav" }]);
+    await target.waitForTimeout(200);
+    assert(JSON.stringify(await target.evaluate(() => window.ytonMediaTestNode.widgets.map(widget => widget.value))) === JSON.stringify(beforeIgnoredPaste), "Unselected loaders and text fields must not change the loader's slots");
+    const afterIgnoredPaste = uploadCount;
+    await target.evaluate(() => {
+      const app = window.comfyAPI.app.app;
+      const second = LiteGraph.createNode("YtonEasyMediaLoader");
+      app.graph.add(second);
+      app.canvas.selectNodes([window.ytonMediaTestNode, second]);
+      window.ytonSecondLoader = second;
+    });
+    await pasteFiles([{ name: "second.wav", type: "audio/wav" }]);
+    await target.waitForFunction(expected => window.ytonMediaTestNode.widgets.find(widget => widget.name === "audio_2").value === expected, `yton-media/reference-${afterIgnoredPaste + 1}.wav`);
+    assert(await target.evaluate(() => window.ytonSecondLoader.widgets.every(widget => !widget.value)) && uploadCount === afterIgnoredPaste + 1, "Multiple selected loaders must receive a paste only once");
+    await target.evaluate(() => {
+      const app = window.comfyAPI.app.app;
+      app.graph.remove(window.ytonSecondLoader);
+      app.canvas.selectNode(window.ytonMediaTestNode);
+      window.ytonMediaTestNode.widgets.find(widget => widget.name === "video_2").value = "existing-two.mp4";
+      window.ytonMediaTestNode.widgets.find(widget => widget.name === "video_3").value = "existing-three.mp4";
+    });
+    await pasteFiles([{ name: "overflow.mp4", type: "video/mp4" }, { name: "third.wav", type: "" }]);
+    await target.waitForFunction(expected => window.ytonMediaTestNode.widgets.find(widget => widget.name === "audio_3").value === expected, `yton-media/reference-${afterIgnoredPaste + 2}.wav`);
+    assert(uploadCount === afterIgnoredPaste + 2, "Full categories must not upload or replace files, while other categories still upload");
+    assert(await panel.locator(".yton-media-error").filter({ hasText: "最多 3 个槽位" }).count() === 1, "Full category feedback must survive mixed-media paste");
+    assert(await target.evaluate(() => window.ytonMediaTestNode.widgets.find(widget => widget.name === "video_2").value) === "existing-two.mp4", "Pasting into a full category must retain existing media");
     for (const vue of [false, true]) {
       await target.evaluate(vue => window.comfyAPI.app.app.extensionManager.setting.set("Comfy.VueNodes.Enabled", vue), vue);
       for (const width of [420, 600]) {
@@ -129,8 +187,15 @@ async (page) => {
         checks.push({ vue, width, ...dimensions });
       }
     }
-    assert(errors.length === 0, `Extension errors: ${errors.join(", ")}`);
     await target.screenshot({ path: "E:/vibeRepo/ComfyUI-yton-nodes/temp/media-loader-preview.png" });
+    await target.evaluate(() => {
+      window.ytonMediaTestNode.widgets.find(widget => widget.name === "audio_1").value = "";
+      window.comfyAPI.app.app.graph.remove(window.ytonMediaTestNode);
+    });
+    await pasteFiles([{ name: "removed.wav", type: "audio/wav" }]);
+    await target.waitForTimeout(100);
+    assert(await target.evaluate(() => window.ytonMediaTestNode.widgets.find(widget => widget.name === "audio_1").value) === "", "Removed loaders must not process paste events");
+    assert(errors.length === 0, `Extension errors: ${errors.join(", ")}`);
     return { passed: true, initialSize, checks, parsers, promptInputs: Object.keys(prompt.inputs).length };
   } catch (error) {
     throw new Error(`${error.stack || error.message}\nExtension errors: ${errors.join("\n")}`);

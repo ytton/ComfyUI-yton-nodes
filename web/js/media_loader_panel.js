@@ -48,10 +48,12 @@ export function setupMediaLoaderNode(node) {
   const sections = [];
   let uploading = false;
   let draggedSlot = null;
+  let removed = false;
 
   function value(kind, index) { return String(widgets.get(`${kind}_${index + 1}`)?.value || "").trim(); }
-  function changeSlots(changes) {
+  function changeSlots(changes, expandedKind) {
     node.graph?.beforeChange();
+    if (expandedKind) node.properties.ytonMediaCollapsed[expandedKind] = false;
     for (const [name, filename] of changes) {
       const widget = widgets.get(name);
       widget.value = filename;
@@ -68,14 +70,15 @@ export function setupMediaLoaderNode(node) {
     }
   }
 
-  async function upload(files, category, startIndex) {
+  async function upload(files, category, startIndex, { expand = false, resetFeedback = true } = {}) {
     if (uploading) return;
     uploading = true;
-    clearFeedback();
+    if (resetFeedback) clearFeedback();
     const notices = [];
     let next = startIndex;
     try {
       for (const file of files) {
+        if (removed) return;
         if (fileKind(file) !== category.kind) { notices.push(`请选择${category.label.slice(2)}文件`); continue; }
         if (next !== startIndex) while (next < category.count && value(category.kind, next)) next++;
         if (next >= category.count) { notices.push(`最多 ${category.count} 个槽位，请先移除素材`); break; }
@@ -90,8 +93,9 @@ export function setupMediaLoaderNode(node) {
           if (!response.ok) throw new Error(`上传失败（${response.status}）`);
           const result = await response.json();
           if (!result.name) throw new Error("上传未返回素材文件名");
+          if (removed) return;
           const filename = [result.subfolder, result.name].filter(Boolean).join("/");
-          changeSlots([[`${category.kind}_${next + 1}`, filename]]);
+          changeSlots([[`${category.kind}_${next + 1}`, filename]], expand ? category.kind : null);
           next++;
         } catch (error) {
           notices.push(`${file.name}：${error.message}`);
@@ -103,6 +107,38 @@ export function setupMediaLoaderNode(node) {
       category.error.textContent = [...new Set(notices)].join("；");
       node.setDirtyCanvas(true, true);
     }
+  }
+
+  function pasteMedia(event) {
+    if (event.defaultPrevented || removed || node.graph !== app.canvas?.graph) return;
+    const target = event.target;
+    if (target instanceof Element && target.closest("input, textarea, [contenteditable]:not([contenteditable='false']), [role='textbox']")) return;
+    const selected = Object.values(app.canvas.selected_nodes || {});
+    // A paste goes to one selected loader, even if several loaders are selected.
+    if (selected.find(selectedNode => selectedNode.type === node.type) !== node) return;
+    const clipboard = event.clipboardData;
+    if (!clipboard) return;
+    const files = clipboard.files.length ? Array.from(clipboard.files)
+      : Array.from(clipboard.items).filter(item => item.kind === "file").map(item => item.getAsFile()).filter(Boolean);
+    const groups = sections.map(category => ({ category, files: files.filter(file => fileKind(file) === category.kind) }))
+      .filter(group => group.files.length);
+    if (!groups.length) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (uploading) {
+      groups[0].category.error.textContent = "素材上传中，请稍后再粘贴";
+      return;
+    }
+    clearFeedback();
+    // Upload sequentially so each category keeps its own progress and feedback.
+    void (async () => {
+      for (const { category, files } of groups) {
+        if (removed) return;
+        let index = 0;
+        while (index < category.count && value(category.kind, index)) index++;
+        await upload(files, category, index, { expand: true, resetFeedback: false });
+      }
+    })();
   }
 
   function createSection(definition) {
@@ -255,10 +291,13 @@ export function setupMediaLoaderNode(node) {
   }
   const configure = node.onConfigure;
   node.onConfigure = function () { const result = configure?.apply(this, arguments); render(); return result; };
-  const removed = node.onRemoved;
+  window.addEventListener("paste", pasteMedia, true);
+  const onRemoved = node.onRemoved;
   node.onRemoved = function () {
+    removed = true;
+    window.removeEventListener("paste", pasteMedia, true);
     panel.querySelectorAll("audio, video").forEach(source => source.pause());
-    return removed?.apply(this, arguments);
+    return onRemoved?.apply(this, arguments);
   };
   render();
   node.setSize([640, node.size[1]]);

@@ -16,6 +16,7 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - 固定三列卡片：9 张图片、3 个视频、3 个音频，分类支持折叠。
    - 新建节点默认宽度 640，图片展开，视频和音频折叠；保存后保留用户选择的尺寸与折叠状态。
    - 没有输入连线端口。点击槽位选择文件，或直接拖入文件；支持多文件上传、预览、播放、删除及同类槽位交换。
+   - 选中节点后按 Ctrl+V，可粘贴剪贴板中的图片、视频或音频文件，自动分类并填入第一个空槽位，不覆盖已有素材；视频和音频粘贴后自动展开。支持同时粘贴多个文件，槽位满时提示先移除素材；在文本输入框中粘贴仍保留原有行为。
    - 三个原生列表输出：`image`（IMAGE）、`video`（VIDEO）、`audio`（AUDIO），端口显示 ComfyUI 列表图标。
    - 文件名保存在 `image_1`～`image_9`、`video_1`～`video_3`、`audio_1`～`audio_3` 的 widget 值中，外部 API 可直接填写。
    - 面板的槽位编号固定；输出列表仅包含已加载的素材，按槽位顺序排列。图片为张量、视频为原生 VIDEO 对象、音频为 waveform/sample_rate 字典，可以直接连接 EasyMedia 的列表处理节点。
