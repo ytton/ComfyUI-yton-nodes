@@ -29,7 +29,7 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - 视频列表解析：VIDEO 列表 → `video_1`～`video_3`。
    - 音频列表解析：AUDIO 列表 → `audio_1`～`audio_3`。
    - 图片解析：标准 `IMAGE` → RGB 图片、`MASK`；读取媒体加载器保留的图片遮罩，也可解析 RGBA 输入的透明区域。没有遮罩的 RGB 输入输出全零遮罩。
-   - 视频解析：单个 `VIDEO` → 图像帧批次（IMAGE）、帧计数（INT）、原音轨（AUDIO）、视频信息（VHS_VIDEOINFO）。视频信息包含源视频与解析结果的帧率、帧数、时长和宽高，可连接 Video Helper Suite 的视频信息节点；没有音轨时音频为空。
+   - 视频解析：单个 `VIDEO` → 图像帧批次（IMAGE）、帧计数（INT）、原音轨（AUDIO）、视频信息（VHS_VIDEOINFO）。视频信息包含源视频与解析结果的帧率、帧数、时长和宽高，可连接 Video Helper Suite 的视频信息节点；没有音轨时音频为空。`force_rate` 为 0 时保留原帧率，设为 24 时按原时长重采样供 H3 使用；音轨保持原速度。空视频直接透传空值，因此三个视频槽位都可以提前接好。
    - 音频解析：单个音频素材 → 标准 `AUDIO`。
    - 连接方式：加载器 → 对应列表解析 → 生成或处理节点；单项解析按需使用。列表解析按有效素材顺序拆分，未填充的端口输出空值；图片、视频、音频单项解析也会透传空值。
    - 可以预先连接全部输出，例如把九张图片都接到 Qwen Image 2.1 编码器；运行时编码器只读取已有图片，其他连接保留。下游需要支持可选素材或忽略空值；必须有素材的节点仍需要提供有效输入。

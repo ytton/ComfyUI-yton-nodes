@@ -75,6 +75,7 @@ class MediaNodesTests(unittest.TestCase):
     def test_empty_media_passes_through_item_parsers(self):
         self.assertEqual(media_nodes.YtonImageParser().parse_image(None), (None, None))
         self.assertEqual(media_nodes.YtonVideoParser().parse_video(None), (None, None, None, None))
+        self.assertEqual(media_nodes.YtonVideoParser().parse_video(None, force_rate=24), (None, None, None, None))
         self.assertEqual(media_nodes.YtonAudioParser().parse_audio(None), (None,))
 
     def test_qwen_encoder_accepts_all_nine_connected_outputs(self):
@@ -251,6 +252,116 @@ class MediaNodesTests(unittest.TestCase):
         self.assertAlmostEqual(info["loaded_duration"], 1.001)
         self.assertEqual((info["loaded_width"], info["loaded_height"]), (20, 12))
 
+    def test_video_rate_conversion_keeps_duration_audio_and_source_info(self):
+        from comfy_api.latest import InputImpl, Types
+
+        images = torch.arange(150).float().reshape(150, 1, 1, 1).expand(150, 12, 20, 3)
+        audio = {"waveform": torch.zeros(1, 1, 80000), "sample_rate": 16000}
+        video = InputImpl.VideoFromComponents(Types.VideoComponents(
+            images=images, audio=audio, frame_rate=Fraction(30)))
+        frames, count, track, info = media_nodes.YtonVideoParser().parse_video(video, force_rate=24)
+        self.assertEqual(count, 120)
+        torch.testing.assert_close(frames[:, 0, 0, 0], (torch.arange(120) * 30 / 24).long().float())
+        self.assertIs(track, audio)
+        self.assertEqual(info["source_fps"], 30)
+        self.assertEqual(info["source_frame_count"], 150)
+        self.assertEqual(info["loaded_fps"], 24)
+        self.assertEqual(info["loaded_duration"], 5)
+        self.assertEqual(info["source_duration"], 5)
+
+    def test_h3_accepts_all_connected_media_slots_with_empty_partial_and_full_inputs(self):
+        import execution
+        import nodes
+        from comfy_extras.nodes_minimax_h3 import MiniMaxH3ReferenceToVideo
+
+        with av.open(str(self.root / "reference.mkv"), "w") as output:
+            video_stream = output.add_stream("mpeg4", rate=5)
+            video_stream.width, video_stream.height, video_stream.pix_fmt = 16, 16, "yuv420p"
+            audio_stream = output.add_stream("pcm_s16le", rate=16000)
+            audio_stream.layout = "mono"
+            for _ in range(3):
+                frame = av.VideoFrame.from_ndarray(np.full((16, 16, 3), 150, dtype=np.uint8), format="rgb24")
+                for packet in video_stream.encode(frame):
+                    output.mux(packet)
+            for packet in video_stream.encode():
+                output.mux(packet)
+            frame = av.AudioFrame.from_ndarray(np.zeros((1, 9600), dtype=np.int16), format="s16", layout="mono")
+            frame.sample_rate, frame.pts, frame.time_base = 16000, 0, Fraction(1, 16000)
+            for packet in audio_stream.encode(frame):
+                output.mux(packet)
+            for packet in audio_stream.encode():
+                output.mux(packet)
+
+        encoded, completed = [], []
+
+        class Clip:
+            def tokenize(self, text, minimax_ref_items):
+                encoded.append([item['type'] for item in minimax_ref_items])
+                return text
+
+            def encode_from_tokens_scheduled(self, tokens):
+                return [[torch.zeros(1, 1, 4), {}]]
+
+        class ClipLoader:
+            @classmethod
+            def INPUT_TYPES(cls):
+                return {"required": {}}
+            RETURN_TYPES, FUNCTION = ("CLIP",), "load"
+            def load(self):
+                return (Clip(),)
+
+        class Output:
+            @classmethod
+            def INPUT_TYPES(cls):
+                return {"required": {"positive": ("CONDITIONING",), "latent": ("LATENT",)}}
+            RETURN_TYPES, FUNCTION, OUTPUT_NODE = (), "consume", True
+            def consume(self, positive, latent):
+                completed.append(True)
+                return ()
+
+        class Server:
+            client_id = last_node_id = None
+            def send_sync(self, *args):
+                pass
+
+        for name in ["YtonEasyMediaLoader", "YtonImageListParser", "YtonVideoListParser", "YtonAudioListParser", "YtonVideoParser"]:
+            nodes.NODE_CLASS_MAPPINGS[name] = getattr(media_nodes, name)
+        nodes.NODE_CLASS_MAPPINGS.update({"YtonTestH3Clip": ClipLoader, "YtonTestH3": MiniMaxH3ReferenceToVideo, "YtonTestH3Output": Output})
+
+        async def run():
+            for image_count, video_count, audio_count in [(0, 0, 0), (2, 1, 0), (1, 0, 0), (0, 0, 2), (0, 3, 0), (9, 0, 0), (9, 3, 3)]:
+                with self.subTest(images=image_count, videos=video_count, audios=audio_count):
+                    files = {name: "" for name in media_nodes.YtonEasyMediaLoader.INPUT_TYPES()["required"]}
+                    for kind, count, filename in [("image", image_count, "nested/alpha.png"), ("video", video_count, "reference.mkv"), ("audio", audio_count, "voice.wav")]:
+                        for index in range(media_nodes.MEDIA_SLOTS[kind] - count + 1, media_nodes.MEDIA_SLOTS[kind] + 1):
+                            files[f"{kind}_{index}"] = filename
+                    prompt = {
+                        "1": {"class_type": "YtonEasyMediaLoader", "inputs": files},
+                        "2": {"class_type": "YtonImageListParser", "inputs": {"image": ["1", 0]}},
+                        "3": {"class_type": "YtonVideoListParser", "inputs": {"video": ["1", 1]}},
+                        "4": {"class_type": "YtonAudioListParser", "inputs": {"audio": ["1", 2]}},
+                        **{str(5 + index): {"class_type": "YtonVideoParser", "inputs": {"video": ["3", index], "force_rate": 24.0}} for index in range(3)},
+                        "8": {"class_type": "YtonTestH3Clip", "inputs": {}},
+                        "9": {"class_type": "YtonTestH3", "inputs": {
+                            "clip": ["8", 0], "prompt": "验证素材传入", "width": 64, "height": 64, "length": 22, "ref_image_size": "match",
+                            **{f"ref_images.ref_image_{index}": ["2", index] for index in range(9)},
+                            **{f"ref_videos.ref_video_{index}": [str(5 + index), 0] for index in range(3)},
+                            **{f"ref_video_audios.ref_video_audio_{index}": [str(5 + index), 2] for index in range(3)},
+                            **{f"ref_audios.ref_audio_{index}": ["4", index] for index in range(3)},
+                        }},
+                        "10": {"class_type": "YtonTestH3Output", "inputs": {"positive": ["9", 0], "latent": ["9", 1]}},
+                    }
+                    label = f"yton-h3-{image_count}-{video_count}-{audio_count}"
+                    valid, errors, outputs, node_errors = await execution.validate_prompt(label, prompt, None)
+                    self.assertTrue(valid, (errors, node_errors))
+                    executor = execution.PromptExecutor(Server(), cache_type=execution.CacheType.CLASSIC, cache_args={"ram": 0, "ram_inactive": 0})
+                    await executor.execute_async(prompt, label, execute_outputs=outputs)
+                    self.assertTrue(executor.success, executor.status_messages)
+                    self.assertEqual(encoded[-1], ['image'] * image_count + ['audio', 'video'] * video_count + ['audio'] * audio_count)
+            self.assertEqual(len(completed), 7)
+
+        asyncio.run(run())
+
     def test_missing_files_and_modified_files(self):
         loader = media_nodes.YtonEasyMediaLoader
         self.assertIn("素材文件不存在", loader.VALIDATE_INPUTS(image_1="missing.png"))
@@ -294,6 +405,8 @@ class MediaNodesTests(unittest.TestCase):
         ]:
             prompt[list_id] = {"class_type": f"Yton{kind}ListParser", "inputs": {kind.lower(): ["1", loader_slot]}}
             prompt[item_id] = {"class_type": f"Yton{kind}Parser", "inputs": {kind.lower(): [list_id, item_slot]}}
+            if kind == "Video":
+                prompt[item_id]["inputs"]["force_rate"] = 0.0
         video_outputs = {"frames": ["5", 0], "frame_count": ["5", 1], "video_info": ["5", 3], "audio": ["7", 0]}
         prompt["8"] = {"class_type": "YtonTestOutput", "inputs": {"image": ["3", 0], **video_outputs}}
         prompt["9"] = {"class_type": "YtonImageParser", "inputs": {"image": ["2", 1]}}

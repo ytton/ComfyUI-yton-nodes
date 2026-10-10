@@ -153,30 +153,40 @@ class YtonImageParser:
 class YtonVideoParser:
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"video": ("VIDEO", {"forceInput": True})}}
+        return {"required": {
+            "video": ("VIDEO", {"forceInput": True}),
+            "force_rate": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 120.0, "step": 1.0,
+                                    "tooltip": "0 保留原帧率；H3 参考视频设为 24，按原时长重采样，不改变音轨速度。"}),
+        }}
 
     RETURN_TYPES = ("IMAGE", "INT", "AUDIO", "VHS_VIDEOINFO")
     RETURN_NAMES = ("图像", "帧计数", "音频", "视频信息")
     FUNCTION = "parse_video"
     CATEGORY = "yton-nodes/Media/解析"
-    DESCRIPTION = "解析单个视频的全部图像帧、实际帧数、原音轨和视频信息。视频信息可连接 Video Helper Suite 节点；无音轨时音频为空。"
+    DESCRIPTION = "解析视频画面、帧数、原音轨和 VHS 视频信息；可按原时长转换帧率。空视频透传空值，无音轨时音频为空。"
 
-    def parse_video(self, video):
+    def parse_video(self, video, force_rate=0.0):
         if video is None:
             return None, None, None, None
         components = video.get_components()
         images = components.images
-        frame_count, height, width = map(int, images.shape[:3])
-        fps = float(components.frame_rate)
-        if not frame_count:
+        source_frame_count, height, width = map(int, images.shape[:3])
+        source_fps = float(components.frame_rate)
+        if not source_frame_count:
             raise ValueError("视频中没有可解析的图像帧")
-        if fps <= 0:
+        if source_fps <= 0:
             raise ValueError("视频帧率必须大于 0")
+        fps = float(force_rate) if force_rate > 0 else source_fps
+        if force_rate > 0:
+            frame_count = max(1, int(source_frame_count / source_fps * fps))
+            indexes = (torch.arange(frame_count, device=images.device) * source_fps / fps).long()
+            images = images[indexes.clamp_max(source_frame_count - 1)]
+        frame_count = int(images.shape[0])
         source_width, source_height = video.get_dimensions()
         video_info = {
             "source_fps": float(video.get_frame_rate()),
             # All input frames are decoded; container frame counts can be estimates.
-            "source_frame_count": frame_count,
+            "source_frame_count": source_frame_count,
             "source_duration": float(video.get_duration()),
             "source_width": int(source_width),
             "source_height": int(source_height),
