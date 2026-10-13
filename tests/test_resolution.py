@@ -52,5 +52,21 @@ class ResolutionTests(unittest.TestCase):
         self.assertEqual(self.selector.get_resolution("Normal (Standard Image/Video)", "16:9", "768p", 1360, 721)[:2], (1360, 721))
 
 
+class SimpleResolutionTests(unittest.TestCase):
+    def test_simple_outputs_match_original_dimensions(self):
+        simple = module.YtonResolutionSelectorSimple()
+        self.assertEqual(simple.RETURN_NAMES, ("width", "height"))
+        self.assertEqual(simple.RETURN_TYPES, ("INT", "INT"))
+        for inputs, expected in [
+            (("MiniMax H3 (Video)", "16:9", "1080p"), (1920, 1088)),
+            (("MiniMax H3 (Video)", "9:16", "768p"), (768, 1344)),
+            (("MiniMax H3 (Video)", "16:9", "768p", 1360, 721), (1344, 704)),
+            (("Normal (Standard Image/Video)", "16:9", "1080p"), (1920, 1080)),
+            (("Normal (Standard Image/Video)", "16:9", "1080p", 1360, 721), (1360, 721)),
+        ]:
+            with self.subTest(inputs=inputs):
+                self.assertEqual(simple.get_resolution(*inputs), expected)
+
+
 if __name__ == "__main__":
     unittest.main()

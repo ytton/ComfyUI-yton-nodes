@@ -296,3 +296,18 @@ class YtonResolutionSelector:
         h3_mp = float(H3_MP_VALUES.get(resolution, 1.0))
 
         return (int(w), int(h), aspect_ratio, int(max_side), int(min_side), h3_mp, resolution)
+
+
+class YtonResolutionSelectorSimple(YtonResolutionSelector):
+    RETURN_TYPES = ("INT", "INT")
+    RETURN_NAMES = ("width", "height")
+
+    def get_resolution(
+        self,
+        mode: str,
+        aspect_ratio: str,
+        resolution: str,
+        custom_width: int = 0,
+        custom_height: int = 0
+    ) -> Tuple[int, int]:
+        return super().get_resolution(mode, aspect_ratio, resolution, custom_width, custom_height)[:2]

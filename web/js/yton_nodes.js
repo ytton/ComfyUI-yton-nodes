@@ -38,7 +38,7 @@ const MP_MAP = {
 app.registerExtension({
   name: "yton.nodes",
   async nodeCreated(node) {
-    if (node.comfyClass === "YtonResolutionSelector") {
+    if (["YtonResolutionSelector", "YtonResolutionSelectorSimple"].includes(node.comfyClass)) {
       setupResolutionNode(node);
     } else if (node.comfyClass === "YtonEasyMediaLoader") {
       setupMediaLoaderNode(node);
