@@ -74,7 +74,7 @@ async (page) => {
     await panel.getByRole("button", { name: "参考视频 · 3", exact: true }).click();
     assert(await panel.locator(".video-grid").isVisible(), "Collapsed categories must expand when clicked");
     const saved = await target.evaluate(() => window.ytonMediaTestNode.serialize());
-    assert(saved.widgets_values.length === 15, "The custom panel must not serialize as an input");
+    assert(saved.widgets_values.length === 30, "Only filenames and output toggles serialize as inputs");
     await target.evaluate(saved => {
       const node = window.ytonMediaTestNode;
       node.widgets.find(widget => widget.name === "image_9").value = "";
@@ -90,7 +90,44 @@ async (page) => {
       if (!result.output[node.id]) throw new Error(`Missing loader in prompt: ${JSON.stringify({ id: node.id, result })}`);
       return result.output[node.id];
     });
-    assert(Object.keys(prompt.inputs).length === 15 && prompt.inputs.image_9 === "yton-media/reference-1.png", "The submitted prompt must contain all fifteen file widgets and no panel widget");
+    assert(Object.keys(prompt.inputs).length === 30 && prompt.inputs.image_9 === "yton-media/reference-1.png", "The prompt must contain filenames and output toggles without a panel widget");
+    await panel.locator('[data-slot="image_9"]').hover();
+    await panel.getByRole("button", { name: "禁用图片 9 输出", exact: true }).click();
+    await panel.locator('[data-slot="image_9"]').dragTo(panel.locator('[data-slot="image_8"]'));
+    const exchanged = await target.evaluate(() => Object.fromEntries(window.ytonMediaTestNode.widgets.map(widget => [widget.name, widget.value])));
+    assert(exchanged.image_8 === "yton-media/reference-1.png" && exchanged.disable_image_8 === true && exchanged.image_9 === "" && exchanged.disable_image_9 === false, "Output state follows its file during slot exchange");
+    await panel.locator('[data-slot="image_8"]').dragTo(panel.locator('[data-slot="image_9"]'));
+    await panel.getByRole("button", { name: "启用图片 9 输出", exact: true }).click();
+    for (const kind of ["image", "video", "audio"]) {
+      const label = { image: "图片", video: "视频", audio: "音频" }[kind];
+      await target.evaluate(kind => {
+        const node = window.ytonMediaTestNode;
+        const file = node.widgets.find(widget => widget.name === `${kind}_1`);
+        file.value = `output-test.${{ image: "png", video: "mp4", audio: "wav" }[kind]}`;
+        file.callback?.(file.value);
+      }, kind);
+      const header = panel.getByRole("button", { name: `参考${label} · ${{ image: 9, video: 3, audio: 3 }[kind]}`, exact: true });
+      if (await header.getAttribute("aria-expanded") === "false") await header.click();
+      const card = panel.locator(`[data-slot="${kind}_1"]`);
+      await card.hover();
+      await card.getByRole("button", { name: `禁用${label} 1 输出`, exact: true }).click();
+      assert(await card.getAttribute("class").then(value => value.includes("output-disabled")), "Disabled output must be visually distinct");
+      assert(await card.locator(kind === "image" ? "img" : kind).count() === 1, "Disabled media keeps its preview");
+      const toggleState = await target.evaluate(async kind => {
+        const node = window.ytonMediaTestNode;
+        const saved = node.serialize();
+        node.widgets.find(widget => widget.name === `disable_${kind}_1`).value = false;
+        node.configure(saved);
+        return (await window.comfyAPI.app.app.graphToPrompt()).output[node.id].inputs;
+      }, kind);
+      assert(toggleState[`disable_${kind}_1`] === true && toggleState[`${kind}_1`].startsWith("output-test."), "Workflow restore and API prompt keep the file and disabled flag");
+      await card.getByRole("button", { name: `启用${label} 1 输出`, exact: true }).click();
+      await card.getByRole("button", { name: `移除${label} 1`, exact: true }).click();
+    }
+    const toggleHeader = panel.getByRole("button", { name: "参考视频 · 3", exact: true });
+    if (await toggleHeader.getAttribute("aria-expanded") === "true") await toggleHeader.click();
+    const audioHeader = panel.getByRole("button", { name: "参考音频 · 3", exact: true });
+    if (await audioHeader.getAttribute("aria-expanded") === "true") await audioHeader.click();
     const parsers = await target.evaluate(() => {
       const app = window.comfyAPI.app.app;
       const loader = window.ytonMediaTestNode;
@@ -183,11 +220,10 @@ async (page) => {
         }, width);
         await target.waitForTimeout(400);
         const dimensions = await panel.evaluate(element => {
-          const vueNode = element.closest("[data-node-id]");
           const shell = element.parentElement;
           return { columns: getComputedStyle(element.querySelector(".image-grid")).gridTemplateColumns.split(" ").length,
             overflow: shell.scrollWidth > shell.clientWidth + 1 || shell.scrollHeight > shell.clientHeight + 1,
-            actual: element.offsetWidth, expected: window.ytonMediaTestNode.size[0] - (vueNode ? 24 : 28) };
+            actual: element.offsetWidth, expected: shell.clientWidth };
         });
         assert(dimensions.columns === 3 && !dimensions.overflow && Math.abs(dimensions.actual - dimensions.expected) <= 1, `Media layout must fit in ${vue ? "Vue" : "canvas"} nodes: ${JSON.stringify(dimensions)}`);
         checks.push({ vue, width, ...dimensions });

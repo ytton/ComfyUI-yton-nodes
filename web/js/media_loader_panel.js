@@ -55,6 +55,7 @@ export function setupMediaLoaderNode(node) {
   let closePreview = null;
 
   function value(kind, index) { return String(widgets.get(`${kind}_${index + 1}`)?.value || "").trim(); }
+  function disabled(kind, index) { return widgets.get(`disable_${kind}_${index + 1}`).value === true; }
   function changeSlots(changes, expandedKind) {
     node.graph?.beforeChange();
     if (expandedKind) node.properties.ytonMediaCollapsed[expandedKind] = false;
@@ -99,7 +100,7 @@ export function setupMediaLoaderNode(node) {
           if (!result.name) throw new Error("上传未返回素材文件名");
           if (removed) return;
           const filename = [result.subfolder, result.name].filter(Boolean).join("/");
-          changeSlots([[`${category.kind}_${next + 1}`, filename]], expand ? category.kind : null);
+          changeSlots([[`${category.kind}_${next + 1}`, filename], [`disable_${category.kind}_${next + 1}`, false]], expand ? category.kind : null);
           next++;
         } catch (error) {
           notices.push(`${file.name}：${error.message}`);
@@ -185,12 +186,13 @@ export function setupMediaLoaderNode(node) {
 
   function renderCard(section, index) {
     const filename = value(section.kind, index);
+    const outputDisabled = disabled(section.kind, index);
     const card = document.createElement("div");
-    card.className = `yton-media-item${filename ? " has-media" : " is-empty"}`;
+    card.className = `yton-media-item${filename ? " has-media" : " is-empty"}${filename && outputDisabled ? " output-disabled" : ""}`;
     card.dataset.slot = `${section.kind}_${index + 1}`;
     card.tabIndex = 0;
     card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `${section.label.slice(2)} ${index + 1}：${filename ? filename.split("/").pop() : "点击或拖入文件"}`);
+    card.setAttribute("aria-label", `${section.label.slice(2)} ${index + 1}：${filename ? filename.split("/").pop() : "点击或拖入文件"}${filename && outputDisabled ? "（输出已禁用）" : ""}`);
     const pick = () => { if (!uploading) { section.selectedSlot = index; section.input.click(); } };
     card.onclick = pick;
     card.onkeydown = event => {
@@ -233,12 +235,29 @@ export function setupMediaLoaderNode(node) {
         card.append(play, duration);
       }
       card.append(source);
+      const output = document.createElement("button");
+      output.type = "button";
+      output.className = "yton-output-toggle";
+      output.title = `${outputDisabled ? "启用" : "禁用"}${section.label.slice(2)} ${index + 1} 输出`;
+      output.setAttribute("aria-label", output.title);
+      output.setAttribute("aria-pressed", String(outputDisabled));
+      output.innerHTML = svg('<path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><path d="M12 2v10"/>');
+      output.disabled = uploading;
+      output.onpointerdown = event => event.stopPropagation();
+      output.onkeydown = event => event.stopPropagation();
+      output.ondragstart = event => { event.preventDefault(); event.stopPropagation(); };
+      output.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        changeSlots([[`disable_${section.kind}_${index + 1}`, !outputDisabled]]);
+      };
+      card.append(output);
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "yton-remove-btn";
       remove.innerHTML = svg('<path d="m6 6 12 12M18 6 6 18"/>');
       remove.setAttribute("aria-label", `移除${section.label.slice(2)} ${index + 1}`);
-      remove.onclick = event => { event.stopPropagation(); changeSlots([[`${section.kind}_${index + 1}`, ""]]); };
+      remove.onclick = event => { event.stopPropagation(); changeSlots([[`${section.kind}_${index + 1}`, ""], [`disable_${section.kind}_${index + 1}`, false]]); };
       card.append(remove);
       if (section.kind === "image") {
         showMaskPreview(card, fileURL(filename));
@@ -309,7 +328,10 @@ export function setupMediaLoaderNode(node) {
       if (event.dataTransfer.types.includes(DRAG_TYPE) && draggedSlot?.kind === section.kind) {
         const from = draggedSlot.index;
         draggedSlot = null;
-        if (from !== index) changeSlots([[`${section.kind}_${from + 1}`, filename], [`${section.kind}_${index + 1}`, value(section.kind, from)]]);
+        if (from !== index) changeSlots([
+          [`${section.kind}_${from + 1}`, filename], [`${section.kind}_${index + 1}`, value(section.kind, from)],
+          [`disable_${section.kind}_${from + 1}`, outputDisabled], [`disable_${section.kind}_${index + 1}`, disabled(section.kind, from)],
+        ]);
       } else if (event.dataTransfer.files.length) {
         await upload(Array.from(event.dataTransfer.files), section, index);
       }

@@ -24,6 +24,10 @@ def media_fingerprint(**slots):
         for index in range(1, count + 1):
             name = slots.get(f"{kind}_{index}", "").strip()
             if name:
+                disabled = slots.get(f"disable_{kind}_{index}", False)
+                if disabled:
+                    files.append((kind, index, name, "disabled"))
+                    continue
                 path = resolve_media_file(name)
                 stat = os.stat(path)
                 files.append((kind, index, path, stat.st_mtime_ns, stat.st_size))
@@ -39,6 +43,10 @@ class YtonEasyMediaLoader:
             f"{kind}_{index}": ("STRING", {"default": "", "multiline": False})
             for kind, count in MEDIA_SLOTS.items()
             for index in range(1, count + 1)
+        }, "optional": {
+            f"disable_{kind}_{index}": ("BOOLEAN", {"default": False})
+            for kind, count in MEDIA_SLOTS.items()
+            for index in range(1, count + 1)
         }}
 
     RETURN_TYPES = ("IMAGE", "VIDEO", "AUDIO")
@@ -46,7 +54,7 @@ class YtonEasyMediaLoader:
     OUTPUT_IS_LIST = (True, True, True)
     FUNCTION = "load_media"
     CATEGORY = "yton-nodes/Media"
-    DESCRIPTION = "固定 9 张图片、3 个视频、3 个音频。按槽位顺序输出原生媒体列表，空槽位不加入列表。"
+    DESCRIPTION = "固定 9 张图片、3 个视频、3 个音频。按槽位顺序输出原生媒体列表，空槽位不加入列表；禁用的素材保留列表位置并输出空值。"
 
     @classmethod
     def IS_CHANGED(cls, **slots):
@@ -67,6 +75,9 @@ class YtonEasyMediaLoader:
             for index in range(1, count + 1):
                 filename = slots.get(f"{kind}_{index}", "").strip()
                 if not filename:
+                    continue
+                if slots.get(f"disable_{kind}_{index}", False):
+                    items.append(None)
                     continue
                 path = resolve_media_file(filename)
                 if kind == "image":
@@ -98,7 +109,7 @@ class _MediaListParser:
     CATEGORY = "yton-nodes/Media/解析"
     KIND = ""
     INPUT_IS_LIST = True
-    DESCRIPTION = "按有效素材顺序拆分列表。可提前连接全部输出，未填充的输出传递空值，由支持可选素材的下游节点忽略。"
+    DESCRIPTION = "按列表顺序拆分素材，禁用项保留序号并输出空值。可提前连接全部输出，未填充的输出也传递空值，由支持可选素材的下游节点忽略。"
 
     @classmethod
     def INPUT_TYPES(cls):

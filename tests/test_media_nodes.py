@@ -54,6 +54,9 @@ class MediaNodesTests(unittest.TestCase):
         inputs = loader.INPUT_TYPES()["required"]
         self.assertEqual(len(inputs), 15)
         self.assertTrue(all(value[0] == "STRING" and not value[1].get("forceInput") for value in inputs.values()))
+        toggles = loader.INPUT_TYPES()["optional"]
+        self.assertEqual(len(toggles), 15)
+        self.assertTrue(all(value == ("BOOLEAN", {"default": False}) for value in toggles.values()))
         images, videos, audios = loader.load_media(image_9="nested/alpha.png", video_3="clip.mp4", audio_2="voice.wav")
         self.assertEqual(loader.RETURN_NAMES, ("image", "video", "audio"))
         self.assertEqual(loader.OUTPUT_IS_LIST, (True, True, True))
@@ -72,11 +75,96 @@ class MediaNodesTests(unittest.TestCase):
             self.assertTrue(all(output is None for output in parser().parse_list(**{kind: []})))
         self.assertEqual(loader.load_media(), ([], [], []))
 
+    def test_disabled_outputs_preserve_all_media_positions(self):
+        loader = media_nodes.YtonEasyMediaLoader()
+        files = {f"image_{index}": "nested/alpha.png" for index in range(1, 5)}
+        files.update(video_1="clip.mp4", video_2="clip.mp4", audio_1="voice.wav", audio_2="voice.wav")
+        toggles = {f"disable_image_{index}": True for index in range(1, 4)}
+        toggles.update(disable_video_1=True, disable_audio_1=True)
+        images, videos, audios = loader.load_media(**files, **toggles)
+        self.assertEqual(images[:3], [None, None, None])
+        self.assertIsInstance(images[3], torch.Tensor)
+        for kind, parser, items, active in [("image", media_nodes.YtonImageListParser, images, 3),
+                                           ("video", media_nodes.YtonVideoListParser, videos, 1),
+                                           ("audio", media_nodes.YtonAudioListParser, audios, 1)]:
+            outputs = parser().parse_list(**{kind: items})
+            self.assertTrue(all(item is None for item in outputs[:active]))
+            self.assertIs(outputs[active], items[active])
+            self.assertTrue(all(item is None for item in outputs[active + 1:]))
+        for index in range(1, 5):
+            toggles[f"disable_image_{index}"] = True
+        self.assertEqual(loader.load_media(**files, **toggles)[0], [None] * 4)
+        toggles["disable_image_2"] = False
+        restored = media_nodes.YtonImageListParser().parse_list(image=loader.load_media(**files, **toggles)[0])
+        self.assertIsInstance(restored[1], torch.Tensor)
+        self.assertTrue(all(item is None for index, item in enumerate(restored) if index != 1))
+
+    def test_disabled_files_skip_loading_validation_and_invalidate_cache(self):
+        loader = media_nodes.YtonEasyMediaLoader
+        self.assertEqual(loader.VALIDATE_INPUTS(image_1="missing.png", disable_image_1=True), True)
+        images, _, _ = loader().load_media(image_1="missing.png", disable_image_1=True)
+        self.assertEqual(images, [None])
+        disabled = loader.IS_CHANGED(image_1="nested/alpha.png", disable_image_1=True)
+        enabled = loader.IS_CHANGED(image_1="nested/alpha.png", disable_image_1=False)
+        self.assertNotEqual(disabled, enabled)
+        self.assertIn("素材文件不存在", loader.VALIDATE_INPUTS(image_1="missing.png", disable_image_1=False))
+
     def test_empty_media_passes_through_item_parsers(self):
         self.assertEqual(media_nodes.YtonImageParser().parse_image(None), (None, None))
         self.assertEqual(media_nodes.YtonVideoParser().parse_video(None), (None, None, None, None))
         self.assertEqual(media_nodes.YtonVideoParser().parse_video(None, force_rate=24), (None, None, None, None))
         self.assertEqual(media_nodes.YtonAudioParser().parse_audio(None), (None,))
+
+    def test_comfy_execution_keeps_disabled_slots_and_toggle_cache(self):
+        import execution
+        import nodes
+
+        received = []
+
+        class CheckDisabled:
+            @classmethod
+            def INPUT_TYPES(cls):
+                return {"required": {name: ("IMAGE",) for name in ["first", "second", "third", "fourth"]}}
+
+            RETURN_TYPES = ()
+            FUNCTION = "consume"
+            OUTPUT_NODE = True
+
+            def consume(self, **images):
+                received.append([images[name] is not None for name in ["first", "second", "third", "fourth"]])
+                return ()
+
+        nodes.NODE_CLASS_MAPPINGS.update(YtonEasyMediaLoader=media_nodes.YtonEasyMediaLoader,
+                                        YtonImageListParser=media_nodes.YtonImageListParser,
+                                        YtonTestDisabledOutput=CheckDisabled)
+        files = {name: "" for name in media_nodes.YtonEasyMediaLoader.INPUT_TYPES()["required"]}
+        files.update({f"image_{index}": "nested/alpha.png" for index in range(1, 5)})
+        files.update({f"disable_image_{index}": True for index in range(1, 4)})
+        prompt = {
+            "1": {"class_type": "YtonEasyMediaLoader", "inputs": files},
+            "2": {"class_type": "YtonImageListParser", "inputs": {"image": ["1", 0]}},
+            "3": {"class_type": "YtonTestDisabledOutput", "inputs": {name: ["2", index] for index, name in enumerate(["first", "second", "third", "fourth"])}},
+        }
+
+        class Server:
+            client_id = None
+            last_node_id = None
+
+            def send_sync(self, *args):
+                pass
+
+        async def run():
+            executor = execution.PromptExecutor(Server(), cache_type=execution.CacheType.CLASSIC,
+                                                cache_args={"ram": 0, "ram_inactive": 0})
+            for label, restored in [("disabled", False), ("restored", True)]:
+                files["disable_image_2"] = not restored
+                valid, errors, outputs, node_errors = await execution.validate_prompt(label, prompt, None)
+                self.assertTrue(valid, (errors, node_errors))
+                await executor.execute_async(prompt, label, execute_outputs=outputs)
+                self.assertTrue(executor.success, executor.status_messages)
+
+        asyncio.run(run())
+        self.assertEqual(received, [[False, False, False, True], [False, True, False, True]])
 
     def test_qwen_encoder_accepts_all_nine_connected_outputs(self):
         import execution

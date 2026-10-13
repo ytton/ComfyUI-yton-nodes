@@ -22,6 +22,7 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - 三个原生列表输出：`image`（IMAGE）、`video`（VIDEO）、`audio`（AUDIO），端口显示 ComfyUI 列表图标。
    - 文件名保存在 `image_1`～`image_9`、`video_1`～`video_3`、`audio_1`～`audio_3` 的 widget 值中，外部 API 可直接填写。
    - 面板的槽位编号固定；输出列表仅包含已加载的素材，按槽位顺序排列。图片为张量、视频为原生 VIDEO 对象、音频为 waveform/sample_rate 字典，可以直接连接 EasyMedia 的列表处理节点。
+   - 已上传素材可通过卡片左下角的电源按钮禁用或启用输出。禁用时保留文件、预览和列表位置，解析器对应序号输出空值，后续素材不会前移；例如四张图片的前三张禁用后，解析器 1–3 为空，4 仍输出第四张。开关随工作流保存，同类素材交换时跟随素材移动；API 参数为 `disable_image_1`～`disable_image_9`、`disable_video_1`～`disable_video_3`、`disable_audio_1`～`disable_audio_3`，默认 false。
 
 3. **素材解析节点**
    - 三个列表解析节点的输入分别为 `image`、`video`、`audio`，使用 ComfyUI 原生列表图标；输出为各个单项素材。
