@@ -6,6 +6,7 @@ from .nodes.media_loader_node import (
     YtonEasyMediaLoader, YtonImageListParser, YtonVideoListParser,
     YtonAudioListParser, YtonImageParser, YtonVideoParser, YtonAudioParser,
 )
+from .nodes.minimax_h3_reference_node import YtonMiniMaxH3ReferenceToVideo
 
 NODE_CLASS_MAPPINGS = {
     "YtonResolutionSelector": YtonResolutionSelector,
@@ -16,6 +17,7 @@ NODE_CLASS_MAPPINGS = {
     "YtonImageParser": YtonImageParser,
     "YtonVideoParser": YtonVideoParser,
     "YtonAudioParser": YtonAudioParser,
+    "YtonMiniMaxH3ReferenceToVideo": YtonMiniMaxH3ReferenceToVideo,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -27,6 +29,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "YtonImageParser": "图片解析",
     "YtonVideoParser": "视频解析",
     "YtonAudioParser": "音频解析",
+    "YtonMiniMaxH3ReferenceToVideo": "MiniMax H3 参考生成视频",
 }
 
 WEB_DIRECTORY = "./web"

@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import sys
 
+from comfy_api.latest import io
+
 root = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("yton_preview", root / "__init__.py", submodule_search_locations=[str(root)])
 package = importlib.util.module_from_spec(spec)
@@ -12,6 +14,10 @@ sys.modules[spec.name] = package
 spec.loader.exec_module(package)
 definitions = {}
 for name, node in package.NODE_CLASS_MAPPINGS.items():
+    if issubclass(node, io.ComfyNode):
+        definitions[name] = node.GET_NODE_INFO_V1()
+        definitions[name]["python_module"] = "custom_nodes.ComfyUI-yton-nodes"
+        continue
     inputs = node.INPUT_TYPES()
     definitions[name] = {
         "input": inputs,

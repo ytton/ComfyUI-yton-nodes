@@ -35,6 +35,12 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - 连接方式：加载器 → 对应列表解析 → 生成或处理节点；单项解析按需使用。列表解析按有效素材顺序拆分，未填充的端口输出空值；图片、视频、音频单项解析也会透传空值。
    - 可以预先连接全部输出，例如把九张图片都接到 Qwen Image 2.1 编码器；运行时编码器只读取已有图片，其他连接保留。下游需要支持可选素材或忽略空值；必须有素材的节点仍需要提供有效输入。
 
+4. **MiniMax H3 参考生成视频 (`YtonMiniMaxH3ReferenceToVideo`)**
+   - 将媒体加载器的 `image`、`video`、`audio` 三个列表直接连接到同名输入，无需列表解析节点。
+   - 复用 ComfyUI 官方 `MiniMaxH3ReferenceToVideo`：提示词、宽高、帧数、参考图尺寸、CLIP、可选视频/音频 VAE，以及正向条件和 AV latent 输出均与官方一致；后续仍连接正常的采样流程。
+   - 原生 VIDEO 自动按原时长解析为 24fps 画面，并带入原音轨。视频音轨先占用 `<Audio N>` 编号，再排列独立音频；画面对应 `<Video N>`，图片对应 `<Picture N>`。
+   - 禁用的列表项传给官方节点后被忽略，提示词编号遵循官方规则，按有效素材重新连续编号。三个列表均可不连接，支持仅提示词生成。
+
 ## Installation
 
 ### Method 1: Git Clone into ComfyUI custom_nodes
@@ -66,6 +72,11 @@ uploading, drag exchanges, and all three parser chains.
 
 Run `tests/media_mask_editor.browser.js` against the installed plugin to check native
 mask painting, saving, cancelling, reopening, and slot/workflow serialization.
+
+Run `tests/minimax_h3_reference.browser.js` with the same schema export and local
+server to check the three direct media-list connections and save/reload behavior.
+Run `tests/test_minimax_h3_reference_node.py -v` for official-output equivalence,
+video/soundtrack pairing, and actual ComfyUI list execution with lightweight encoders.
 
 Run `tests/test_media_nodes.py -v` with the same Python environment for real image,
 audio, and video parsing checks. Restart ComfyUI after updating the Python node files,
