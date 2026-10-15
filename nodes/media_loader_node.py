@@ -1,183 +1,224 @@
-"""
-Media loader node with explicit standard inputs for easy JSON / API workflow manipulation.
-"""
+"""Fixed media slots and typed list/item parsers for ComfyUI."""
+
 import os
-import torch
-import numpy as np
-from PIL import Image, ImageOps
-from typing import Dict, Any, Tuple, List
+
 import folder_paths
+import numpy as np
+import torch
+from PIL import Image, ImageOps
 
-def empty_image_tensor() -> torch.Tensor:
-    return torch.zeros((1, 64, 64, 3), dtype=torch.float32)
 
-def empty_audio_dict() -> Dict[str, Any]:
-    return {"waveform": torch.zeros((1, 1, 1024), dtype=torch.float32), "sample_rate": 44100}
+MEDIA_SLOTS = {"image": 9, "video": 3, "audio": 3}
 
-def load_image_tensor(filepath: str) -> torch.Tensor:
-    if not filepath or not os.path.exists(filepath):
-        return empty_image_tensor()
-    try:
-        img = Image.open(filepath)
-        img = ImageOps.exif_transpose(img)
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-        image_np = np.array(img).astype(np.float32) / 255.0
-        return torch.from_numpy(image_np)[None, ...]
-    except Exception as e:
-        print(f"[yton-nodes] Failed to load image {filepath}: {e}")
-        return empty_image_tensor()
 
-def load_audio_dict(filepath: str) -> Dict[str, Any]:
-    if not filepath or not os.path.exists(filepath):
-        return empty_audio_dict()
-    try:
-        import torchaudio
-        waveform, sample_rate = torchaudio.load(filepath)
-        return {"waveform": waveform.unsqueeze(0), "sample_rate": sample_rate}
-    except Exception as e:
-        print(f"[yton-nodes] Audio loading fallback for {filepath}: {e}")
-        return empty_audio_dict()
+def resolve_media_file(filename):
+    path = folder_paths.get_annotated_filepath(filename)
+    if not os.path.isfile(path):
+        raise ValueError(f"素材文件不存在：{filename}")
+    return path
+
+
+def media_fingerprint(**slots):
+    files = []
+    for kind, count in MEDIA_SLOTS.items():
+        for index in range(1, count + 1):
+            name = slots.get(f"{kind}_{index}", "").strip()
+            if name:
+                disabled = slots.get(f"disable_{kind}_{index}", False)
+                if disabled:
+                    files.append((kind, index, name, "disabled"))
+                    continue
+                path = resolve_media_file(name)
+                stat = os.stat(path)
+                files.append((kind, index, path, stat.st_mtime_ns, stat.st_size))
+    return tuple(files)
 
 
 class YtonEasyMediaLoader:
-    """
-    Unified Media Loader supporting multi-image, audio, and video assets.
-    Inputs are standard individual slots (image_1~9, audio_1~3, video_1~3)
-    allowing seamless JSON / API modification from external software.
-    """
-
-    MAX_IMAGES = 9
-    MAX_AUDIOS = 3
-    MAX_VIDEOS = 3
+    """Filenames are widget values; the node has no incoming sockets."""
 
     @classmethod
-    def INPUT_TYPES(cls) -> Dict[str, Any]:
-        required = {
-            "image_limit": ("INT", {"default": 9, "min": 0, "max": 9, "step": 1}),
-            "audio_limit": ("INT", {"default": 3, "min": 0, "max": 3, "step": 1}),
-            "video_limit": ("INT", {"default": 3, "min": 0, "max": 3, "step": 1}),
-        }
+    def INPUT_TYPES(cls):
+        return {"required": {
+            f"{kind}_{index}": ("STRING", {"default": "", "multiline": False})
+            for kind, count in MEDIA_SLOTS.items()
+            for index in range(1, count + 1)
+        }, "optional": {
+            f"disable_{kind}_{index}": ("BOOLEAN", {"default": False})
+            for kind, count in MEDIA_SLOTS.items()
+            for index in range(1, count + 1)
+        }}
 
-        # Explicit image inputs (filenames or paths relative to input folder)
-        for i in range(1, cls.MAX_IMAGES + 1):
-            required[f"image_{i}"] = ("STRING", {"default": "", "multiline": False})
-
-        # Explicit audio inputs
-        for i in range(1, cls.MAX_AUDIOS + 1):
-            required[f"audio_{i}"] = ("STRING", {"default": "", "multiline": False})
-
-        # Explicit video inputs
-        for i in range(1, cls.MAX_VIDEOS + 1):
-            required[f"video_{i}"] = ("STRING", {"default": "", "multiline": False})
-
-        return {
-            "required": required,
-            "optional": {
-                "strict_quota_error": ("BOOLEAN", {"default": False, "label_on": "Throw Error", "label_off": "Auto Truncate"}),
-            }
-        }
-
-    RETURN_TYPES = (
-        "MEDIA_BUNDLE",
-        "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE",
-        "AUDIO", "AUDIO", "AUDIO",
-        "STRING", "STRING", "STRING",
-        "INT", "INT", "INT"
-    )
-
-    RETURN_NAMES = (
-        "media_bundle",
-        "image_1", "image_2", "image_3", "image_4", "image_5", "image_6", "image_7", "image_8", "image_9",
-        "audio_1", "audio_2", "audio_3",
-        "video_1_path", "video_2_path", "video_3_path",
-        "image_count", "audio_count", "video_count"
-    )
-
+    RETURN_TYPES = ("IMAGE", "VIDEO", "AUDIO")
+    RETURN_NAMES = ("image", "video", "audio")
+    OUTPUT_IS_LIST = (True, True, True)
     FUNCTION = "load_media"
     CATEGORY = "yton-nodes/Media"
+    DESCRIPTION = "固定 9 张图片、3 个视频、3 个音频。按槽位顺序输出原生媒体列表，空槽位不加入列表；禁用的素材保留列表位置并输出空值。"
 
-    def _resolve_file_path(self, filename: str) -> str:
-        if not filename or not filename.strip():
-            return ""
-        clean_name = filename.strip()
-        # Direct absolute path
-        if os.path.isabs(clean_name) and os.path.exists(clean_name):
-            return clean_name
-        # ComfyUI input folder
-        input_dir = folder_paths.get_input_directory()
-        candidate = os.path.join(input_dir, clean_name)
-        if os.path.exists(candidate):
-            return candidate
-        return candidate
+    @classmethod
+    def IS_CHANGED(cls, **slots):
+        return media_fingerprint(**slots)
 
-    def load_media(
-        self,
-        image_limit: int,
-        audio_limit: int,
-        video_limit: int,
-        strict_quota_error: bool = False,
-        **kwargs
-    ) -> Tuple:
-        raw_images = [kwargs.get(f"image_{i}", "").strip() for i in range(1, self.MAX_IMAGES + 1)]
-        raw_audios = [kwargs.get(f"audio_{i}", "").strip() for i in range(1, self.MAX_AUDIOS + 1)]
-        raw_videos = [kwargs.get(f"video_{i}", "").strip() for i in range(1, self.MAX_VIDEOS + 1)]
+    @classmethod
+    def VALIDATE_INPUTS(cls, **slots):
+        try:
+            media_fingerprint(**slots)
+        except ValueError as error:
+            return str(error)
+        return True
 
-        # Filter active non-empty items
-        active_images = [p for p in raw_images if p]
-        active_audios = [p for p in raw_audios if p]
-        active_videos = [p for p in raw_videos if p]
+    def load_media(self, **slots):
+        lists = {}
+        for kind, count in MEDIA_SLOTS.items():
+            items = []
+            for index in range(1, count + 1):
+                filename = slots.get(f"{kind}_{index}", "").strip()
+                if not filename:
+                    continue
+                if slots.get(f"disable_{kind}_{index}", False):
+                    items.append(None)
+                    continue
+                path = resolve_media_file(filename)
+                if kind == "image":
+                    with Image.open(path) as source:
+                        source = ImageOps.exif_transpose(source)
+                        rgb = np.array(source.convert("RGB"), dtype=np.float32) / 255.0
+                        alpha = np.array(source.getchannel("A"), dtype=np.float32) / 255.0 if "A" in source.getbands() else None
+                    image = torch.from_numpy(rgb).unsqueeze(0)
+                    # Keep standard IMAGE consumers on RGB. The item parser reads
+                    # the slot's native editor mask from this same tensor.
+                    if alpha is not None:
+                        image.yton_mask = torch.from_numpy(1.0 - alpha).unsqueeze(0)
+                    items.append(image)
+                elif kind == "video":
+                    from comfy_api.latest import InputImpl
 
-        # Quota validation
-        if strict_quota_error:
-            if len(active_images) > image_limit:
-                raise ValueError(f"[yton-nodes] Image count ({len(active_images)}) exceeded limit ({image_limit})")
-            if len(active_audios) > audio_limit:
-                raise ValueError(f"[yton-nodes] Audio count ({len(active_audios)}) exceeded limit ({audio_limit})")
-            if len(active_videos) > video_limit:
-                raise ValueError(f"[yton-nodes] Video count ({len(active_videos)}) exceeded limit ({video_limit})")
-        else:
-            active_images = active_images[:image_limit]
-            active_audios = active_audios[:audio_limit]
-            active_videos = active_videos[:video_limit]
+                    items.append(InputImpl.VideoFromFile(path))
+                else:
+                    from comfy_extras.nodes_audio import load
 
-        # Load images
-        loaded_image_tensors: List[torch.Tensor] = []
-        for path in active_images:
-            full_path = self._resolve_file_path(path)
-            loaded_image_tensors.append(load_image_tensor(full_path))
+                    waveform, sample_rate = load(path)
+                    items.append({"waveform": waveform.unsqueeze(0), "sample_rate": sample_rate})
+            lists[kind] = items
+        return lists["image"], lists["video"], lists["audio"]
 
-        # Load audios
-        loaded_audio_dicts: List[Dict[str, Any]] = []
-        for path in active_audios:
-            full_path = self._resolve_file_path(path)
-            loaded_audio_dicts.append(load_audio_dict(full_path))
 
-        # Video paths
-        resolved_video_paths = [self._resolve_file_path(p) for p in active_videos]
+class _MediaListParser:
+    FUNCTION = "parse_list"
+    CATEGORY = "yton-nodes/Media/解析"
+    KIND = ""
+    INPUT_IS_LIST = True
+    DESCRIPTION = "按列表顺序拆分素材，禁用项保留序号并输出空值。可提前连接全部输出，未填充的输出也传递空值，由支持可选素材的下游节点忽略。"
 
-        # Populate output slots
-        img_slots = [loaded_image_tensors[i] if i < len(loaded_image_tensors) else empty_image_tensor() for i in range(self.MAX_IMAGES)]
-        audio_slots = [loaded_audio_dicts[i] if i < len(loaded_audio_dicts) else empty_audio_dict() for i in range(self.MAX_AUDIOS)]
-        video_slots = [resolved_video_paths[i] if i < len(resolved_video_paths) else "" for i in range(self.MAX_VIDEOS)]
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {cls.KIND: (cls.KIND.upper(), {"forceInput": True})}}
 
-        media_bundle = {
-            "images": loaded_image_tensors,
-            "audios": loaded_audio_dicts,
-            "video_paths": resolved_video_paths,
-            "counts": {
-                "images": len(active_images),
-                "audios": len(active_audios),
-                "videos": len(active_videos)
-            }
+    def parse_list(self, **inputs):
+        items = inputs[self.KIND]
+        count = MEDIA_SLOTS[self.KIND]
+        # An execution blocker cancels the entire downstream call, including
+        # its populated inputs. None lets optional-media consumers skip only
+        # the missing item while keeping every socket connected.
+        return tuple(items[index] if index < len(items) else None for index in range(count))
+
+
+class YtonImageListParser(_MediaListParser):
+    KIND = "image"
+    RETURN_TYPES = ("IMAGE",) * 9
+    RETURN_NAMES = tuple(f"image_{index}" for index in range(1, 10))
+
+
+class YtonVideoListParser(_MediaListParser):
+    KIND = "video"
+    RETURN_TYPES = ("VIDEO",) * 3
+    RETURN_NAMES = ("video_1", "video_2", "video_3")
+
+
+class YtonAudioListParser(_MediaListParser):
+    KIND = "audio"
+    RETURN_TYPES = ("AUDIO",) * 3
+    RETURN_NAMES = ("audio_1", "audio_2", "audio_3")
+
+
+class YtonImageParser:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"image": ("IMAGE", {"forceInput": True})}}
+
+    RETURN_TYPES = ("IMAGE", "MASK")
+    RETURN_NAMES = ("image", "mask")
+    FUNCTION = "parse_image"
+    CATEGORY = "yton-nodes/Media/解析"
+
+    def parse_image(self, image):
+        if image is None:
+            return None, None
+        mask = getattr(image, "yton_mask", None)
+        if mask is None:
+            mask = 1.0 - image[..., 3] if image.shape[-1] == 4 else torch.zeros(image.shape[:3], dtype=image.dtype, device=image.device)
+        return image[..., :3], mask
+
+
+class YtonVideoParser:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "video": ("VIDEO", {"forceInput": True}),
+            "force_rate": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 120.0, "step": 1.0,
+                                    "tooltip": "0 保留原帧率；H3 参考视频设为 24，按原时长重采样，不改变音轨速度。"}),
+        }}
+
+    RETURN_TYPES = ("IMAGE", "INT", "AUDIO", "VHS_VIDEOINFO")
+    RETURN_NAMES = ("图像", "帧计数", "音频", "视频信息")
+    FUNCTION = "parse_video"
+    CATEGORY = "yton-nodes/Media/解析"
+    DESCRIPTION = "解析视频画面、帧数、原音轨和 VHS 视频信息；可按原时长转换帧率。空视频透传空值，无音轨时音频为空。"
+
+    def parse_video(self, video, force_rate=0.0):
+        if video is None:
+            return None, None, None, None
+        components = video.get_components()
+        images = components.images
+        source_frame_count, height, width = map(int, images.shape[:3])
+        source_fps = float(components.frame_rate)
+        if not source_frame_count:
+            raise ValueError("视频中没有可解析的图像帧")
+        if source_fps <= 0:
+            raise ValueError("视频帧率必须大于 0")
+        fps = float(force_rate) if force_rate > 0 else source_fps
+        if force_rate > 0:
+            frame_count = max(1, int(source_frame_count / source_fps * fps))
+            indexes = (torch.arange(frame_count, device=images.device) * source_fps / fps).long()
+            images = images[indexes.clamp_max(source_frame_count - 1)]
+        frame_count = int(images.shape[0])
+        source_width, source_height = video.get_dimensions()
+        video_info = {
+            "source_fps": float(video.get_frame_rate()),
+            # All input frames are decoded; container frame counts can be estimates.
+            "source_frame_count": source_frame_count,
+            "source_duration": float(video.get_duration()),
+            "source_width": int(source_width),
+            "source_height": int(source_height),
+            "loaded_fps": fps,
+            "loaded_frame_count": frame_count,
+            "loaded_duration": frame_count / fps,
+            "loaded_width": width,
+            "loaded_height": height,
         }
+        return images, frame_count, components.audio, video_info
 
-        return (
-            media_bundle,
-            *img_slots,
-            *audio_slots,
-            *video_slots,
-            len(active_images),
-            len(active_audios),
-            len(active_videos)
-        )
+
+class YtonAudioParser:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"audio": ("AUDIO", {"forceInput": True})}}
+
+    RETURN_TYPES = ("AUDIO",)
+    RETURN_NAMES = ("audio",)
+    FUNCTION = "parse_audio"
+    CATEGORY = "yton-nodes/Media/解析"
+
+    def parse_audio(self, audio):
+        return (audio,)
