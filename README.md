@@ -6,23 +6,22 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
 
 1. **分辨率比例控件 (`YtonResolutionSelector`)**
    - Dual-mode switching: **Normal (Standard Image/Video)** vs **MiniMax H3 (Video)**
-   - H3 mode strictly enforces 16/32-pixel macroblock alignment (e.g. 1080p -> 1088h, 540p -> 544h).
+   - H3 mode outputs widths and heights aligned to multiples of 32 (e.g. 16:9 768p → 1344×768, 1080p → 1920×1088).
    - Both modes start at 480p and show nine presets in a three-row grid. H3 mode includes 768p (1.0), 848p (1.2), 944p (1.5), and 1024p (1.8). Provides presets across 8 aspect ratios (16:9, 9:16, 1:1, 4:3, 3:4, 2:3, 3:2, 21:9).
-   - The added H3 presets use 768p as the 1.0 baseline: short side = 768 × √multiplier, rounded to a multiple of 16. Width/height adapt to the selected aspect ratio; multiplier labels follow the existing 16:9 convention.
+   - The added H3 presets use 768p as the 1.0 baseline: nominal short side = 768 × √multiplier. Output dimensions are aligned to multiples of 32; multiplier labels follow the existing 16:9 convention.
    - Image presets: 480p, 540p, 640p, 720p, 1080p, 2K, 2.5K, 4K, and 6K. The 2.5K tier scales the existing 2K dimensions by approximately 1.25 (16:9: 3200×1800; 1:1: 2560×2560), using even dimensions.
    - Outputs: `width`, `height`, `aspect_ratio`, `max_side`, `min_side`, `h3_mp` (compute multiplier), `resolution_str`.
+   - **分辨率比例控件simple (`YtonResolutionSelectorSimple`)** uses the same controls and dimension rules, with only `width` and `height` outputs.
 
 2. **媒体加载器 (`YtonEasyMediaLoader`)**
    - 固定三列卡片：9 张图片、3 个视频、3 个音频，分类支持折叠。
    - 新建节点默认宽度 640，图片展开，视频和音频折叠；保存后保留用户选择的尺寸与折叠状态。
    - 没有输入连线端口。点击槽位选择文件，或直接拖入文件；支持多文件上传、预览、播放、删除及同类槽位交换。
    - 选中节点后按 Ctrl+V，可粘贴剪贴板中的图片、视频或音频文件，自动分类并填入第一个空槽位，不覆盖已有素材；视频和音频粘贴后自动展开。支持同时粘贴多个文件，槽位满时提示先移除素材；在文本输入框中粘贴仍保留原有行为。
-   - 悬停图片槽位时，右上角显示大图预览、原生遮罩图标和删除按钮。眼睛按钮打开完整图片预览，支持 Escape、关闭按钮或点击外部关闭；遮罩按钮打开 ComfyUI 原生遮罩编辑器。保存后更新当前槽位，取消保留原图；遮罩可通过“图片列表解析 → 图片解析”的 `mask` 输出取得。
-   - 缩略图不叠加文件名。保存的遮罩在缩略图及大图预览中以半透明荧光绿色显示，原图 RGB 保持可见；实际遮罩仍存储在图片 alpha 中。
+   - 悬停图片槽位时，删除按钮左侧显示遮罩编辑图标，点击打开 ComfyUI 原生遮罩编辑器。保存后更新当前槽位，取消保留原图；遮罩可通过“图片列表解析 → 图片解析”的 `mask` 输出取得。
    - 三个原生列表输出：`image`（IMAGE）、`video`（VIDEO）、`audio`（AUDIO），端口显示 ComfyUI 列表图标。
    - 文件名保存在 `image_1`～`image_9`、`video_1`～`video_3`、`audio_1`～`audio_3` 的 widget 值中，外部 API 可直接填写。
    - 面板的槽位编号固定；输出列表仅包含已加载的素材，按槽位顺序排列。图片为张量、视频为原生 VIDEO 对象、音频为 waveform/sample_rate 字典，可以直接连接 EasyMedia 的列表处理节点。
-   - 已上传素材可通过卡片左下角的电源按钮禁用或启用输出。禁用时保留文件、预览和列表位置，解析器对应序号输出空值，后续素材不会前移；例如四张图片的前三张禁用后，解析器 1–3 为空，4 仍输出第四张。开关随工作流保存，同类素材交换时跟随素材移动；API 参数为 `disable_image_1`～`disable_image_9`、`disable_video_1`～`disable_video_3`、`disable_audio_1`～`disable_audio_3`，默认 false。
 
 3. **素材解析节点**
    - 三个列表解析节点的输入分别为 `image`、`video`、`audio`，使用 ComfyUI 原生列表图标；输出为各个单项素材。
@@ -30,7 +29,7 @@ A clean, modular custom node suite for ComfyUI tailored for AI video (especially
    - 视频列表解析：VIDEO 列表 → `video_1`～`video_3`。
    - 音频列表解析：AUDIO 列表 → `audio_1`～`audio_3`。
    - 图片解析：标准 `IMAGE` → RGB 图片、`MASK`；读取媒体加载器保留的图片遮罩，也可解析 RGBA 输入的透明区域。没有遮罩的 RGB 输入输出全零遮罩。
-   - 视频解析：单个 `VIDEO` → 图像帧批次（IMAGE）、帧计数（INT）、原音轨（AUDIO）、视频信息（VHS_VIDEOINFO）。视频信息包含源视频与解析结果的帧率、帧数、时长和宽高，可连接 Video Helper Suite 的视频信息节点；没有音轨时音频为空。`force_rate` 为 0 时保留原帧率，设为 24 时按原时长重采样供 H3 使用；音轨保持原速度。空视频直接透传空值，因此三个视频槽位都可以提前接好。
+   - 视频解析：单个 `VIDEO` → 图像帧批次（IMAGE）、帧计数（INT）、原音轨（AUDIO）、视频信息（VHS_VIDEOINFO）。视频信息包含源视频与解析结果的帧率、帧数、时长和宽高，可连接 Video Helper Suite 的视频信息节点；没有音轨时音频为空。
    - 音频解析：单个音频素材 → 标准 `AUDIO`。
    - 连接方式：加载器 → 对应列表解析 → 生成或处理节点；单项解析按需使用。列表解析按有效素材顺序拆分，未填充的端口输出空值；图片、视频、音频单项解析也会透传空值。
    - 可以预先连接全部输出，例如把九张图片都接到 Qwen Image 2.1 编码器；运行时编码器只读取已有图片，其他连接保留。下游需要支持可选素材或忽略空值；必须有素材的节点仍需要提供有效输入。
@@ -72,11 +71,6 @@ uploading, drag exchanges, and all three parser chains.
 
 Run `tests/media_mask_editor.browser.js` against the installed plugin to check native
 mask painting, saving, cancelling, reopening, and slot/workflow serialization.
-
-Run `tests/minimax_h3_reference.browser.js` with the same schema export and local
-server to check the three direct media-list connections and save/reload behavior.
-Run `tests/test_minimax_h3_reference_node.py -v` for official-output equivalence,
-video/soundtrack pairing, and actual ComfyUI list execution with lightweight encoders.
 
 Run `tests/test_media_nodes.py -v` with the same Python environment for real image,
 audio, and video parsing checks. Restart ComfyUI after updating the Python node files,

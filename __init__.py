@@ -1,7 +1,7 @@
 """
 ComfyUI-yton-nodes entry point.
 """
-from .nodes.resolution_node import YtonResolutionSelector
+from .nodes.resolution_node import YtonResolutionSelector, YtonResolutionSelectorSimple
 from .nodes.media_loader_node import (
     YtonEasyMediaLoader, YtonImageListParser, YtonVideoListParser,
     YtonAudioListParser, YtonImageParser, YtonVideoParser, YtonAudioParser,
@@ -10,6 +10,7 @@ from .nodes.minimax_h3_reference_node import YtonMiniMaxH3ReferenceToVideo
 
 NODE_CLASS_MAPPINGS = {
     "YtonResolutionSelector": YtonResolutionSelector,
+    "YtonResolutionSelectorSimple": YtonResolutionSelectorSimple,
     "YtonEasyMediaLoader": YtonEasyMediaLoader,
     "YtonImageListParser": YtonImageListParser,
     "YtonVideoListParser": YtonVideoListParser,
@@ -22,6 +23,7 @@ NODE_CLASS_MAPPINGS = {
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "YtonResolutionSelector": "分辨率比例控件",
+    "YtonResolutionSelectorSimple": "分辨率比例控件simple",
     "YtonEasyMediaLoader": "媒体加载器",
     "YtonImageListParser": "图片列表解析",
     "YtonVideoListParser": "视频列表解析",
