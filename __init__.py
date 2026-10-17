@@ -7,6 +7,7 @@ from .nodes.media_loader_node import (
     YtonAudioListParser, YtonImageParser, YtonVideoParser, YtonAudioParser,
 )
 from .nodes.minimax_h3_reference_node import YtonMiniMaxH3ReferenceToVideo
+from .nodes.h3_video_replacement_node import YtonH3VideoReplacementPrepare, YtonH3VideoReplacementTrim
 
 NODE_CLASS_MAPPINGS = {
     "YtonResolutionSelector": YtonResolutionSelector,
@@ -19,6 +20,8 @@ NODE_CLASS_MAPPINGS = {
     "YtonVideoParser": YtonVideoParser,
     "YtonAudioParser": YtonAudioParser,
     "YtonMiniMaxH3ReferenceToVideo": YtonMiniMaxH3ReferenceToVideo,
+    "YtonH3VideoReplacementPrepare": YtonH3VideoReplacementPrepare,
+    "YtonH3VideoReplacementTrim": YtonH3VideoReplacementTrim,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -32,6 +35,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "YtonVideoParser": "视频解析",
     "YtonAudioParser": "音频解析",
     "YtonMiniMaxH3ReferenceToVideo": "MiniMax H3 参考生成视频",
+    "YtonH3VideoReplacementPrepare": "H3 人物替换 · 参考视频补齐",
+    "YtonH3VideoReplacementTrim": "H3 人物替换 · 声画同步裁尾",
 }
 
 WEB_DIRECTORY = "./web"
