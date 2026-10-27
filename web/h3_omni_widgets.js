@@ -57,13 +57,28 @@ function setupSections(node) {
       output.label = { video: "视频", av_latent: "AV latent", latent_path: "Latent 路径" }[output.name];
     }
   }
+  function syncScheduleState() {
+    const custom = node.inputs.find(input => input.name === "sigmas")?.link != null;
+    for (const name of ["steps", "scheduler", "denoise"]) {
+      widgets.get(name).disabled = custom;
+    }
+    node.setDirtyCanvas(true, true);
+  }
+  const connectionsChange = node.onConnectionsChange;
+  node.onConnectionsChange = function () {
+    const result = connectionsChange?.apply(this, arguments);
+    syncScheduleState();
+    return result;
+  };
   const configure = node.onConfigure;
   node.onConfigure = function () {
     const result = configure?.apply(this, arguments);
     labelSockets();
+    syncScheduleState();
     return result;
   };
   labelSockets();
+  syncScheduleState();
   node.setSize([Math.max(node.size[0], 400), node.computeSize()[1]]);
 }
 

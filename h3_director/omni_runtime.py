@@ -17,7 +17,7 @@ class YtonH3OmniGenerate:
                 "tooltip": "采样总时长，包含续段会裁去的画面上下文。"}),
             "ref_image_size": (["match", "max"], {"default": "match"}),
             "steps": ("INT", {"default": 4, "min": 1, "max": 1000,
-                "tooltip": "常规主采样的步数；轻量精修取该调度的最后一步。外部 Sigma 接入时，主采样步数由外部时间表决定。"}),
+                "tooltip": "常规调度步数；接入自定义 Sigma 后失效，主采样和精修均使用自定义时间表。"}),
             "sampler_name": (comfy.samplers.KSampler.SAMPLERS, {"default": "euler"}),
             "scheduler": (comfy.samplers.KSampler.SCHEDULERS, {"default": "simple"}),
             "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
@@ -38,8 +38,8 @@ class YtonH3OmniGenerate:
             "image": ("IMAGE", {"rawLink": True}),
             "video": ("VIDEO", {"rawLink": True}),
             "audio": ("AUDIO", {"rawLink": True}),
-            "sigmas": ("SIGMAS", {"rawLink": True,
-                "tooltip": "连接即使用外部 Sigma；未连接时使用常规调度。"}),
+            "sigmas": ("SIGMAS", {
+                "tooltip": "连接即使用外部 Sigma，调度步数、调度器和调度降噪失效；精修取外部时间表的最后一个区间。"}),
         }}
 
     RETURN_TYPES = ("VIDEO", "LATENT", "STRING")
@@ -67,9 +67,11 @@ class YtonH3OmniGenerate:
         context = graph.node("YuanH3NikoMotionContext", id="context", conditioning=reference.out(0),
             vae=model.out(2), latent=reference.out(1), context_latent=previous.out(0),
             context_length=int(context_length), audio_context_length=audio_context_length)
-        schedule = graph.node("BasicScheduler", id="schedule", model=model.out(0),
-            scheduler=scheduler, steps=steps, denoise=denoise)
-        tail = graph.node("MiniMaxH3SigmasTail", id="tail", sigmas=sigmas if sigmas is not None else schedule.out(0),
+        schedule = sigmas
+        if schedule is None:
+            schedule = graph.node("BasicScheduler", id="schedule", model=model.out(0),
+                scheduler=scheduler, steps=steps, denoise=denoise).out(0)
+        tail = graph.node("MiniMaxH3SigmasTail", id="tail", sigmas=schedule,
             tail_steps=3, strength=tail_strength)
         noise = graph.node("RandomNoise", id="noise", noise_seed=seed)
         guider = graph.node("BasicGuider", id="guider", model=model.out(0), conditioning=context.out(0))
@@ -78,11 +80,12 @@ class YtonH3OmniGenerate:
             sampler=sampler.out(0), sigmas=tail.out(0), latent_image=reference.out(1))
         final = main.out(0)
         if use_refine:
-            split = graph.node("SplitSigmas", id="refine_sigmas", sigmas=schedule.out(0), step=steps - 1)
+            refine_sigmas = sigmas[-2:] if sigmas is not None else graph.node(
+                "SplitSigmas", id="refine_sigmas", sigmas=schedule, step=steps - 1).out(1)
             refine_noise = graph.node("RandomNoise", id="refine_noise", noise_seed=(seed + 1) % (1 << 64))
             plain = graph.node("BasicGuider", id="refine_guider", model=model.out(0), conditioning=reference.out(0))
             refined = graph.node("SamplerCustomAdvanced", id="refine", noise=refine_noise.out(0),
-                guider=plain.out(0), sampler=sampler.out(0), sigmas=split.out(1), latent_image=main.out(0))
+                guider=plain.out(0), sampler=sampler.out(0), sigmas=refine_sigmas, latent_image=main.out(0))
             final = graph.node("MiniMaxH3RefineBlend", id="blend", original=main.out(0), refined=refined.out(0),
                 hold_frames=context.out(1), blend_frames=22, audio="original", use_refine=True,
                 clip_index=previous_index).out(0)
