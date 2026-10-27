@@ -166,7 +166,12 @@ function setupResolutionNode(node) {
   function renderRatios() {
     ratioGrid.innerHTML = "";
     const ratios = ["16:9", "9:16", "1:1", "4:3", "3:4", "2:3", "3:2", "21:9"];
+    const imageLinked = node.inputs.some(input => input.name === "image" && input.link != null);
+    if (!imageLinked && ratioWidget.value === "auto" && !node.inputs.some(input => input.name === "aspect_ratio" && input.link != null)) {
+      ratioWidget.value = ratios.find(value => value !== "auto");
+    }
     ratios.forEach(r => {
+      if (r === "auto" && !imageLinked) return;
       const card = document.createElement("button");
       card.type = "button";
       card.setAttribute("aria-label", `画面比例 ${r}`);
