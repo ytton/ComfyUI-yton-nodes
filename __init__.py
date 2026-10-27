@@ -42,3 +42,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 WEB_DIRECTORY = "./web"
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
+
+# H3 application adapters share the yton node package.
+from .h3_director import (
+    NODE_CLASS_MAPPINGS as _h3_classes,
+    NODE_DISPLAY_NAME_MAPPINGS as _h3_names,
+)
+NODE_CLASS_MAPPINGS.update(_h3_classes)
+NODE_DISPLAY_NAME_MAPPINGS.update(_h3_names)
