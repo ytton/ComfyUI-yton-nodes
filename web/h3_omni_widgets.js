@@ -77,8 +77,8 @@ function setupSections(node) {
   }
   node.widgets = ordered;
   function labelSockets() {
-    const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", sigmas: "主采样 Sigma",
-      second_sigmas: "二采 Sigma", face_sigmas: "修脸 Sigma", guide_frames: "本段源视频引导",
+    const inputLabels = { model_loader: "主模型", image: "图片参考", video: "完整源视频 / 复刻片段", audio: "独立音频参考", sigmas: "主采样 Sigma",
+      second_sigmas: "二采 Sigma", face_sigmas: "修脸 Sigma",
       second_model_loader: "二采模型（可选）", face_model_loader: "修脸模型（可选）", ...labels };
     for (const input of node.inputs) if (inputLabels[input.name]) input.label = inputLabels[input.name];
     for (const output of node.outputs) {

@@ -57,7 +57,7 @@ class ExpansionTests(unittest.TestCase):
         self.assertNotIn("main_context", graph)
         self.assertNotIn("upscale", graph)
         self.assertNotIn("face_0_crop", graph)
-        self.assertEqual(graph["trim"]["inputs"]["trim_frames"], 0)
+        self.assertEqual(graph["trim"]["inputs"]["trim_frames"], 4)
         self.assertEqual(graph["reference"]["inputs"]["width"], 1344)
 
     def test_two_pass_continuation_uses_two_distinct_saved_stages(self):
@@ -75,7 +75,7 @@ class ExpansionTests(unittest.TestCase):
         self.assertTrue(graph["main"]["inputs"]["latent_image"][0].endswith("main_context"))
         self.assertTrue(graph["high_sample"]["inputs"]["latent_image"][0].endswith("high_context"))
         self.assertTrue(graph["high_context"]["inputs"]["latent_base"][0].endswith("high_av"))
-        self.assertEqual(graph["trim"]["inputs"]["trim_frames"], 22)
+        self.assertEqual(graph["trim"]["inputs"]["trim_frames"], 21)
         self.assertEqual(graph["save_context"]["inputs"]["final_latent"], result["result"][1])
         self.assertTrue(graph["save_context"]["inputs"]["video"][0].endswith("video"))
 
@@ -117,16 +117,20 @@ class ExpansionTests(unittest.TestCase):
             graph, _ = expanded(sampling_mode="二采", clip_index=index,
                 width=1920, height=1088, first_pass_scale=0.5,
                 duration=(175 - (22 if index > 1 else 0)) / 24,
-                image=["images", 0], guide_frames=["source", 0], face_refine=True,
+                image=["images", 0], video=["source_video", 0], face_refine=True,
                 face_sigmas=["face_sigmas", 0], face_large_strength=1.0,
                 face_fallback_detector="segm\\person_yolov8m-seg.pt", face_seed=42,
                 face_model_loader=["face_model", 0], seed=873790131440316)
             self.assertEqual((graph["reference"]["inputs"]["width"], graph["reference"]["inputs"]["height"]), (960, 544))
-            self.assertEqual(graph["reference"]["inputs"]["length"], 175)
-            self.assertEqual(graph["trim"]["inputs"]["trim_frames"], 0 if index == 1 else 22)
+            self.assertTrue(graph["reference"]["inputs"]["length"][0].endswith("segment"))
+            self.assertEqual(graph["trim"]["inputs"]["trim_frames"][0].endswith("segment"), True)
+            self.assertEqual(graph["trim"]["inputs"]["trim_frames"][1], 1)
             self.assertEqual(graph["schedule"]["inputs"]["steps"], 4)
             self.assertTrue(graph["guider"]["inputs"]["conditioning"][0].endswith("source_guide"))
-            self.assertEqual(graph["source_guide"]["inputs"]["image"], ["source", 0])
+            self.assertTrue(graph["source_guide"]["inputs"]["image"][0].endswith("source_images"))
+            self.assertTrue(graph["source_images"]["inputs"]["images"][0].endswith("source_components"))
+            self.assertEqual(graph["source_images"]["inputs"]["num_frames"], graph["reference"]["inputs"]["length"])
+            self.assertTrue(graph["source_video"]["inputs"]["images"][0].endswith("source_images"))
             self.assertEqual(graph["high_noise"]["inputs"]["noise_seed"], graph["noise"]["inputs"]["noise_seed"])
             self.assertEqual(graph["high_reference"]["inputs"]["image"], ["images", 0])
             self.assertNotIn("face_0_schedule", graph)
@@ -152,6 +156,21 @@ class ExpansionTests(unittest.TestCase):
             self.assertEqual(length - trim, 125)
         graph, _ = expanded(mode="复刻模式", video=["source", 0], clip_index=2)
         self.assertEqual(graph["replica"]["inputs"]["context_frames"], 22)
+        self.assertEqual(graph["trim"]["inputs"]["trim_frames"][1], 1)
+        self.assertNotIn("source_components", graph)
+        self.assertEqual(graph["reference"]["inputs"]["video"], ["source", 0])
+
+    def test_normal_mode_crops_full_source_inside_the_node(self):
+        graph, _ = expanded(mode="普通模式", video=["full_source", 0], clip_index=2,
+                            duration=10.0)
+        self.assertEqual(graph["segment"]["inputs"]["clip_index"], 2)
+        self.assertEqual(graph["segment"]["inputs"]["context_frames"], 22)
+        self.assertTrue(graph["source_images"]["inputs"]["start_index"][0].endswith("segment"))
+        self.assertEqual(graph["source_images"]["inputs"]["start_index"][1], 2)
+        self.assertTrue(graph["source_images"]["inputs"]["num_frames"][0].endswith("segment"))
+        self.assertEqual(graph["source_images"]["inputs"]["num_frames"][1], 0)
+        self.assertEqual(graph["source_audio"]["inputs"]["audio"][0].endswith("source_components"), True)
+        self.assertTrue(graph["trim"]["inputs"]["trim_frames"][0].endswith("segment"))
         self.assertEqual(graph["trim"]["inputs"]["trim_frames"][1], 1)
 
 

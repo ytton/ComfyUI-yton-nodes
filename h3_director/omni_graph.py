@@ -14,7 +14,7 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
                      face_detector, face_reverse, face_large_strength, face_fallback_detector,
                      face_seed, image=None, video=None, audio=None,
                      sigmas=None, second_sigmas=None, context_path="", second_model_loader=None,
-                     face_model_loader=None, face_sigmas=None, guide_frames=None):
+                     face_model_loader=None, face_sigmas=None):
     if sampling_mode not in ("单采", "二采"):
         raise ValueError("采样模式请选择单采或二采。")
     graph = GraphBuilder()
@@ -24,25 +24,47 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
     main_height = max(32, round(height * first_pass_scale / 32) * 32) if two_pass else height
     previous_path = context_path or (context_name(latent_path, clip_index - 1) if clip_index > 1 else "")
     overlap = CONTEXT_FRAMES if previous_path else 0
+    source_images = source_audio = source_video = None
     if mode == "复刻模式":
         if video is None:
             raise ValueError("复刻模式需要传入至少一个视频，时长取第一个视频。")
         plan = graph.node("YtonH3ReplicaPlan", id="replica", video=video, context_frames=overlap)
         length, trim_frames = plan.out(0), plan.out(1)
     elif mode == "普通模式":
-        length = 5 + 17 * max(0, math.floor((duration * 24 + overlap - 5) / 17 + 0.5))
-        length = max(39 if overlap else 5, length)
-        trim_frames = overlap
+        if video is not None:
+            plan = graph.node("YtonH3SegmentPlan", id="segment", duration=duration,
+                clip_index=clip_index, context_frames=overlap)
+            length, trim_frames = plan.out(0), plan.out(1)
+            source_start = plan.out(2)
+        else:
+            length = 5 + 17 * max(0, math.floor((duration * 24 + overlap - 5) / 17 + 0.5))
+            length = max(39 if overlap else 5, length)
+            trim_frames = length - max(1, math.floor(float(duration) * 24 + 0.5))
+            source_start = None
     else:
         raise ValueError("请选择普通模式或复刻模式。")
     previous = None
     if previous_path:
         previous = graph.node("YtonH3LoadOmniContext", id="previous", context_path=previous_path,
             main_width=main_width, main_height=main_height, width=width, height=height)
+    if video is not None and mode == "普通模式":
+        components = graph.node("GetVideoComponents", id="source_components", video=video)
+        source_images = graph.node("GetImageRangeFromBatch", id="source_images",
+            images=components.out(0), start_index=source_start, num_frames=length).out(0)
+        start_seconds = graph.node("ComfyMathExpression", id="source_start_seconds",
+            expression="a / 24", **{"values.a": source_start}).out(0)
+        source_duration = graph.node("ComfyMathExpression", id="source_duration",
+            expression="a / 24", **{"values.a": length}).out(0)
+        source_audio = graph.node("TrimAudioDuration", id="source_audio", audio=components.out(1),
+            start_index=start_seconds, duration=source_duration).out(0)
+        source_video = graph.node("CreateVideo", id="source_video", images=source_images,
+            audio=source_audio, fps=components.out(2)).out(0)
+
     reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id="reference",
         clip=models.out(1), vae=models.out(2), audio_vae=models.out(3), prompt=prompt,
         width=main_width, height=main_height, length=length, ref_image_size=ref_image_size)
-    for name, link in (("image", image), ("video", video), ("audio", audio)):
+    for name, link in (("image", image), ("video", source_video if source_video is not None else video),
+                       ("audio", audio if source_video is None else None)):
         if link is not None:
             reference.set_input(name, link)
     latent = reference.out(1)
@@ -56,9 +78,9 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
             scheduler=scheduler, steps=steps, denoise=denoise).out(0)
     noise = graph.node("RandomNoise", id="noise", noise_seed=seed)
     conditioning = reference.out(0)
-    if guide_frames is not None:
+    if source_images is not None:
         conditioning = graph.node("MiniMaxH3AddGuide", id="source_guide", positive=conditioning,
-            latent=reference.out(1), vae=models.out(2), image=guide_frames, frame_idx=0).out(0)
+            latent=reference.out(1), vae=models.out(2), image=source_images, frame_idx=0).out(0)
     guider = graph.node("BasicGuider", id="guider", model=models.out(0), conditioning=conditioning)
     sampler = graph.node("KSamplerSelect", id="sampler", sampler_name=sampler_name)
     main = graph.node("SamplerCustomAdvanced", id="main", noise=noise.out(0), guider=guider.out(0),
@@ -73,6 +95,8 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
             width=width, height=height, length=length, ref_image_size=ref_image_size)
         if image is not None:
             high_reference.set_input("image", image)
+        if source_video is not None:
+            high_reference.set_input("video", source_video)
         split = graph.node("LTXVSeparateAVLatent", id="split_main", av_latent=main.out(0))
         upscaled = graph.node("MinimaxH3LatentUpscaler3D", id="upscale", latent=split.out(0),
             model_name=upscale_model, mode="target dimensions", **{"mode.width": width, "mode.height": height},

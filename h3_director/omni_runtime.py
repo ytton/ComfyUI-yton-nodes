@@ -30,12 +30,40 @@ class YtonH3ReplicaPlan:
         if not math.isfinite(duration) or duration <= 0:
             raise ValueError("复刻模式的第一个视频时长无效。")
         target = max(1, math.floor(duration * 24 + 0.5))
-        length = 5 + 17 * max(0, math.ceil((target + context_frames[0] - 5) / 17))
+        overlap = int(context_frames[0])
+        length = 5 + 17 * max(0, math.ceil((target + overlap - 5) / 17))
         if length > 3592:
             raise ValueError("复刻视频加上上下文后超出H3最大采样帧数3592，请先拆分视频。")
-        # Crop the alignment surplus at the head so the delivered tail still
-        # matches the full sampler latent saved for the next clip.
+        # Remove both the context prefix and the H3 frame-grid surplus so the
+        # visible result has exactly the duration of the supplied clip.
         return length, length - target
+
+
+class YtonH3SegmentPlan:
+    """Plan one visible source segment and its H3 context prefix."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "duration": ("FLOAT", {"min": 0.21, "max": 149.66}),
+            "clip_index": ("INT", {"min": 1, "max": 9999}),
+            "context_frames": ("INT", {"min": 0, "max": 56}),
+        }}
+
+    RETURN_TYPES = ("INT", "INT", "INT", "INT")
+    RETURN_NAMES = ("length", "trim_frames", "start_frame", "visible_frames")
+    FUNCTION = "plan"
+    CATEGORY = "yton-nodes/MiniMax H3"
+
+    def plan(self, duration, clip_index, context_frames):
+        visible = max(1, math.floor(float(duration) * 24 + 0.5))
+        overlap = int(context_frames)
+        length = 5 + 17 * max(0, math.ceil((visible + overlap - 5) / 17))
+        if length > 3592:
+            raise ValueError("当前片段加上 22 帧上下文后超出 H3 最大采样帧数 3592，请缩短时长。")
+        # The node trims the context prefix and any H3 grid surplus after
+        # decoding, so the visible result is exactly `duration` at 24 fps.
+        return length, length - visible, max(0, (int(clip_index) - 1) * visible - overlap), visible
 
 
 class YtonH3OmniGenerate:
@@ -49,7 +77,7 @@ class YtonH3OmniGenerate:
             "mode": (["普通模式", "复刻模式"], {"default": "普通模式",
                 "tooltip": "普通模式使用填写的时长；复刻模式忽略填写时长，仅按第一个传入视频决定成片时长，并自动补足上下文。"}),
             "duration": ("FLOAT", {"default": 5.0, "min": 0.21, "max": 149.66, "step": 0.1,
-                "tooltip": "仅普通模式有效。续段自动补上画面上下文；按24fps及H3的5+17×N帧就近对齐，实际成片时长会略有差异。"}),
+                "tooltip": "仅普通模式有效。节点按24fps计算可见帧，续段自动补22帧上下文并在输出端裁回填写的时长。"}),
             "ref_image_size": (["match", "max"], {"default": "match"}),
             "sampling_mode": (["单采", "二采"], {"default": "单采",
                 "tooltip": "单采直接按目标分辨率生成；二采先低分生成、潜空间放大，再进行第二次采样。小脸修复是独立的可选局部处理。"}),
@@ -82,11 +110,10 @@ class YtonH3OmniGenerate:
             "face_seed": ("INT", {"default": 42, "min": 0, "max": 0xffffffffffffffff}),
             "face_reverse": ("BOOLEAN", {"default": False, "tooltip": "倒序修脸，贴回后恢复正常播放顺序。"}),
         }, "optional": {
-            "image": ("IMAGE", {"rawLink": True}),
-            "video": ("VIDEO", {"rawLink": True}),
-            "audio": ("AUDIO", {"rawLink": True}),
-            "guide_frames": ("IMAGE", {"rawLink": True,
-                "tooltip": "本段源视频画面，按 1029 的 AddGuide 从第 0 帧引导；续段源画面应包含前段末尾 22 帧。"}),
+            "image": ("IMAGE", {"rawLink": True, "tooltip": "人物或风格参考图。"}),
+            "video": ("VIDEO", {"rawLink": True,
+                "tooltip": "普通模式接完整源视频，节点按片段序号和时长自动截取；复刻模式接已经准备好的当前片段。"}),
+            "audio": ("AUDIO", {"rawLink": True, "tooltip": "没有视频输入时使用的独立音频参考；普通模式接源视频后由节点自动使用其音轨。"}),
             "sigmas": ("SIGMAS", {
                 "tooltip": "连接后用于主采样，主采样步数、调度器和降噪失效。"}),
             "second_sigmas": ("SIGMAS", {"tooltip": "仅用于二采，优先于二采Sigma文本。"}),
@@ -113,5 +140,9 @@ class YtonH3OmniGenerate:
         return build_omni_graph(**inputs)
 
 
-NODE_CLASS_MAPPINGS = {"YtonH3OmniGenerate": YtonH3OmniGenerate, "YtonH3ReplicaPlan": YtonH3ReplicaPlan}
-NODE_DISPLAY_NAME_MAPPINGS = {"YtonH3OmniGenerate": "H3 全模态生成", "YtonH3ReplicaPlan": "H3 复刻时长规划"}
+NODE_CLASS_MAPPINGS = {"YtonH3OmniGenerate": YtonH3OmniGenerate,
+                       "YtonH3ReplicaPlan": YtonH3ReplicaPlan,
+                       "YtonH3SegmentPlan": YtonH3SegmentPlan}
+NODE_DISPLAY_NAME_MAPPINGS = {"YtonH3OmniGenerate": "H3 全模态生成",
+                              "YtonH3ReplicaPlan": "H3 复刻时长规划",
+                              "YtonH3SegmentPlan": "H3 分段时长规划"}
