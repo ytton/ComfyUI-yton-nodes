@@ -12,11 +12,12 @@ const values = {
   first_pass_scale: 0.625, upscale_model: 'model.safetensors', second_sampler: 'sa_solver',
   second_sigma_values: '0.6,0.3,0', face_refine: false, face_count: 1, face_steps: 4,
   face_denoise: 0.4, face_detector: 'face.pt', face_reverse: false,
+  face_large_strength: 0.35, face_fallback_detector: 'none', face_seed: 42,
   seed: 1, control_after_generate: 'fixed', latent_path: 'context', clip_index: 1, context_path: '',
 }
 const node = {
   comfyClass: 'YtonH3OmniGenerate', widgets: Object.entries(values).map(([name, value]) => ({ name, value })),
-  inputs: ['sigmas', 'second_sigmas'].map(name => ({ name, link: null })), outputs: [], size: [400, 500],
+  inputs: ['sigmas', 'second_sigmas', 'face_sigmas'].map(name => ({ name, link: null })), outputs: [], size: [400, 500],
   addCustomWidget(widget) { this.widgets.push(widget); return widget },
   computeSize() { return [460, 1000] }, setDirtyCanvas() {}, setSize(size) { this.size = size },
 }
@@ -29,6 +30,12 @@ change('sampling_mode', '二采')
 assert.equal(widgets.get('first_pass_scale').disabled, false)
 change('face_refine', true)
 assert.equal(widgets.get('face_steps').disabled, false)
+node.inputs[2].link = 3
+node.onConnectionsChange()
+assert.ok(widgets.get('face_steps').disabled)
+assert.ok(widgets.get('face_denoise').disabled)
+assert.equal(widgets.get('first_pass_scale').disabled, false)
+assert.equal(widgets.get('face_large_strength').disabled, false)
 change('mode', '复刻模式')
 assert.ok(widgets.get('duration').disabled)
 node.inputs[0].link = 1
@@ -36,7 +43,7 @@ node.inputs[1].link = 2
 node.onConnectionsChange()
 assert.ok(widgets.get('steps').disabled)
 assert.ok(widgets.get('second_sigma_values').disabled)
-assert.equal(widgets.get('face_steps').disabled, false)
+assert.equal(widgets.get('face_steps').disabled, true)
 assert.equal(node.widgets.filter(w => w.name === 'h3_context_length').length, 1)
 assert.equal(widgets.get('h3_context_length').serialize, false)
 for (const name of Object.keys(values)) assert.ok(widgets.has(name), `missing ${name}`)

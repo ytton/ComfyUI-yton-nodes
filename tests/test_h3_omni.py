@@ -112,6 +112,36 @@ class ExpansionTests(unittest.TestCase):
             self.assertEqual(length % 17, 5)
             self.assertGreater(length, 22)
 
+    def test_1029_sampling_profile_uses_actual_dimensions_sigmas_and_model_branches(self):
+        for index in (1, 2):
+            graph, _ = expanded(sampling_mode="二采", clip_index=index,
+                width=1920, height=1088, first_pass_scale=0.5,
+                duration=(175 - (22 if index > 1 else 0)) / 24,
+                image=["images", 0], guide_frames=["source", 0], face_refine=True,
+                face_sigmas=["face_sigmas", 0], face_large_strength=1.0,
+                face_fallback_detector="segm\\person_yolov8m-seg.pt", face_seed=42,
+                face_model_loader=["face_model", 0], seed=873790131440316)
+            self.assertEqual((graph["reference"]["inputs"]["width"], graph["reference"]["inputs"]["height"]), (960, 544))
+            self.assertEqual(graph["reference"]["inputs"]["length"], 175)
+            self.assertEqual(graph["trim"]["inputs"]["trim_frames"], 0 if index == 1 else 22)
+            self.assertEqual(graph["schedule"]["inputs"]["steps"], 4)
+            self.assertTrue(graph["guider"]["inputs"]["conditioning"][0].endswith("source_guide"))
+            self.assertEqual(graph["source_guide"]["inputs"]["image"], ["source", 0])
+            self.assertEqual(graph["high_noise"]["inputs"]["noise_seed"], graph["noise"]["inputs"]["noise_seed"])
+            self.assertEqual(graph["high_reference"]["inputs"]["image"], ["images", 0])
+            self.assertNotIn("face_0_schedule", graph)
+            self.assertEqual(graph["face_0_sample"]["inputs"]["sigmas"], ["face_sigmas", 0])
+            self.assertEqual(graph["face_0_noise"]["inputs"]["noise_seed"], 42)
+            self.assertEqual(graph["face_0_denoise"]["inputs"]["denoise_multiplier_large_face"], 1.0)
+            self.assertEqual(graph["face_0_crop"]["inputs"]["fallback_detector"], "segm\\person_yolov8m-seg.pt")
+            self.assertTrue(graph["face_0_denoise"]["inputs"]["model"][0].endswith("face_models"))
+            self.assertFalse(any("Loop" in n["class_type"] for n in graph.values()))
+
+    def test_single_pass_uses_target_size_independently_of_first_pass_scale(self):
+        graph, _ = expanded(sampling_mode="单采", width=1920, height=1088, first_pass_scale=0.5)
+        self.assertEqual(graph["reference"]["inputs"]["width"], 1920)
+        self.assertEqual(graph["reference"]["inputs"]["height"], 1088)
+
     def test_replica_uses_first_video_duration_and_aligns_tail(self):
         video = InputImpl.VideoFromComponents(Types.VideoComponents(
             images=torch.zeros(125, 4, 4, 3), frame_rate=Fraction(24)))

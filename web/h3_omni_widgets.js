@@ -4,7 +4,7 @@ const sections = [
   ["生成", ["prompt", "width", "height", "mode", "duration", "ref_image_size"]],
   ["主采样", ["sampling_mode", "steps", "sampler_name", "scheduler", "denoise"]],
   ["二采 · 潜空间放大", ["first_pass_scale", "upscale_model", "second_sampler", "second_sigma_values"]],
-  ["小脸修复", ["face_refine", "face_count", "face_steps", "face_denoise", "face_detector", "face_reverse"]],
+  ["小脸修复", ["face_refine", "face_count", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
   ["分段上下文", ["latent_path", "clip_index", "context_path", "h3_context_length"]],
 ];
@@ -18,6 +18,7 @@ const labels = {
   second_sampler: "二采采样器", second_sigma_values: "二采 Sigma",
   face_refine: "启用小脸修复", face_count: "修脸人数", face_steps: "修脸步数",
   face_denoise: "小脸降噪强度", face_detector: "人脸检测模型", face_reverse: "倒序修脸",
+  face_large_strength: "大脸降噪倍率", face_fallback_detector: "人体兜底检测", face_seed: "修脸种子",
 };
 
 function setupSections(node) {
@@ -77,7 +78,8 @@ function setupSections(node) {
   node.widgets = ordered;
   function labelSockets() {
     const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", sigmas: "主采样 Sigma",
-      second_sigmas: "二采 Sigma", second_model_loader: "二采模型（可选）", face_model_loader: "修脸模型（可选）", ...labels };
+      second_sigmas: "二采 Sigma", face_sigmas: "修脸 Sigma", guide_frames: "本段源视频引导",
+      second_model_loader: "二采模型（可选）", face_model_loader: "修脸模型（可选）", ...labels };
     for (const input of node.inputs) if (inputLabels[input.name]) input.label = inputLabels[input.name];
     for (const output of node.outputs) {
       output.label = { video: "本段视频", av_latent: "最终 AV latent", latent_path: "本段上下文路径" }[output.name];
@@ -94,8 +96,12 @@ function setupSections(node) {
       widgets.get(name).disabled = !twoPass;
     }
     widgets.get("second_sigma_values").disabled = !twoPass || node.inputs.find(input => input.name === "second_sigmas")?.link != null;
-    for (const name of ["face_count", "face_steps", "face_denoise", "face_detector", "face_reverse"]) {
+    for (const name of ["face_count", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]) {
       widgets.get(name).disabled = !widgets.get("face_refine").value;
+    }
+    if (node.inputs.find(input => input.name === "face_sigmas")?.link != null) {
+      widgets.get("face_steps").disabled = true;
+      widgets.get("face_denoise").disabled = true;
     }
     node.setDirtyCanvas(true, true);
   }

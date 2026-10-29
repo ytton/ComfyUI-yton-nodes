@@ -11,9 +11,10 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
                      sampling_mode, steps, sampler_name, scheduler, denoise, seed,
                      first_pass_scale, upscale_model, second_sampler, second_sigma_values,
                      latent_path, clip_index, face_refine, face_count, face_steps, face_denoise,
-                     face_detector, face_reverse, image=None, video=None, audio=None,
+                     face_detector, face_reverse, face_large_strength, face_fallback_detector,
+                     face_seed, image=None, video=None, audio=None,
                      sigmas=None, second_sigmas=None, context_path="", second_model_loader=None,
-                     face_model_loader=None):
+                     face_model_loader=None, face_sigmas=None, guide_frames=None):
     if sampling_mode not in ("单采", "二采"):
         raise ValueError("采样模式请选择单采或二采。")
     graph = GraphBuilder()
@@ -54,7 +55,11 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
         schedule = graph.node("BasicScheduler", id="schedule", model=models.out(0),
             scheduler=scheduler, steps=steps, denoise=denoise).out(0)
     noise = graph.node("RandomNoise", id="noise", noise_seed=seed)
-    guider = graph.node("BasicGuider", id="guider", model=models.out(0), conditioning=reference.out(0))
+    conditioning = reference.out(0)
+    if guide_frames is not None:
+        conditioning = graph.node("MiniMaxH3AddGuide", id="source_guide", positive=conditioning,
+            latent=reference.out(1), vae=models.out(2), image=guide_frames, frame_idx=0).out(0)
+    guider = graph.node("BasicGuider", id="guider", model=models.out(0), conditioning=conditioning)
     sampler = graph.node("KSamplerSelect", id="sampler", sampler_name=sampler_name)
     main = graph.node("SamplerCustomAdvanced", id="main", noise=noise.out(0), guider=guider.out(0),
         sampler=sampler.out(0), sigmas=schedule, latent_image=latent)
@@ -66,6 +71,8 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
             clip=second_models.out(1), vae=models.out(2), audio_vae=models.out(3),
             prompt="Enhance this video with sharp, crisp details while preserving a natural photorealistic appearance.",
             width=width, height=height, length=length, ref_image_size=ref_image_size)
+        if image is not None:
+            high_reference.set_input("image", image)
         split = graph.node("LTXVSeparateAVLatent", id="split_main", av_latent=main.out(0))
         upscaled = graph.node("MinimaxH3LatentUpscaler3D", id="upscale", latent=split.out(0),
             model_name=upscale_model, mode="target dimensions", **{"mode.width": width, "mode.height": height},
@@ -81,7 +88,7 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
             high_schedule = graph.node("ManualSigmas", id="high_sigmas", sigmas=second_sigma_values).out(0)
         high_guider = graph.node("BasicGuider", id="high_guider",
             model=second_models.out(0), conditioning=high_reference.out(0))
-        high_noise = graph.node("RandomNoise", id="high_noise", noise_seed=(seed + 1) % (1 << 64))
+        high_noise = graph.node("RandomNoise", id="high_noise", noise_seed=seed)
         high_sampler = graph.node("KSamplerSelect", id="high_sampler", sampler_name=second_sampler)
         final = graph.node("SamplerCustomAdvanced", id="high_sample", noise=high_noise.out(0),
             guider=high_guider.out(0), sampler=high_sampler.out(0), sigmas=high_schedule, latent_image=latent).out(0)
@@ -91,7 +98,8 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
         face_models = models if face_model_loader is None else graph.node(
             "fast modelFromLoader", id="face_models", **{"模型加载器": face_model_loader})
         frames = add_face_refinement(graph, frames, final, face_models, image, prompt, ref_image_size,
-                                     face_count, face_steps, face_denoise, face_detector, face_reverse, seed)
+                                     face_count, face_steps, face_denoise, face_detector, face_reverse,
+                                     face_seed, face_sigmas, face_large_strength, face_fallback_detector)
     trimmed = graph.node("YuanH3NikoMotionContextTrim", id="trim", images=frames, audio=sound,
         trim_frames=trim_frames, fps=24.0, match_tail=True)
     frames = trimmed.out(0)

@@ -2,7 +2,8 @@
 
 
 def add_face_refinement(graph, frames, av_latent, models, image, prompt, ref_image_size,
-                        count, steps, denoise, detector, reverse, seed):
+                        count, steps, denoise, detector, reverse, seed, sigmas,
+                        large_strength, fallback_detector):
     if reverse:
         frames = graph.node("ReverseImageBatch", id="face_reverse", images=frames).out(0)
     original_audio = graph.node("LTXVSeparateAVLatent", id="face_audio", av_latent=av_latent).out(1)
@@ -13,7 +14,8 @@ def add_face_refinement(graph, frames, av_latent, models, image, prompt, ref_ima
             canvas_width=768, canvas_height=768, canvas_mode="auto_capped_768",
             smooth_window=21, size_smooth_window=51, smooth_method="gaussian", size_mode="per_frame",
             identity_track=True, identity_threshold=0.28, select="largest_face", select_index=index,
-            identity_model="insightface", fallback_detector="none", cut_detection="none", absent_shots="off")
+            identity_model="insightface", fallback_detector=fallback_detector, fallback_head_frac=0.5,
+            cut_detection="none", absent_shots="off")
         reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id=prefix + "reference",
             clip=models.out(1), vae=models.out(2), audio_vae=models.out(3), prompt=prompt,
             width=crop.out(4), height=crop.out(5), length=crop.out(6), ref_image_size=ref_image_size)
@@ -26,17 +28,19 @@ def add_face_refinement(graph, frames, av_latent, models, image, prompt, ref_ima
             video_latent=split.out(0), audio_latent=original_audio)
         adaptive = graph.node("H3PerFrameDenoise", id=prefix + "denoise",
             model=models.out(0), av_latent=av.out(0), transform=crop.out(1),
-            denoise_multiplier_small_face=1.0, denoise_multiplier_large_face=0.35,
+            denoise_multiplier_small_face=1.0, denoise_multiplier_large_face=large_strength,
             scale_mode="absolute_px", face_px_small=30.0, face_px_large=120.0, gamma=1.0, smooth_frames=9)
         guider = graph.node("BasicGuider", id=prefix + "guider",
             model=adaptive.out(2), conditioning=reference.out(0))
-        schedule = graph.node("BasicScheduler", id=prefix + "schedule",
-            model=adaptive.out(2), scheduler="simple", steps=steps, denoise=denoise)
-        noise = graph.node("RandomNoise", id=prefix + "noise", noise_seed=(seed + 100 + index) % (1 << 64))
+        schedule = sigmas
+        if schedule is None:
+            schedule = graph.node("BasicScheduler", id=prefix + "schedule",
+                model=adaptive.out(2), scheduler="simple", steps=steps, denoise=denoise).out(0)
+        noise = graph.node("RandomNoise", id=prefix + "noise", noise_seed=seed)
         sampler = graph.node("KSamplerSelect", id=prefix + "sampler", sampler_name="er_sde")
         sample = graph.node("SamplerCustomAdvanced", id=prefix + "sample",
             noise=noise.out(0), guider=guider.out(0), sampler=sampler.out(0),
-            sigmas=schedule.out(0), latent_image=adaptive.out(0))
+            sigmas=schedule, latent_image=adaptive.out(0))
         decoded = graph.node("VAEDecode", id=prefix + "decode", samples=sample.out(0), vae=models.out(2))
         frames = graph.node("H3FaceStitch", id=prefix + "stitch", base_images=frames,
             refined_crops=decoded.out(0), transform=crop.out(1), paste_region="face_only",
