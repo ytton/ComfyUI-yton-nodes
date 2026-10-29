@@ -29,17 +29,20 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
         if video is None:
             raise ValueError("复刻模式需要传入至少一个视频，时长取第一个视频。")
         plan = graph.node("YtonH3ReplicaPlan", id="replica", video=video, context_frames=overlap)
-        length, trim_frames = plan.out(0), plan.out(1)
+        length = plan.out(0)
+        head_trim_frames, tail_trim_frames = plan.out(1), plan.out(2)
     elif mode == "普通模式":
         if video is not None:
             plan = graph.node("YtonH3SegmentPlan", id="segment", duration=duration,
                 clip_index=clip_index, context_frames=overlap)
-            length, trim_frames = plan.out(0), plan.out(1)
-            source_start = plan.out(2)
+            length = plan.out(0)
+            head_trim_frames, tail_trim_frames = plan.out(1), plan.out(2)
+            source_start = plan.out(3)
         else:
-            length = 5 + 17 * max(0, math.floor((duration * 24 + overlap - 5) / 17 + 0.5))
+            visible_frames = max(1, math.floor(float(duration) * 24 + 0.5))
+            length = 5 + 17 * max(0, math.ceil((visible_frames + overlap - 5) / 17))
             length = max(39 if overlap else 5, length)
-            trim_frames = length - max(1, math.floor(float(duration) * 24 + 0.5))
+            head_trim_frames, tail_trim_frames = overlap, length - visible_frames - overlap
             source_start = None
     else:
         raise ValueError("请选择普通模式或复刻模式。")
@@ -122,8 +125,8 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
         frames = add_face_refinement(graph, frames, final, face_model, models.out(1), models.out(2), models.out(3), image, prompt, ref_image_size,
                                      face_count, face_steps, face_denoise, face_detector, face_reverse,
                                      face_seed, face_sigmas, face_large_strength, face_fallback_detector)
-    trimmed = graph.node("YuanH3NikoMotionContextTrim", id="trim", images=frames, audio=sound,
-        trim_frames=trim_frames, fps=24.0, match_tail=True)
+    trimmed = graph.node("YtonH3SegmentTrim", id="trim", images=frames, audio=sound,
+        head_trim_frames=head_trim_frames, tail_trim_frames=tail_trim_frames, fps=24.0)
     frames = trimmed.out(0)
     if previous is not None:
         joined = graph.node("H3ColorMatchSeamlessJoin", id="seam", video_A=previous.out(2), video_B=frames,

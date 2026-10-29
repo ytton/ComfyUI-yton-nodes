@@ -17,8 +17,8 @@ class YtonH3ReplicaPlan:
         }}
 
     INPUT_IS_LIST = True
-    RETURN_TYPES = ("INT", "INT")
-    RETURN_NAMES = ("length", "trim_frames")
+    RETURN_TYPES = ("INT", "INT", "INT")
+    RETURN_NAMES = ("length", "head_trim_frames", "tail_trim_frames")
     FUNCTION = "plan"
     CATEGORY = "yton-nodes/MiniMax H3"
     DESCRIPTION = "全模态复刻模式内部时长规划：只读取第一个视频，补足上下文与H3帧格。"
@@ -34,9 +34,10 @@ class YtonH3ReplicaPlan:
         length = 5 + 17 * max(0, math.ceil((target + overlap - 5) / 17))
         if length > 3592:
             raise ValueError("复刻视频加上上下文后超出H3最大采样帧数3592，请先拆分视频。")
-        # Remove both the context prefix and the H3 frame-grid surplus so the
-        # visible result has exactly the duration of the supplied clip.
-        return length, length - target
+        # The context prefix is removed from the head. H3 frame-grid surplus
+        # belongs at the tail; removing it from the head would shift the
+        # visible source timeline and create a discontinuity at the seam.
+        return length, overlap, length - target - overlap
 
 
 class YtonH3SegmentPlan:
@@ -50,8 +51,8 @@ class YtonH3SegmentPlan:
             "context_frames": ("INT", {"min": 0, "max": 56}),
         }}
 
-    RETURN_TYPES = ("INT", "INT", "INT", "INT")
-    RETURN_NAMES = ("length", "trim_frames", "start_frame", "visible_frames")
+    RETURN_TYPES = ("INT", "INT", "INT", "INT", "INT")
+    RETURN_NAMES = ("length", "head_trim_frames", "tail_trim_frames", "start_frame", "visible_frames")
     FUNCTION = "plan"
     CATEGORY = "yton-nodes/MiniMax H3"
 
@@ -61,9 +62,57 @@ class YtonH3SegmentPlan:
         length = 5 + 17 * max(0, math.ceil((visible + overlap - 5) / 17))
         if length > 3592:
             raise ValueError("当前片段加上 22 帧上下文后超出 H3 最大采样帧数 3592，请缩短时长。")
-        # The node trims the context prefix and any H3 grid surplus after
-        # decoding, so the visible result is exactly `duration` at 24 fps.
-        return length, length - visible, max(0, (int(clip_index) - 1) * visible - overlap), visible
+        # Trim the context prefix from the head and the H3 alignment surplus
+        # from the tail. This keeps frame `visible` aligned with the source
+        # timeline while still delivering exactly the requested duration.
+        return (length, overlap, length - visible - overlap,
+                max(0, (int(clip_index) - 1) * visible - overlap), visible)
+
+
+class YtonH3SegmentTrim:
+    """Trim H3 context from the head and frame-grid surplus from the tail."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "images": ("IMAGE",),
+            "head_trim_frames": ("INT", {"default": 0, "min": 0, "max": 4096}),
+            "tail_trim_frames": ("INT", {"default": 0, "min": 0, "max": 4096}),
+        }, "optional": {
+            "audio": ("AUDIO",),
+            "fps": ("FLOAT", {"default": 24.0, "min": 1.0, "max": 240.0, "step": 0.001}),
+        }}
+
+    RETURN_TYPES = ("IMAGE", "AUDIO")
+    RETURN_NAMES = ("images", "audio")
+    FUNCTION = "trim"
+    CATEGORY = "yton-nodes/MiniMax H3"
+
+    def trim(self, images, head_trim_frames, tail_trim_frames, audio=None, fps=24.0):
+        head = max(0, int(head_trim_frames))
+        tail = max(0, int(tail_trim_frames))
+        total = int(images.shape[0])
+        if head + tail >= total:
+            raise ValueError("H3 分段裁切不能移除全部画面帧。")
+        end = total - tail if tail else total
+        out_images = images[head:end]
+        if audio is None:
+            return out_images, None
+
+        waveform = audio["waveform"]
+        sample_rate = int(audio["sample_rate"])
+        start_sample = int(round(head / float(fps) * sample_rate))
+        want_samples = int(round((end - head) / float(fps) * sample_rate))
+        if start_sample >= int(waveform.shape[-1]):
+            raise ValueError("H3 分段裁切后的音频为空，请检查帧率和裁切参数。")
+        out_waveform = waveform[..., start_sample:start_sample + want_samples]
+        have_samples = int(out_waveform.shape[-1])
+        if have_samples > want_samples:
+            out_waveform = out_waveform[..., :want_samples]
+        elif have_samples < want_samples:
+            out_waveform = torch.nn.functional.pad(out_waveform, (0, want_samples - have_samples))
+        out_audio = {"waveform": out_waveform, "sample_rate": sample_rate}
+        return out_images, out_audio
 
 
 class YtonH3OmniGenerate:
@@ -142,7 +191,9 @@ class YtonH3OmniGenerate:
 
 NODE_CLASS_MAPPINGS = {"YtonH3OmniGenerate": YtonH3OmniGenerate,
                        "YtonH3ReplicaPlan": YtonH3ReplicaPlan,
-                       "YtonH3SegmentPlan": YtonH3SegmentPlan}
+                       "YtonH3SegmentPlan": YtonH3SegmentPlan,
+                       "YtonH3SegmentTrim": YtonH3SegmentTrim}
 NODE_DISPLAY_NAME_MAPPINGS = {"YtonH3OmniGenerate": "H3 全模态生成",
                               "YtonH3ReplicaPlan": "H3 复刻时长规划",
-                              "YtonH3SegmentPlan": "H3 分段时长规划"}
+                              "YtonH3SegmentPlan": "H3 分段时长规划",
+                              "YtonH3SegmentTrim": "H3 分段头尾裁切"}

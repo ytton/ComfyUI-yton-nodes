@@ -92,9 +92,12 @@ class YtonH3SaveOmniContext:
             v, a = latent["samples"].unbind()
             tensors[prefix + ".video"] = v.to(device="cpu", copy=True).contiguous()
             tensors[prefix + ".audio"] = a.to(device="cpu", copy=True).contiguous()
-        # The enabled seam fade reads the previous four displayed frames only.
+        # Keep the full physical context window for seam matching. The next
+        # segment uses these frames only as a visual reference; its latent
+        # context remains the authoritative continuation state.
         frames = video.get_components().images
-        tensors["tail_frames"] = frames[-4:].to(device="cpu", dtype=torch.float16, copy=True).contiguous()
+        tensors["tail_frames"] = frames[-min(CONTEXT_FRAMES, len(frames)):].to(
+            device="cpu", dtype=torch.float16, copy=True).contiguous()
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_name(path.name + f".{uuid.uuid4().hex}.tmp")
         try:

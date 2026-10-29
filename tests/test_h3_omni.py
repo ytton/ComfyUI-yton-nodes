@@ -57,7 +57,9 @@ class ExpansionTests(unittest.TestCase):
         self.assertNotIn("main_context", graph)
         self.assertNotIn("upscale", graph)
         self.assertNotIn("face_0_crop", graph)
-        self.assertEqual(graph["trim"]["inputs"]["trim_frames"], 4)
+        self.assertEqual(graph["trim"]["class_type"], "YtonH3SegmentTrim")
+        self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 0)
+        self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 4)
         self.assertEqual(graph["reference"]["inputs"]["width"], 1344)
 
     def test_two_pass_continuation_uses_two_distinct_saved_stages(self):
@@ -75,7 +77,8 @@ class ExpansionTests(unittest.TestCase):
         self.assertTrue(graph["main"]["inputs"]["latent_image"][0].endswith("main_context"))
         self.assertTrue(graph["high_sample"]["inputs"]["latent_image"][0].endswith("high_context"))
         self.assertTrue(graph["high_context"]["inputs"]["latent_base"][0].endswith("high_av"))
-        self.assertEqual(graph["trim"]["inputs"]["trim_frames"], 21)
+        self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 22)
+        self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 16)
         self.assertEqual(graph["save_context"]["inputs"]["final_latent"], result["result"][1])
         self.assertTrue(graph["save_context"]["inputs"]["video"][0].endswith("video"))
 
@@ -123,8 +126,10 @@ class ExpansionTests(unittest.TestCase):
                 face_model=["face_model", 0], seed=873790131440316)
             self.assertEqual((graph["reference"]["inputs"]["width"], graph["reference"]["inputs"]["height"]), (960, 544))
             self.assertTrue(graph["reference"]["inputs"]["length"][0].endswith("segment"))
-            self.assertEqual(graph["trim"]["inputs"]["trim_frames"][0].endswith("segment"), True)
-            self.assertEqual(graph["trim"]["inputs"]["trim_frames"][1], 1)
+            self.assertTrue(graph["trim"]["inputs"]["head_trim_frames"][0].endswith("segment"))
+            self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"][1], 1)
+            self.assertTrue(graph["trim"]["inputs"]["tail_trim_frames"][0].endswith("segment"))
+            self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"][1], 2)
             self.assertEqual(graph["schedule"]["inputs"]["steps"], 4)
             self.assertTrue(graph["guider"]["inputs"]["conditioning"][0].endswith("source_guide"))
             self.assertTrue(graph["source_guide"]["inputs"]["image"][0].endswith("source_images"))
@@ -161,13 +166,15 @@ class ExpansionTests(unittest.TestCase):
         video = InputImpl.VideoFromComponents(Types.VideoComponents(
             images=torch.zeros(125, 4, 4, 3), frame_rate=Fraction(24)))
         for overlap in (0, 22):
-            length, trim = omni_runtime.YtonH3ReplicaPlan().plan([video], [overlap])
+            length, head, tail = omni_runtime.YtonH3ReplicaPlan().plan([video], [overlap])
             self.assertEqual(length % 17, 5)
-            self.assertGreaterEqual(trim, overlap)
-            self.assertEqual(length - trim, 125)
+            self.assertEqual(head, overlap)
+            self.assertGreaterEqual(tail, 0)
+            self.assertEqual(length - head - tail, 125)
         graph, _ = expanded(mode="复刻模式", video=["source", 0], clip_index=2)
         self.assertEqual(graph["replica"]["inputs"]["context_frames"], 22)
-        self.assertEqual(graph["trim"]["inputs"]["trim_frames"][1], 1)
+        self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"][1], 1)
+        self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"][1], 2)
         self.assertNotIn("source_components", graph)
         self.assertEqual(graph["reference"]["inputs"]["video"], ["source", 0])
 
@@ -177,12 +184,30 @@ class ExpansionTests(unittest.TestCase):
         self.assertEqual(graph["segment"]["inputs"]["clip_index"], 2)
         self.assertEqual(graph["segment"]["inputs"]["context_frames"], 22)
         self.assertTrue(graph["source_images"]["inputs"]["start_index"][0].endswith("segment"))
-        self.assertEqual(graph["source_images"]["inputs"]["start_index"][1], 2)
+        self.assertEqual(graph["source_images"]["inputs"]["start_index"][1], 3)
         self.assertTrue(graph["source_images"]["inputs"]["num_frames"][0].endswith("segment"))
         self.assertEqual(graph["source_images"]["inputs"]["num_frames"][1], 0)
         self.assertEqual(graph["source_audio"]["inputs"]["audio"][0].endswith("source_components"), True)
-        self.assertTrue(graph["trim"]["inputs"]["trim_frames"][0].endswith("segment"))
-        self.assertEqual(graph["trim"]["inputs"]["trim_frames"][1], 1)
+        self.assertTrue(graph["trim"]["inputs"]["head_trim_frames"][0].endswith("segment"))
+        self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"][1], 1)
+        self.assertTrue(graph["trim"]["inputs"]["tail_trim_frames"][0].endswith("segment"))
+        self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"][1], 2)
+
+    def test_segment_plan_keeps_context_at_head_and_alignment_surplus_at_tail(self):
+        plan = omni_runtime.YtonH3SegmentPlan().plan(10.0, 2, 22)
+        length, head, tail, start, visible = plan
+        self.assertEqual((length, head, tail, start, visible), (277, 22, 15, 218, 240))
+
+    def test_segment_trim_keeps_audio_aligned_with_head_and_tail(self):
+        images = torch.arange(10, dtype=torch.float32).reshape(10, 1, 1, 1)
+        audio = {"waveform": torch.arange(10, dtype=torch.float32).reshape(1, 1, 10),
+                 "sample_rate": 24}
+        result_images, result_audio = omni_runtime.YtonH3SegmentTrim().trim(
+            images, 2, 3, audio, 24.0)
+        self.assertEqual(result_images.shape[0], 5)
+        self.assertTrue(torch.equal(result_images[:, 0, 0, 0], torch.arange(2, 7).float()))
+        self.assertEqual(result_audio["waveform"].shape[-1], 5)
+        self.assertTrue(torch.equal(result_audio["waveform"].flatten(), torch.arange(2, 7).float()))
 
 
 class ContextTests(unittest.TestCase):
@@ -217,8 +242,9 @@ class ContextTests(unittest.TestCase):
             for restored, expected in ((restored_main, main), (restored_final, final)):
                 for a, b in zip(restored["samples"].unbind(), expected["samples"].unbind()):
                     self.assertTrue(torch.equal(a, b))
-            self.assertEqual(count, 4)
-            self.assertTrue(torch.allclose(tail, self.video(size).get_components().images[-4:], atol=0.0005))
+            expected_tail_count = min(omni_context.CONTEXT_FRAMES, 8)
+            self.assertEqual(count, expected_tail_count)
+            self.assertTrue(torch.allclose(tail, self.video(size).get_components().images[-expected_tail_count:], atol=0.0005))
             tensors = load_file(str(Path(self.temporary.name) / result["result"][0]))
             self.assertEqual("final.video" in tensors, mode == "二采")
 
