@@ -135,6 +135,6 @@ function setupSections(node) {
 app.registerExtension({
   name: "yton.H3.OmniWidgets",
   nodeCreated(node) {
-    if (node.comfyClass === "YtonH3OmniGenerate") setupSections(node);
+    if (node.comfyClass === "YtonH3OmniGenerate" || node.comfyClass === "YtonH3SelfLiftOmniGenerate") setupSections(node);
   },
 });

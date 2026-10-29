@@ -2,11 +2,11 @@
 import logging
 from pathlib import Path
 
-from . import source_runtime, tracking_runtime, context_runtime, omni_runtime, omni_context
+from . import source_runtime, tracking_runtime, context_runtime, omni_runtime, omni_context, omni_selflift_runtime
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
-for module in [source_runtime, tracking_runtime, context_runtime, omni_runtime, omni_context]:
+for module in [source_runtime, tracking_runtime, context_runtime, omni_runtime, omni_context, omni_selflift_runtime]:
     NODE_CLASS_MAPPINGS.update(module.NODE_CLASS_MAPPINGS)
     NODE_DISPLAY_NAME_MAPPINGS.update(module.NODE_DISPLAY_NAME_MAPPINGS)
 
