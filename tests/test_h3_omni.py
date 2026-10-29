@@ -120,7 +120,7 @@ class ExpansionTests(unittest.TestCase):
                 image=["images", 0], video=["source_video", 0], face_refine=True,
                 face_sigmas=["face_sigmas", 0], face_large_strength=1.0,
                 face_fallback_detector="segm\\person_yolov8m-seg.pt", face_seed=42,
-                face_model_loader=["face_model", 0], seed=873790131440316)
+                face_model=["face_model", 0], seed=873790131440316)
             self.assertEqual((graph["reference"]["inputs"]["width"], graph["reference"]["inputs"]["height"]), (960, 544))
             self.assertTrue(graph["reference"]["inputs"]["length"][0].endswith("segment"))
             self.assertEqual(graph["trim"]["inputs"]["trim_frames"][0].endswith("segment"), True)
@@ -138,8 +138,19 @@ class ExpansionTests(unittest.TestCase):
             self.assertEqual(graph["face_0_noise"]["inputs"]["noise_seed"], 42)
             self.assertEqual(graph["face_0_denoise"]["inputs"]["denoise_multiplier_large_face"], 1.0)
             self.assertEqual(graph["face_0_crop"]["inputs"]["fallback_detector"], "segm\\person_yolov8m-seg.pt")
-            self.assertTrue(graph["face_0_denoise"]["inputs"]["model"][0].endswith("face_models"))
+            self.assertEqual(graph["face_0_denoise"]["inputs"]["model"], ["face_model", 0])
             self.assertFalse(any("Loop" in n["class_type"] for n in graph.values()))
+
+    def test_stage_model_inputs_accept_direct_model_links(self):
+        optional = omni_runtime.YtonH3OmniGenerate.INPUT_TYPES()["optional"]
+        self.assertEqual(optional["second_model"][0], "MODEL")
+        self.assertEqual(optional["face_model"][0], "MODEL")
+        graph, _ = expanded(sampling_mode="二采", second_model=["second_model", 0],
+                            face_refine=True, face_model=["face_model", 0])
+        self.assertNotIn("second_models", graph)
+        self.assertNotIn("face_models", graph)
+        self.assertEqual(graph["high_guider"]["inputs"]["model"], ["second_model", 0])
+        self.assertEqual(graph["face_0_denoise"]["inputs"]["model"], ["face_model", 0])
 
     def test_single_pass_uses_target_size_independently_of_first_pass_scale(self):
         graph, _ = expanded(sampling_mode="单采", width=1920, height=1088, first_pass_scale=0.5)

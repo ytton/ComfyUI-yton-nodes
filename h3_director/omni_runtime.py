@@ -120,8 +120,8 @@ class YtonH3OmniGenerate:
             "face_sigmas": ("SIGMAS", {"rawLink": True,
                 "tooltip": "仅用于修脸，接入后替代修脸步数与降噪。1029 使用 0.615, 0。"}),
             "context_path": ("STRING", {"default": "", "tooltip": "指定已采用片段的上下文文件；填写后优先于按序号读取上一段，可用于工作台重抽与分支。"}),
-            "second_model_loader": ("FAST_MODEL_LOADER", {"rawLink": True, "tooltip": "可选的二采模型加载器；不接时使用主模型。"}),
-            "face_model_loader": ("FAST_MODEL_LOADER", {"rawLink": True, "tooltip": "可选的修脸模型加载器；不接时使用主模型。"}),
+            "second_model": ("MODEL", {"rawLink": True, "tooltip": "可选的二采模型；直接接模型或串好 LoRA 的 MODEL。"}),
+            "face_model": ("MODEL", {"rawLink": True, "tooltip": "可选的修脸模型；直接接模型或串好 LoRA 的 MODEL。"}),
         }}
 
     RETURN_TYPES = ("VIDEO", "LATENT", "STRING")

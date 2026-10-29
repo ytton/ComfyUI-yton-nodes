@@ -79,7 +79,7 @@ function setupSections(node) {
   function labelSockets() {
     const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", sigmas: "主采样 Sigma",
       second_sigmas: "二采 Sigma", face_sigmas: "修脸 Sigma",
-      second_model_loader: "二采模型（可选）", face_model_loader: "修脸模型（可选）", ...labels };
+      second_model: "二采模型（可选）", face_model: "修脸模型（可选）", ...labels };
     for (const input of node.inputs) if (inputLabels[input.name]) input.label = inputLabels[input.name];
     for (const output of node.outputs) {
       output.label = { video: "本段视频", av_latent: "最终 AV latent", latent_path: "本段上下文路径" }[output.name];

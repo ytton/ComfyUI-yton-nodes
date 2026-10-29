@@ -13,8 +13,8 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
                      latent_path, clip_index, face_refine, face_count, face_steps, face_denoise,
                      face_detector, face_reverse, face_large_strength, face_fallback_detector,
                      face_seed, image=None, video=None, audio=None,
-                     sigmas=None, second_sigmas=None, context_path="", second_model_loader=None,
-                     face_model_loader=None, face_sigmas=None):
+                     sigmas=None, second_sigmas=None, context_path="", second_model=None,
+                     face_model=None, face_sigmas=None):
     if sampling_mode not in ("单采", "二采"):
         raise ValueError("采样模式请选择单采或二采。")
     graph = GraphBuilder()
@@ -87,10 +87,9 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
         sampler=sampler.out(0), sigmas=schedule, latent_image=latent)
     final = main.out(0)
     if two_pass:
-        second_models = models if second_model_loader is None else graph.node(
-            "fast modelFromLoader", id="second_models", **{"模型加载器": second_model_loader})
+        second_model = models.out(0) if second_model is None else second_model
         high_reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id="high_reference",
-            clip=second_models.out(1), vae=models.out(2), audio_vae=models.out(3),
+            clip=models.out(1), vae=models.out(2), audio_vae=models.out(3),
             prompt="Enhance this video with sharp, crisp details while preserving a natural photorealistic appearance.",
             width=width, height=height, length=length, ref_image_size=ref_image_size)
         if image is not None:
@@ -111,7 +110,7 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
         if high_schedule is None:
             high_schedule = graph.node("ManualSigmas", id="high_sigmas", sigmas=second_sigma_values).out(0)
         high_guider = graph.node("BasicGuider", id="high_guider",
-            model=second_models.out(0), conditioning=high_reference.out(0))
+            model=second_model, conditioning=high_reference.out(0))
         high_noise = graph.node("RandomNoise", id="high_noise", noise_seed=seed)
         high_sampler = graph.node("KSamplerSelect", id="high_sampler", sampler_name=second_sampler)
         final = graph.node("SamplerCustomAdvanced", id="high_sample", noise=high_noise.out(0),
@@ -119,9 +118,8 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
     frames = graph.node("VAEDecode", id="frames", samples=final, vae=models.out(2)).out(0)
     sound = graph.node("VAEDecodeAudio", id="sound", samples=final, vae=models.out(3)).out(0)
     if face_refine:
-        face_models = models if face_model_loader is None else graph.node(
-            "fast modelFromLoader", id="face_models", **{"模型加载器": face_model_loader})
-        frames = add_face_refinement(graph, frames, final, face_models, image, prompt, ref_image_size,
+        face_model = models.out(0) if face_model is None else face_model
+        frames = add_face_refinement(graph, frames, final, face_model, models.out(1), models.out(2), models.out(3), image, prompt, ref_image_size,
                                      face_count, face_steps, face_denoise, face_detector, face_reverse,
                                      face_seed, face_sigmas, face_large_strength, face_fallback_detector)
     trimmed = graph.node("YuanH3NikoMotionContextTrim", id="trim", images=frames, audio=sound,

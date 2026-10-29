@@ -1,7 +1,7 @@
 """Assemble the installed H3 FaceRefine nodes; no face-processing implementation."""
 
 
-def add_face_refinement(graph, frames, av_latent, models, image, prompt, ref_image_size,
+def add_face_refinement(graph, frames, av_latent, model, clip, vae, audio_vae, image, prompt, ref_image_size,
                         count, steps, denoise, detector, reverse, seed, sigmas,
                         large_strength, fallback_detector):
     if reverse:
@@ -17,17 +17,17 @@ def add_face_refinement(graph, frames, av_latent, models, image, prompt, ref_ima
             identity_model="insightface", fallback_detector=fallback_detector, fallback_head_frac=0.5,
             cut_detection="none", absent_shots="off")
         reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id=prefix + "reference",
-            clip=models.out(1), vae=models.out(2), audio_vae=models.out(3), prompt=prompt,
+            clip=clip, vae=vae, audio_vae=audio_vae, prompt=prompt,
             width=crop.out(4), height=crop.out(5), length=crop.out(6), ref_image_size=ref_image_size)
         if image is not None:
             reference.set_input("image", image)
         injected = graph.node("H3InjectVideoLatent", id=prefix + "inject",
-            av_latent=reference.out(1), images=crop.out(0), vae=models.out(2))
+            av_latent=reference.out(1), images=crop.out(0), vae=vae)
         split = graph.node("LTXVSeparateAVLatent", id=prefix + "split", av_latent=injected.out(0))
         av = graph.node("LTXVConcatAVLatent", id=prefix + "av",
             video_latent=split.out(0), audio_latent=original_audio)
         adaptive = graph.node("H3PerFrameDenoise", id=prefix + "denoise",
-            model=models.out(0), av_latent=av.out(0), transform=crop.out(1),
+            model=model, av_latent=av.out(0), transform=crop.out(1),
             denoise_multiplier_small_face=1.0, denoise_multiplier_large_face=large_strength,
             scale_mode="absolute_px", face_px_small=30.0, face_px_large=120.0, gamma=1.0, smooth_frames=9)
         guider = graph.node("BasicGuider", id=prefix + "guider",
@@ -41,7 +41,7 @@ def add_face_refinement(graph, frames, av_latent, models, image, prompt, ref_ima
         sample = graph.node("SamplerCustomAdvanced", id=prefix + "sample",
             noise=noise.out(0), guider=guider.out(0), sampler=sampler.out(0),
             sigmas=schedule, latent_image=adaptive.out(0))
-        decoded = graph.node("VAEDecode", id=prefix + "decode", samples=sample.out(0), vae=models.out(2))
+        decoded = graph.node("VAEDecode", id=prefix + "decode", samples=sample.out(0), vae=vae)
         frames = graph.node("H3FaceStitch", id=prefix + "stitch", base_images=frames,
             refined_crops=decoded.out(0), transform=crop.out(1), paste_region="face_only",
             mask_dilation=24, feather=24, colour_match=1.0, blend=1.0,
