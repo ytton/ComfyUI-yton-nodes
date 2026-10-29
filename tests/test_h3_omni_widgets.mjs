@@ -47,4 +47,20 @@ assert.equal(widgets.get('face_steps').disabled, true)
 assert.equal(node.widgets.filter(w => w.name === 'h3_context_length').length, 1)
 assert.equal(widgets.get('h3_context_length').serialize, false)
 for (const name of Object.keys(values)) assert.ok(widgets.has(name), `missing ${name}`)
+const videoNode = {
+  ...node,
+  comfyClass: 'YtonH3VideoContextOmniGenerate',
+  widgets: Object.entries(values).filter(([name]) => !['latent_path', 'context_path'].includes(name)).map(([name, value]) => ({ name, value })),
+  inputs: ['sigmas', 'second_sigmas', 'face_sigmas', 'image', 'video', 'audio', 'previous_video'].map(name => ({ name, link: null })),
+  outputs: [{ name: 'video' }, { name: 'av_latent' }],
+  onConfigure: undefined, onConnectionsChange: undefined,
+}
+extension.nodeCreated(videoNode)
+assert.equal(videoNode.inputs.find(input => input.name === 'previous_video').label, '上一段视频')
+for (const [name, label] of [['image', '图片'], ['video', '视频'], ['audio', '音频']]) {
+  assert.equal(videoNode.inputs.find(input => input.name === name).label, label)
+}
+assert.equal(videoNode.outputs[0].label, '本段视频')
+assert.ok(!videoNode.widgets.some(widget => ['latent_path', 'context_path'].includes(widget.name)))
+assert.ok(videoNode.widgets.some(widget => widget.name === 'clip_index'))
 console.log('H3 node controls: single/two-pass, face toggle, replica duration and independent sigma sockets passed.')

@@ -37,11 +37,24 @@ class NikoMotionContext(_nodes.MiniMaxH3MotionContext):
         )
         return schema
 
+
+class NikoMotionContextTrim(_nodes.MiniMaxH3MotionContextTrim):
+    pass
+
+
+class NikoSaveLatent(_nodes.MiniMaxH3MotionContextSaveLatent):
+    pass
+
+
+class NikoLoadLatent(_nodes.MiniMaxH3MotionContextLoadLatent):
+    pass
+
+
 NODE_CLASS_MAPPINGS = {
     "YuanH3NikoMotionContext": NikoMotionContext,
-    "YuanH3NikoMotionContextTrim": _nodes.MiniMaxH3MotionContextTrim,
-    "YuanH3NikoSaveLatent": _nodes.MiniMaxH3MotionContextSaveLatent,
-    "YuanH3NikoLoadLatent": _nodes.MiniMaxH3MotionContextLoadLatent,
+    "YuanH3NikoMotionContextTrim": NikoMotionContextTrim,
+    "YuanH3NikoSaveLatent": NikoSaveLatent,
+    "YuanH3NikoLoadLatent": NikoLoadLatent,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "YuanH3NikoMotionContext": "H3 Motion Context · Niko 原版",

@@ -77,7 +77,7 @@ function setupSections(node) {
   }
   node.widgets = ordered;
   function labelSockets() {
-    const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", sigmas: "主采样 Sigma",
+    const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", previous_video: "上一段视频", sigmas: "主采样 Sigma",
       second_sigmas: "二采 Sigma", face_sigmas: "修脸 Sigma",
       second_model: "二采模型（可选）", face_model: "修脸模型（可选）", ...labels };
     for (const input of node.inputs) if (inputLabels[input.name]) input.label = inputLabels[input.name];
@@ -135,6 +135,6 @@ function setupSections(node) {
 app.registerExtension({
   name: "yton.H3.OmniWidgets",
   nodeCreated(node) {
-    if (node.comfyClass === "YtonH3OmniGenerate" || node.comfyClass === "YtonH3SelfLiftOmniGenerate") setupSections(node);
+    if (node.comfyClass === "YtonH3OmniGenerate" || node.comfyClass === "YtonH3VideoContextOmniGenerate") setupSections(node);
   },
 });

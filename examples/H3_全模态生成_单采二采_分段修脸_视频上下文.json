@@ -1,7 +1,7 @@
 {
   "id": "f92b830d-8655-4951-9bdc-a651a499ddec",
   "revision": 0,
-  "last_node_id": 57,
+  "last_node_id": 59,
   "last_link_id": 36,
   "nodes": [
     {
@@ -1644,7 +1644,7 @@
     },
     {
       "id": 38,
-      "type": "YtonH3SelfLiftOmniGenerate",
+      "type": "YtonH3VideoContextOmniGenerate",
       "pos": [
         2180,
         340
@@ -1679,6 +1679,13 @@
           "shape": 7,
           "type": "VIDEO",
           "link": 29
+        },
+        {
+          "label": "上一段视频",
+          "localized_name": "previous_video",
+          "name": "previous_video",
+          "type": "VIDEO",
+          "link": null
         },
         {
           "label": "音频",
@@ -1849,16 +1856,6 @@
           "link": null
         },
         {
-          "label": "上下文保存目录",
-          "localized_name": "latent_path",
-          "name": "latent_path",
-          "type": "STRING",
-          "widget": {
-            "name": "latent_path"
-          },
-          "link": null
-        },
-        {
           "label": "当前片段序号",
           "localized_name": "clip_index",
           "name": "clip_index",
@@ -1997,17 +1994,6 @@
             "name": "face_reverse"
           },
           "link": null
-        },
-        {
-          "label": "指定上一段上下文",
-          "localized_name": "context_path",
-          "name": "context_path",
-          "shape": 7,
-          "type": "STRING",
-          "widget": {
-            "name": "context_path"
-          },
-          "link": null
         }
       ],
       "outputs": [
@@ -2028,25 +2014,16 @@
           "type": "LATENT",
           "links": null,
           "slot_index": 1
-        },
-        {
-          "label": "本段上下文路径",
-          "localized_name": "latent_path",
-          "name": "latent_path",
-          "type": "STRING",
-          "links": null,
-          "slot_index": 2
         }
       ],
-      "title": "H3 全模态生成 · SelfLift 无缝接续 · 单采二采 · 分段修脸",
+      "title": "H3 全模态生成 · 视频上下文",
       "properties": {
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {}
         },
         "aux_id": "ytton/ComfyUI-yton-nodes",
-        "ver": "e90ccbd2987f1e255997ddd4f725a17e60ec857d",
-        "Node name for S&R": "YtonH3SelfLiftOmniGenerate"
+        "Node name for S&R": "YtonH3VideoContextOmniGenerate"
       },
       "widgets_values": [
         "",
@@ -2075,16 +2052,14 @@
         false,
         873790131440316,
         "fixed",
-        "h3_context/SelfLift无缝接续",
-        1,
-        ""
+        1
       ],
       "widgets_values_named": {
         "prompt": "",
         "width": 1920,
         "height": 1088,
         "mode": "普通模式",
-        "duration": 7.3,
+        "duration": 10.0,
         "ref_image_size": "match",
         "sampling_mode": "二采",
         "steps": 4,
@@ -2106,9 +2081,7 @@
         "face_reverse": false,
         "seed": 873790131440316,
         "control_after_generate": "fixed",
-        "latent_path": "h3_context/SelfLift无缝接续",
-        "clip_index": 1,
-        "context_path": ""
+        "clip_index": 1
       }
     },
     {
@@ -2402,6 +2375,68 @@
         "output_mode.save_metadata": false,
         "filename_prefix": "MiniMax/1029分段"
       }
+    },
+    {
+      "id": 58,
+      "type": "LoadVideo",
+      "title": "上一段成片 · 续段时连接",
+      "pos": [
+        1850,
+        1450
+      ],
+      "size": [
+        420,
+        400
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": null,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "id": 59,
+      "type": "MarkdownNote",
+      "title": "视频上下文用法",
+      "pos": [
+        2320,
+        1450
+      ],
+      "size": [
+        460,
+        280
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "首段：上一段视频留空，序号设为 1。\n\n续段：加载上段成片，连接到生成节点的「上一段视频」；或直接连接前一个生成节点的「本段视频」。\n\n视频仍接当前源素材。节点自动取上段尾部 22 帧与音频、添加引导并裁回本段目标时长。"
+      ]
     }
   ],
   "links": [
@@ -2570,7 +2605,7 @@
       43,
       0,
       38,
-      5,
+      6,
       "SIGMAS"
     ],
     [
@@ -2578,7 +2613,7 @@
       44,
       0,
       38,
-      6,
+      7,
       "SIGMAS"
     ],
     [
@@ -2602,7 +2637,7 @@
       40,
       0,
       38,
-      8,
+      9,
       "MODEL"
     ]
   ],
@@ -2626,8 +2661,8 @@
       "bounding": [
         40,
         1360,
-        1420,
-        720
+        1780,
+        1170
       ],
       "color": "#648c69",
       "flags": {},
@@ -2635,7 +2670,7 @@
     },
     {
       "id": 3,
-      "title": "03 · H3 全模态生成（内部自动分段与裁切）",
+      "title": "03 · H3 全模态生成",
       "bounding": [
         1820,
         80,
@@ -2656,6 +2691,19 @@
         500
       ],
       "color": "#8d789d",
+      "flags": {},
+      "font_size": 20
+    },
+    {
+      "id": 5,
+      "title": "05 · 上一段视频",
+      "bounding": [
+        1820,
+        1360,
+        1220,
+        620
+      ],
+      "color": "#648c69",
       "flags": {},
       "font_size": 20
     }

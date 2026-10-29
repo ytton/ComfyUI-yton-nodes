@@ -1,0 +1,176 @@
+"""Check VIDEO continuation wiring and native frame/audio operations on CPU."""
+import importlib.util
+from fractions import Fraction
+from pathlib import Path
+import sys
+import types
+import unittest
+from unittest.mock import patch
+
+PLUGIN = Path(__file__).resolve().parents[1]
+COMFY = PLUGIN.parents[1]
+sys.path.insert(0, str(COMFY))
+sys.argv = [sys.argv[0], "--cpu"]
+import comfy.options
+comfy.options.enable_args_parsing()
+import torch
+from comfy_api.latest import InputImpl, Types
+from comfy_extras.nodes_images import ImageAddNoise
+from comfy_extras.nodes_minimax_h3 import MiniMaxH3AddGuide, _empty_av_latent
+from comfy_extras.nodes_post_processing import ColorTransfer
+
+package = types.ModuleType("video_context_test")
+package.__path__ = [str(PLUGIN / "h3_director")]
+sys.modules[package.__name__] = package
+from video_context_test.omni_video_context_runtime import YtonH3VideoContextOmniGenerate, YtonH3VideoTail
+from video_context_test.omni_runtime import YtonH3SegmentTrim
+
+feather_package = types.ModuleType("video_context_feather_test")
+feather_package.__path__ = [str(PLUGIN.parent / "ComfyUI-MiniMax-H3-Audio-Guide-Feather")]
+sys.modules[feather_package.__name__] = feather_package
+spec = importlib.util.spec_from_file_location(
+    feather_package.__name__ + ".nodes", Path(feather_package.__path__[0]) / "nodes.py")
+feather = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(feather)
+
+
+def expanded(**overrides):
+    values = {}
+    for name, definition in YtonH3VideoContextOmniGenerate.INPUT_TYPES()["required"].items():
+        options = definition[1] if len(definition) > 1 else {}
+        if "default" in options:
+            values[name] = options["default"]
+        elif isinstance(definition[0], list):
+            values[name] = definition[0][0]
+    values.update(model_loader=["loader", 0], **overrides)
+    result = YtonH3VideoContextOmniGenerate().generate(**values)
+    return {key.split(".")[-1]: value for key, value in result["expand"].items()}, result
+
+
+class VideoContextGraphTests(unittest.TestCase):
+    def test_previous_video_is_a_distinct_video_socket(self):
+        schema = YtonH3VideoContextOmniGenerate.INPUT_TYPES()
+        self.assertEqual(schema["optional"]["previous_video"][0], "VIDEO")
+        self.assertTrue(schema["optional"]["previous_video"][1]["rawLink"])
+        for name, kind in (("image", "IMAGE"), ("video", "VIDEO"), ("audio", "AUDIO"),
+                           ("second_model", "MODEL"), ("face_model", "MODEL")):
+            self.assertEqual(schema["optional"][name][0], kind)
+        self.assertNotIn("latent_path", schema["required"])
+        self.assertNotIn("context_path", schema["optional"])
+        self.assertEqual(YtonH3VideoContextOmniGenerate.RETURN_TYPES, ("VIDEO", "LATENT"))
+
+    def test_first_segment_needs_only_its_inputs_and_no_previous_file(self):
+        graph, result = expanded(clip_index=2, duration=10)
+        self.assertNotIn("previous", graph)
+        self.assertNotIn("seamless_color_match", graph)
+        self.assertEqual(graph["reference"]["inputs"]["length"], 243)
+        self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 0)
+        self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 3)
+        self.assertEqual(len(result["result"]), 2)
+
+    def test_continuation_follows_video_tail_to_both_sampling_guiders(self):
+        graph, _ = expanded(previous_video=["prior_clip", 0], sampling_mode="二采", duration=10)
+        self.assertEqual(graph["previous"]["class_type"], "YtonH3VideoTail")
+        self.assertEqual(graph["previous"]["inputs"]["video"], ["prior_clip", 0])
+        for stage, guider in (("main", "guider"), ("high", "high_guider")):
+            self.assertEqual(graph[f"{stage}_ctx_context_first"]["inputs"]["num_frames"], 21)
+            self.assertEqual(graph[f"{stage}_ctx_context_last"]["inputs"]["start_index"], 21)
+            self.assertEqual(graph[f"{stage}_ctx_context_first_noise"]["inputs"]["strength"], 0.1)
+            self.assertEqual(graph[f"{stage}_ctx_context_last_exact"]["inputs"]["strength"], 0.0)
+            guide = graph[f"{stage}_context_add_guide"]
+            self.assertEqual(guide["class_type"], "MiniMaxH3AddGuide")
+            self.assertEqual(guide["inputs"]["audio"][1], 1)
+            self.assertTrue(guide["inputs"]["audio"][0].endswith("previous"))
+            release = graph[f"{stage}_context_add_guide_audio_feather"]
+            self.assertEqual(release["inputs"]["audio_feather_ticks"], 256)
+            self.assertTrue(graph[guider]["inputs"]["conditioning"][0].endswith(f"{stage}_context_add_guide_audio_feather"))
+        self.assertEqual(graph["reference"]["inputs"]["length"], 277)
+        self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 22)
+        self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 15)
+        self.assertTrue(graph["seamless_reference_frame"]["inputs"]["images"][0].endswith("previous"))
+        self.assertEqual(graph["seamless_reference_frame"]["inputs"]["num_frames"], 1)
+        self.assertEqual(graph["seamless_color_match"]["inputs"]["strength"], 0.75)
+        self.assertEqual(graph["seamless_color_match"]["inputs"]["source_stats.target_index"], 0)
+        self.assertFalse(any(node["class_type"].startswith(("YtonH3Load", "YtonH3Save"))
+                             or "LatentHeadReplace" in node["class_type"] for node in graph.values()))
+
+    def test_source_video_and_context_video_stay_separate(self):
+        graph, _ = expanded(clip_index=2, duration=10, video=["source", 0], previous_video=["prior_clip", 0])
+        self.assertEqual(graph["segment"]["inputs"]["context_frames"], 22)
+        self.assertEqual(graph["source_components"]["inputs"]["video"], ["source", 0])
+        self.assertEqual(graph["previous"]["inputs"]["video"], ["prior_clip", 0])
+        self.assertNotIn("source_guide", graph)
+        graph, _ = expanded(mode="复刻模式", video=["cut_source", 0], previous_video=["prior_clip", 0])
+        self.assertEqual(graph["replica"]["inputs"]["context_frames"], 22)
+        self.assertEqual(graph["reference"]["inputs"]["video"], ["cut_source", 0])
+
+    def test_sampling_models_sigmas_and_face_settings_are_preserved(self):
+        graph, _ = expanded(sampling_mode="二采", width=1920, height=1088, first_pass_scale=0.5,
+                            previous_video=["prior_clip", 0], sigmas=["sigma", 0],
+                            second_sigmas=["sigma2", 0], second_model=["model2", 0],
+                            face_refine=True, face_sigmas=["face_sigma", 0], face_model=["face_model", 0])
+        self.assertEqual((graph["reference"]["inputs"]["width"], graph["reference"]["inputs"]["height"]), (960, 544))
+        self.assertEqual(graph["upscale"]["inputs"]["mode.width"], 1920)
+        self.assertEqual(graph["main"]["inputs"]["sigmas"], ["sigma", 0])
+        self.assertEqual(graph["high_sample"]["inputs"]["sigmas"], ["sigma2", 0])
+        self.assertEqual(graph["high_guider"]["inputs"]["model"], ["model2", 0])
+        self.assertEqual(graph["face_0_denoise"]["inputs"]["model"], ["face_model", 0])
+        self.assertEqual(graph["face_0_sample"]["inputs"]["sigmas"], ["face_sigma", 0])
+
+
+class NativeVideoOperationsTests(unittest.TestCase):
+    def test_video_tail_and_audio_reach_native_h3_guide(self):
+        frames = torch.linspace(0.2, 0.8, 60).view(60, 1, 1, 1).expand(60, 32, 32, 3)
+        audio = {"waveform": torch.arange(80000).float().view(1, 1, -1).expand(1, 2, -1), "sample_rate": 32000}
+        video = InputImpl.VideoFromComponents(Types.VideoComponents(
+            images=frames, audio=audio, frame_rate=Fraction(24)))
+        with patch.object(video, "get_stream_source", side_effect=AssertionError("unexpected re-encode")):
+            tail_frames, tail_audio = YtonH3VideoTail().extract(video)
+        self.assertTrue(torch.equal(tail_frames, frames[-22:]))
+        expected_start = round(38 / 24 * 32000)
+        self.assertEqual(tail_audio["waveform"][0, 0, 0], expected_start)
+        noisy = ImageAddNoise.execute(tail_frames[:21], 0, 0.1).result[0]
+        last = ImageAddNoise.execute(tail_frames[-1:], 0, 0.0).result[0]
+        guide_frames = torch.cat((noisy, last))
+        self.assertFalse(torch.equal(guide_frames[:21], tail_frames[:21]))
+        self.assertTrue(torch.equal(guide_frames[-1], tail_frames[-1]))
+
+        class VideoVae:
+            def encode(self, image):
+                self.image = image
+                return torch.zeros(1, 24, 7, 2, 2)
+
+        class AudioVae:
+            audio_sample_rate = 32000
+
+            def encode(self, waveform):
+                self.waveform = waveform
+                return torch.zeros(1, 32, 2, 37)
+
+        vae, audio_vae = VideoVae(), AudioVae()
+        latent, _ = _empty_av_latent(32, 32, 277)
+        positive = MiniMaxH3AddGuide.execute([[torch.zeros(1, 1, 1), {}]], latent, 0,
+                                            vae, audio_vae, guide_frames, tail_audio).result[0]
+        with patch.object(feather, "ensure_h3_audio_feather_compat"):
+            positive = feather.MiniMaxH3AudioGuideFeather.apply(positive, 256).result[0]
+        keyframe = positive[0][1]["minimax_keyframes"][0]
+        self.assertEqual(keyframe["resolved_frame_index"], 0)
+        self.assertEqual(keyframe["audio_feather_ticks"], 256)
+        torch.testing.assert_close(vae.image, guide_frames, atol=1 / 255 + 1e-5, rtol=0)
+        self.assertTrue(torch.equal(audio_vae.waveform, tail_audio["waveform"].movedim(1, -1)))
+
+    def test_trim_then_colour_match_keeps_exact_duration(self):
+        generator = torch.Generator().manual_seed(7)
+        images = torch.rand(277, 8, 8, 3, generator=generator) * 0.5 + 0.2
+        audio = {"waveform": torch.arange(277).view(1, 1, -1), "sample_rate": 24}
+        frames, sound = YtonH3SegmentTrim().trim(images, 22, 15, audio)
+        reference = images[21:22] * 0.95
+        result = ColorTransfer.execute(frames, reference, "mkl_lab",
+                                       {"source_stats": "target_frame", "target_index": 0}, 0.75).result[0]
+        self.assertEqual(result.shape[0], 240)
+        self.assertTrue(torch.isfinite(result).all())
+        self.assertTrue(torch.equal(sound["waveform"].flatten(), torch.arange(22, 262)))
+
+
+if __name__ == "__main__":
+    unittest.main(argv=[sys.argv[0]])

@@ -50,3 +50,6 @@ from .h3_director import (
 )
 NODE_CLASS_MAPPINGS.update(_h3_classes)
 NODE_DISPLAY_NAME_MAPPINGS.update(_h3_names)
+
+from .node_catalog import configure_node_catalog as _configure_node_catalog
+_configure_node_catalog(NODE_CLASS_MAPPINGS)
