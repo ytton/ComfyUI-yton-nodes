@@ -1,6 +1,6 @@
 import { app } from "../../../scripts/app.js";
 import { setupMediaLoaderNode } from "./media_loader_panel.js";
-import { mountNodePanel } from "./node_panel.js";
+import { mountNodePanel, followNodeColours } from "./node_panel.js";
 
 // Load external CSS
 const link = document.createElement("link");
@@ -21,12 +21,12 @@ const RATIO_DIMS = {
 };
 
 const MP_MAP = {
+  "320p": "0.3",
   "480p": "0.4",
   "540p": "0.5",
   "640p": "0.7",
   "720p": "0.9",
   "768p": "1.0",
-  "848p": "1.2",
   "944p": "1.5",
   "1024p": "1.8",
   "1080p": "2.0",
@@ -64,12 +64,12 @@ app.registerExtension({
 // 1. Resolution Controller Setup
 // ==========================================
 function setupResolutionNode(node) {
-  // Hide all underlying default widgets from canvas render
-  hideNodeWidgets(node);
-
   const modeWidget = node.widgets?.find(w => w.name === "mode");
   const ratioWidget = node.widgets?.find(w => w.name === "aspect_ratio");
   const resWidget = node.widgets?.find(w => w.name === "resolution");
+  const visibilityWidget = node.widgets?.find(w => w.name === "option_visibility");
+  node.convertWidgetToInput(ratioWidget);
+  hideNodeWidgets(node);
 
   const container = document.createElement("div");
   container.className = "yton-panel yton-resolution-panel";
@@ -127,16 +127,92 @@ function setupResolutionNode(node) {
   ratioSection.appendChild(ratioGrid);
   container.appendChild(ratioSection);
 
+  const footer = document.createElement("div");
+  footer.className = "yton-resolution-footer";
+  const settings = document.createElement("button");
+  settings.type = "button";
+  settings.className = "yton-resolution-settings";
+  settings.title = "设置可见的分辨率与比例";
+  settings.setAttribute("aria-label", settings.title);
+  settings.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-.6 2.4-2 .9L4.2 5.6 2 9.4l1.8 1.7v2L2 14.8l2.2 3.8 2.2-.7 2 .9L9 21h4l.6-2.2 2-.9 2.2.7 2.2-3.8-1.8-1.7v-2L20 9.4l-2.2-3.8-2.2.7-2-.9L13 3Z"/><circle cx="11" cy="12" r="3"/></svg>';
+  const popover = document.createElement("div");
+  popover.className = "yton-resolution-popover";
+  popover.popover = "auto";
+  const popoverTitle = document.createElement("strong");
+  popoverTitle.textContent = "显示选项";
+  const settingsList = document.createElement("div");
+  settingsList.className = "yton-resolution-settings-list";
+  popover.append(popoverTitle, settingsList);
+  footer.append(settings, popover);
+  container.append(footer);
+  settings.onclick = () => {
+    if (popover.matches(":popover-open")) { popover.hidePopover(); return; }
+    renderSettings();
+    popover.showPopover();
+    const rect = settings.getBoundingClientRect();
+    const bounds = container.closest("[data-node-id]")?.getBoundingClientRect() || container.getBoundingClientRect();
+    const scale = container.getBoundingClientRect().width / container.offsetWidth;
+    const right = bounds.right + 18 * scale;
+    const left = bounds.left - 18 * scale - popover.offsetWidth;
+    popover.style.left = `${right + popover.offsetWidth <= innerWidth - 8 || left < 8 ? right : left}px`;
+    popover.style.top = `${Math.max(8, Math.min(rect.top - popover.offsetHeight - 6, innerHeight - popover.offsetHeight - 8))}px`;
+  };
+  popover.addEventListener("toggle", () => settings.setAttribute("aria-expanded", String(popover.matches(":popover-open"))));
+  settings.setAttribute("aria-expanded", "false");
+
+  function visibility() {
+    return JSON.parse(visibilityWidget.value || "{}");
+  }
+  function hiddenOptions(kind) {
+    return visibility()[modeWidget.value]?.[kind] ?? (kind === "ratios" ? ["auto"] : []);
+  }
+  function isLinked(name) {
+    return node.inputs?.some(input => input.name === name && input.link != null);
+  }
+  const eyeIcon = visible => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>${visible ? "" : '<path d="m3 3 18 18"/>'}</svg>`;
+  function renderSettings() {
+    settingsList.replaceChildren();
+    for (const [kind, label, options] of [["resolutions", "分辨率", resolutionOptions()], ["ratios", "画面比例", ratioOptions()]]) {
+      const heading = document.createElement("div");
+      heading.className = "yton-label";
+      heading.textContent = label;
+      settingsList.append(heading);
+      const hidden = hiddenOptions(kind);
+      for (const value of options) {
+        const visible = !hidden.includes(value);
+        const row = document.createElement("div");
+        row.className = "yton-resolution-option-row";
+        const text = document.createElement("span");
+        text.textContent = value === "auto" ? "自动" : value;
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.innerHTML = eyeIcon(visible);
+        toggle.title = `${visible ? "隐藏" : "显示"} ${value === "auto" ? "自动" : value}`;
+        toggle.setAttribute("aria-label", toggle.title);
+        toggle.setAttribute("aria-pressed", String(visible));
+        toggle.disabled = visible && options.filter(option => !hidden.includes(option)).length === 1;
+        toggle.onclick = () => {
+          const state = visibility();
+          state[modeWidget.value] ??= {};
+          state[modeWidget.value][kind] = visible ? [...hidden, value] : hidden.filter(option => option !== value);
+          changeValue(visibilityWidget, JSON.stringify(state));
+        };
+        row.append(text, toggle);
+        settingsList.append(row);
+      }
+    }
+  }
+
   function resolutionOptions() {
     return modeWidget.value.includes("H3")
-      ? ["480p", "540p", "640p", "720p", "768p", "848p", "944p", "1024p", "1080p"]
+      ? ["320p", "480p", "540p", "640p", "720p", "768p", "944p", "1024p", "1080p"]
       : ["480p", "540p", "640p", "720p", "1080p", "2K", "2.5K", "4K", "6K"];
   }
 
   function renderResolutions() {
     resGrid.innerHTML = "";
     const isH3 = modeWidget?.value?.includes("H3");
-    const options = resolutionOptions();
+    const options = resolutionOptions().filter(value => !hiddenOptions("resolutions").includes(value));
     if (!options.includes(resWidget.value)) resWidget.value = options[0];
 
     options.forEach(opt => {
@@ -163,18 +239,21 @@ function setupResolutionNode(node) {
     });
   }
 
+  function ratioOptions() {
+    const ratios = ["auto", "16:9", "9:16", "1:1", "4:3", "3:4", "2:3", "3:2", "21:9"];
+    return ratios;
+  }
   function renderRatios() {
     ratioGrid.innerHTML = "";
-    const ratios = ["16:9", "9:16", "1:1", "4:3", "3:4", "2:3", "3:2", "21:9"];
-    const imageLinked = node.inputs.some(input => input.name === "image" && input.link != null);
-    if (!imageLinked && ratioWidget.value === "auto" && !node.inputs.some(input => input.name === "aspect_ratio" && input.link != null)) {
-      ratioWidget.value = ratios.find(value => value !== "auto");
-    }
+    const ratios = ratioOptions().filter(value => !hiddenOptions("ratios").includes(value));
+    if (!ratios.includes(ratioWidget.value)) ratioWidget.value = ratios[0];
+    ratioGrid.hidden = isLinked("aspect_ratio");
+    ratioLabel.textContent = ratioGrid.hidden ? "画面比例 · 跟随输入" : "画面比例";
     ratios.forEach(r => {
-      if (r === "auto" && !imageLinked) return;
       const card = document.createElement("button");
       card.type = "button";
-      card.setAttribute("aria-label", `画面比例 ${r}`);
+      card.setAttribute("aria-label", `画面比例 ${r === "auto" ? "自动" : r}`);
+      if (r === "auto") card.title = "按输入图片匹配最接近的预设比例；未接图片时使用 16:9";
       card.setAttribute("aria-pressed", String(ratioWidget.value === r));
       card.className = "yton-ratio-card" + (ratioWidget.value === r ? " active" : "");
 
@@ -183,10 +262,11 @@ function setupResolutionNode(node) {
       const dim = RATIO_DIMS[r] || { w: 20, h: 20 };
       icon.style.width = `${dim.w}px`;
       icon.style.height = `${dim.h}px`;
+      if (r === "auto") { icon.classList.add("yton-ratio-auto"); icon.textContent = "A"; }
 
       const txt = document.createElement("div");
       txt.className = "yton-ratio-text";
-      txt.innerText = r;
+      txt.innerText = r === "auto" ? "自动" : r;
 
       card.appendChild(icon);
       card.appendChild(txt);
@@ -206,6 +286,7 @@ function setupResolutionNode(node) {
     normalBtn.setAttribute("aria-pressed", String(!isH3));
     renderResolutions();
     renderRatios();
+    if (popover.matches(":popover-open")) renderSettings();
     node.setDirtyCanvas(true, true);
   }
 
@@ -220,7 +301,7 @@ function setupResolutionNode(node) {
   h3Btn.onclick = () => changeValue(modeWidget, "MiniMax H3 (Video)");
   normalBtn.onclick = () => changeValue(modeWidget, "Normal (Standard Image/Video)");
 
-  for (const widget of [modeWidget, ratioWidget, resWidget]) {
+  for (const widget of [modeWidget, ratioWidget, resWidget, visibilityWidget]) {
     const callback = widget.callback;
     widget.callback = function () {
       const result = callback?.apply(this, arguments);
@@ -234,9 +315,16 @@ function setupResolutionNode(node) {
     render();
     return result;
   };
+  const onConnectionsChange = node.onConnectionsChange;
+  node.onConnectionsChange = function () {
+    const result = onConnectionsChange?.apply(this, arguments);
+    queueMicrotask(render);
+    return result;
+  };
 
   render();
-  mountNodePanel(node, "resolution_ui", container, 360, 310);
+  followNodeColours(node, container);
+  mountNodePanel(node, "resolution_ui", container, 360, 310, { fitHeight: true });
 }
 
 // Suppress native widgets across LiteGraph v1 AND ComfyUI Frontend 2.0 (Vue-based)

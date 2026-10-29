@@ -78,7 +78,7 @@ export function setupAdvancedResolution(node) {
       inputs: { ...DEFAULT_INPUTS, ...saved.inputs },
       outputs: { ...Object.fromEntries(OUTPUTS.map(([name]) => [name, true])), ...saved.outputs },
       regions: { ...DEFAULT_REGIONS, ...saved.regions },
-      modes: saved.modes || {},
+      modes: Object.fromEntries([H3, NORMAL].map(mode => [mode, { ratios: ["auto"], ...saved.modes?.[mode] }])),
     };
   }
   readConfig();
