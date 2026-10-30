@@ -13,7 +13,11 @@ class FilmSamplingTests(unittest.TestCase):
     def test_schema_defaults_to_film_second_pass_with_fixed_dimensions(self):
         required = YtonH3VideoContextOmniGenerate.INPUT_TYPES()["required"]
         self.assertEqual(required["sampling_mode"][1]["default"], "二采")
-        self.assertEqual(required["film_model"][0], [FILM_MODEL])
+        self.assertIn(FILM_MODEL, required["film_model"][0])
+        self.assertEqual(required["film_method"][1]["default"], "learned model")
+        self.assertEqual(required["film_audio_denoise"][1]["default"], 0.0)
+        self.assertEqual(required["film_noise_resample"][1]["default"], "independent")
+        self.assertEqual(required["film_match_stats"][1]["default"], 0.0)
         for name in ("sampling_plan", "first_pass_scale", "upscale_model",
                      "selflift_transition_step", "selflift_rho", "selflift_highres_tiling"):
             self.assertNotIn(name, required)
@@ -43,6 +47,18 @@ class FilmSamplingTests(unittest.TestCase):
         self.assertNotIn("high_sigmas", graph)
         self.assertEqual(graph["upscale"]["inputs"]["sigmas"], ["custom_sigma", 0])
         self.assertEqual(graph["high_sample"]["inputs"]["sigmas"], ["custom_sigma", 0])
+
+    def test_custom_upscaler_settings_reach_combined_node(self):
+        for method in ("learned model", "bicubic", "bislerp"):
+            with self.subTest(method=method):
+                graph, _ = expanded(film_method=method, film_model="experiment.safetensors",
+                                    film_audio_denoise=1.0, film_noise_resample="upscale", film_match_stats=0.65)
+                inputs = graph["upscale"]["inputs"]
+                self.assertEqual(inputs["method"], method)
+                self.assertEqual(inputs["learned_model"], "experiment.safetensors")
+                self.assertEqual(inputs["audio_denoise"], 1.0)
+                self.assertEqual(inputs["noise_resample"], "upscale")
+                self.assertEqual(inputs["match_stats"], 0.65)
 
     def test_second_sigma_text_is_used_for_both_operations(self):
         graph, _ = expanded(second_sigma_values="0.35, 0.175, 0")
@@ -113,6 +129,13 @@ class FilmSamplingTests(unittest.TestCase):
         spec.loader.exec_module(native)
         graph, _ = expanded()
         schema = native.MiniMaxH3LatentUpscaleCombined.INPUT_TYPES()
+        exposed = YtonH3VideoContextOmniGenerate.INPUT_TYPES()["required"]
+        for name in ("method", "noise_resample"):
+            self.assertLessEqual(set(exposed["film_" + name][0]), set(schema["required"][name][0]))
+        for name, group in (("audio_denoise", "required"), ("match_stats", "optional")):
+            self.assertEqual(exposed["film_" + name][0], schema[group][name][0])
+            for option in ("min", "max", "step"):
+                self.assertEqual(exposed["film_" + name][1][option], schema[group][name][1][option])
         self.assertTrue(set(schema["required"]) <= set(graph["upscale"]["inputs"]))
         self.assertTrue(set(graph["upscale"]["inputs"]) <= set(schema["required"]) | set(schema.get("optional", {})))
 

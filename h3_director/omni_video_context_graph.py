@@ -51,7 +51,8 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                               face_fallback_detector, face_seed, image=None, video=None, audio=None,
                               sigmas=None, previous_video=None, second_model=None,
                               face_model=None, face_sigmas=None, enable_context=False,
-                              film_model=FILM_MODEL):
+                              film_model=FILM_MODEL, film_method="learned model",
+                              film_audio_denoise=0.0, film_noise_resample="independent", film_match_stats=0.0):
     width, height, main_width, main_height = sampling_dimensions(
         width, height, sampling_mode)
     if not enable_context:
@@ -161,9 +162,9 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
         high_noise = graph.node("RandomNoise", id="high_noise", noise_seed=seed)
         # Combined adds noise at this schedule's first sigma; do not add it twice.
         upscaled = graph.node("MiniMaxH3LatentUpscaleCombined", id="upscale", samples=main.out(1),
-                              method="learned model", learned_model=film_model, model=second_model,
-                              noise=high_noise.out(0), sigmas=high_schedule, audio_denoise=0.0,
-                              noise_resample="independent", match_stats=0.0)
+                              method=film_method, learned_model=film_model, model=second_model,
+                              noise=high_noise.out(0), sigmas=high_schedule, audio_denoise=film_audio_denoise,
+                              noise_resample=film_noise_resample, match_stats=film_match_stats)
         latent = upscaled.out(0)
         sampling_noise = graph.node("DisableNoise", id="film_disable_noise").out(0)
         high_sampler = graph.node("KSamplerSelect", id="high_sampler", sampler_name=second_sampler)

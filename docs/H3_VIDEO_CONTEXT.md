@@ -22,7 +22,9 @@
 
 **节点宽高始终表示最终成片尺寸**。首采宽高固定为最终宽高的一半，例如填 1920×1088，首采为 960×544，再由 Film 放大到 1920×1088。
 
-使用 **ComfyUI-MiniMaxH3_LatentUpscaler** 的 Combined 节点，模型为 `models/h3_latent_upscalers/h3_clean_latent_upscaler_film_epoch200.safetensors`。读取首采的干净结果，保留首采音频，再按二采 Sigma 加噪；二采使用 DisableNoise，避免重复加噪。高分辨率条件按最终宽高重新编码。
+使用 **ComfyUI-MiniMaxH3_LatentUpscaler** 的 Combined 节点，默认模型为 `models/h3_latent_upscalers/h3_clean_latent_upscaler_film_epoch200.safetensors`。读取首采的干净结果，默认保留首采音频，再按二采 Sigma 加噪；二采使用 DisableNoise，避免重复加噪。高分辨率条件按最终宽高重新编码。
+
+“二采方案”区域提供 `method`、模型、`audio_denoise`、`noise_resample` 和 `match_stats` 控件，可编辑或转换为输入连线。默认 `learned model`、音频降噪 0、独立噪声、统计匹配 0，首采比例保持 0.5。模型列表读取 `models/h3_latent_upscalers`。音频降噪小于 0.5 时锁定首采音频，否则允许二采重做；`match_stats` 只对插值方式有效，`learned model` 忽略此值；当前超分插件的两种 `noise_resample` 选项效果相同。
 
 在“二采方案”区域的“二采 Sigma”控件中填写时间表，或直接在该控件连接 STRING / SIGMAS；同一时间表用于 Film 加噪和二采。可选“二采模型”支持连接串好 LoRA 的 MODEL。可从 `0.35, 0.175, 0` 开始实验。
 

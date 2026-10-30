@@ -1651,7 +1651,7 @@
       ],
       "size": [
         620,
-        1180
+        1284
       ],
       "flags": {},
       "order": 35,
@@ -1990,6 +1990,46 @@
             "name": "enable_context"
           },
           "link": null
+        },
+        {
+          "label": "放大方式 / method",
+          "localized_name": "film_method",
+          "name": "film_method",
+          "type": "COMBO",
+          "widget": {
+            "name": "film_method"
+          },
+          "link": null
+        },
+        {
+          "label": "音频降噪 / audio_denoise",
+          "localized_name": "film_audio_denoise",
+          "name": "film_audio_denoise",
+          "type": "FLOAT",
+          "widget": {
+            "name": "film_audio_denoise"
+          },
+          "link": null
+        },
+        {
+          "label": "噪声重采样 / noise_resample",
+          "localized_name": "film_noise_resample",
+          "name": "film_noise_resample",
+          "type": "COMBO",
+          "widget": {
+            "name": "film_noise_resample"
+          },
+          "link": null
+        },
+        {
+          "label": "统计匹配 / match_stats",
+          "localized_name": "film_match_stats",
+          "name": "film_match_stats",
+          "type": "FLOAT",
+          "widget": {
+            "name": "film_match_stats"
+          },
+          "link": null
         }
       ],
       "outputs": [
@@ -2032,7 +2072,11 @@
         "euler",
         "simple",
         1,
+        "learned model",
         "h3_clean_latent_upscaler_film_epoch200.safetensors",
+        0.0,
+        "independent",
+        0.0,
         "sa_solver",
         "0.631578922, 0.3158, 0",
         true,
@@ -2062,7 +2106,11 @@
         "sampler_name": "euler",
         "scheduler": "simple",
         "denoise": 1,
+        "film_method": "learned model",
         "film_model": "h3_clean_latent_upscaler_film_epoch200.safetensors",
+        "film_audio_denoise": 0.0,
+        "film_noise_resample": "independent",
+        "film_match_stats": 0.0,
         "second_sampler": "sa_solver",
         "second_sigma_values": "0.631578922, 0.3158, 0",
         "face_refine": true,

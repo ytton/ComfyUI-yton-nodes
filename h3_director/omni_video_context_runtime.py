@@ -1,8 +1,16 @@
 """H3 全模态生成的视频上下文入口。"""
 
+import os
+
+import folder_paths
+
 from .omni_runtime import YtonH3OmniGenerate
 from .omni_video_context_graph import build_video_context_graph
 from .omni_sampling import FILM_MODEL
+
+if "h3_latent_upscalers" not in folder_paths.folder_names_and_paths:
+    folder_paths.add_model_folder_path("h3_latent_upscalers", os.path.join(folder_paths.models_dir, "h3_latent_upscalers"))
+folder_paths.folder_names_and_paths["h3_latent_upscalers"][1].add(".safetensors")
 
 
 class YtonH3VideoTail:
@@ -43,8 +51,25 @@ class YtonH3VideoContextOmniGenerate:
         del required["upscale_model"]
         required["sampling_mode"][1].update(default="二采",
             tooltip="二采固定使用 Film 2×：半尺寸首采、潜空间放大两倍，再进行二采。单采直接按最终宽高生成。")
-        required["film_model"] = ([FILM_MODEL], {"default": FILM_MODEL,
-            "tooltip": "Film 2× 专用模型，放在 models/h3_latent_upscalers。"})
+        required["film_method"] = (["learned model", "nearest-exact", "nearest", "bilinear", "bicubic", "area", "bislerp"], {
+            "default": "learned model",
+            "tooltip": "默认 learned model 使用 Film 模型；其他选项使用对应的潜空间插值。放大倍率固定为 2×。",
+        })
+        film_models = folder_paths.get_filename_list("h3_latent_upscalers")
+        required["film_model"] = ([FILM_MODEL, *[name for name in film_models if name != FILM_MODEL]], {"default": FILM_MODEL,
+            "tooltip": "learned model 使用的 Film 2× 模型，放在 models/h3_latent_upscalers；插值方式不使用此模型。"})
+        required["film_audio_denoise"] = ("FLOAT", {
+            "default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "round": False,
+            "tooltip": "0 保留首采音频，1 允许二采重新生成音频。当前超分插件将小于 0.5 视为锁定，其余视为完整重做。",
+        })
+        required["film_noise_resample"] = (["independent", "upscale"], {
+            "default": "independent",
+            "tooltip": "传给超分插件的 noise_resample。当前插件的两种选项均使用高分辨率独立噪声，切换不会改变结果。",
+        })
+        required["film_match_stats"] = ("FLOAT", {
+            "default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "round": False,
+            "tooltip": "插值放大时，匹配首采潜变量各通道均值与标准差的强度。learned model 会忽略此值。",
+        })
         for name in ("width", "height"):
             required[name][1]["tooltip"] = "最终输出尺寸，按 32 像素对齐；Film 2× 要求为 64 的倍数，例如 1920×1088。"
         required["second_sigma_values"] = ("STRING,SIGMAS", {

@@ -3,7 +3,7 @@ import { app } from "../../../scripts/app.js";
 const sections = [
   ["生成", ["prompt", "width", "height", "mode", "duration", "ref_image_size"]],
   ["主采样", ["sampling_mode", "steps", "sampler_name", "scheduler", "denoise"]],
-  ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "film_model", "second_sampler", "second_sigma_values"]],
+  ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "film_method", "film_model", "film_audio_denoise", "film_noise_resample", "film_match_stats", "second_sampler", "second_sigma_values"]],
   ["小脸修复", ["face_refine", "face_count", "face_sigmas", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
   ["分段上下文", ["enable_context", "latent_path", "clip_index", "context_path", "h3_context_length"]],
@@ -18,6 +18,8 @@ const labels = {
   first_pass_scale: "首采宽高比例", upscale_model: "潜空间放大模型",
   second_sampler: "二采采样器", second_sigma_values: "二采 Sigma（手填）",
   sampling_plan: "二采方案", film_model: "Film 2× 模型",
+  film_method: "放大方式 / method", film_audio_denoise: "音频降噪 / audio_denoise",
+  film_noise_resample: "噪声重采样 / noise_resample", film_match_stats: "统计匹配 / match_stats",
   face_refine: "启用小脸修复", face_count: "修脸人数", face_steps: "修脸步数",
   face_denoise: "小脸降噪强度", face_detector: "人脸检测模型", face_reverse: "倒序修脸",
   face_large_strength: "大脸降噪倍率", face_fallback_detector: "人体兜底检测", face_seed: "修脸种子",
@@ -112,7 +114,15 @@ function setupSections(node) {
     const secondSigmaText = widgets.get("second_sigma_values");
     secondSigmaText.disabled = !twoPass || secondSigmaLinked;
     secondSigmaText.label = videoContext ? "二采 Sigma" : secondSigmaLinked ? "二采 Sigma（已由连线提供）" : labels.second_sigma_values;
-    if (widgets.has("film_model")) widgets.get("film_model").disabled = !twoPass;
+    for (const name of ["film_method", "film_model", "film_audio_denoise", "film_noise_resample", "film_match_stats"]) {
+      if (widgets.has(name)) widgets.get(name).disabled = !twoPass;
+    }
+    if (videoContext) {
+      const methodLinked = node.inputs.find(input => input.name === "film_method")?.link != null;
+      const learned = !methodLinked && widgets.get("film_method").value === "learned model";
+      widgets.get("film_match_stats").label = learned ? "统计匹配 / match_stats（当前方式忽略）" : labels.film_match_stats;
+      widgets.get("film_noise_resample").label = "噪声重采样 / noise_resample（当前插件同效）";
+    }
     for (const name of ["face_count", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]) {
       widgets.get(name).disabled = !widgets.get("face_refine").value;
     }
@@ -127,7 +137,7 @@ function setupSections(node) {
     }
     node.setDirtyCanvas(true, true);
   }
-  for (const name of ["mode", "sampling_mode", "face_refine", "first_pass_scale", "face_sigmas"]) {
+  for (const name of ["mode", "sampling_mode", "face_refine", "first_pass_scale", "face_sigmas", "film_method"]) {
     const widget = widgets.get(name);
     if (!widget) continue;
     const callback = widget.callback;
