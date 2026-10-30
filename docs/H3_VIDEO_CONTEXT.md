@@ -16,7 +16,27 @@
 
 素材输入按实际内容判断：媒体加载器即使已经连线，未上传或全部禁用的素材也会跳过。普通模式下，只上传图片时走图生视频；所有素材为空时走文生视频。关闭上下文时不会读取上一段视频。
 
-二采潜空间超分使用已安装的 ComfyUI-Easy-Media `easy minimaxH3LatentUpscaler`：通过 ComfyUI 原生显存管理为模型和计算中间量预留空间，启用时序分块，完成后卸载超分模型。支持 `minimax_h3_latent_upscaler_3d_fp16.safetensors` 和 `h3_upscaler_lms_v0.1.safetensors` 等同架构模型，沿用模型保存的精度。
+## 三种二采方案
+
+将“采样模式”设为“二采”，再选择“二采方案”。**节点宽高始终表示最终成片尺寸**，不是首采尺寸。例如要输出 H3 1080p，填 1920×1088；首采比例 0.5 对应 960×544。
+
+| 方案 | 首采比例 | 采样与超分方式 |
+| --- | --- | --- |
+| 传统二采 | 可调 0.125～1 | 完成低分首采，3D／LMS 放大到最终尺寸，再使用独立二采 Sigma 采样 |
+| SelfLift Progressive Sampler (MiniMax H3) | 可调 0.25～1 | 同一条主采样 Sigma 内先低分采样，在指定低分步数后升到最终尺寸，继续剩余步数 |
+| Film 2× | 固定 0.5，显示但不可编辑 | 完成半尺寸首采，Film 固定放大 2 倍并重新加噪，然后进行二采 |
+
+传统方案使用 ComfyUI-Easy-Media `easy minimaxH3LatentUpscaler`，支持 `minimax_h3_latent_upscaler_3d_fp16.safetensors`、`h3_upscaler_lms_v0.1.safetensors` 等同架构模型，沿用权重精度，开启时序分块并在放大后卸载权重。
+
+SelfLift 使用 **comfyui-SelfLift** 的 `SelfLiftH3Sampler`，固定标准 Euler 和 CFG=1；“低分步数”必须小于主采样 Sigma 的总步数。默认主时间表 4 步，其中低分 2 步、高分 2 步。自定义 Sigma 必须是完整时间表，仅终点可以为 0，且转入高分时的 Sigma 必须小于 1。二采 Sigma、二采采样器在此方案下不参与；即使连了二采 Sigma，也不会执行那条输入分支。可选“二采模型”用于高分阶段。“SelfLift VAE 校正比例”默认 0，只做潜空间超分；高分空间分块可按显存需求开启。
+
+Film 使用 **ComfyUI-MiniMaxH3_LatentUpscaler** 的 Combined 节点与 `models/h3_latent_upscalers/h3_clean_latent_upscaler_film_epoch200.safetensors`，按模型实现以 FP32 加载。读取首采的干净结果，锁住首采音频，再按二采 Sigma 加噪；后面的采样器使用 DisableNoise，避免二次加噪。高分辨率条件重新编码，保持正确尺寸。
+
+Film 的最终宽高必须都是 64 的倍数，使半尺寸首采也满足 H3 的 32 像素对齐；尺寸不满足时会给出明确错误，不会悄悄改大或改小输出。1920×1088、1344×768 均可直接使用。Film 忽略外部传入的首采比例，始终为 0.5。
+
+传统与 Film 共用“二采 Sigma”文本，或接入的二采 Sigma 连线；切换方案不会改写用户的 Sigma。Film 实验可从 `0.35, 0.175, 0` 开始，传统方案原默认是 `0.631578922, 0.3158, 0`。两者仅放大模型和加噪路径不同，不保证在每种分辨率、片长和显卡下都有固定速度差。
+
+单采时不执行三种二采路径，直接按最终宽高生成。上下文、小脸修复、成片裁切和颜色匹配在三种方案下共用。
 
 普通模式可接完整源视频，按序号和时长自动截段；复刻模式接当前已裁好的源视频片段，时长自动推算。接续时两种模式都自动处理额外的 22 帧。
 

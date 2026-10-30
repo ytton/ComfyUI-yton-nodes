@@ -1651,7 +1651,7 @@
       ],
       "size": [
         620,
-        1172
+        1268
       ],
       "flags": {},
       "order": 35,
@@ -1679,14 +1679,6 @@
           "shape": 7,
           "type": "VIDEO",
           "link": 29
-        },
-        {
-          "label": "上一段视频（可选）",
-          "localized_name": "previous_video",
-          "name": "previous_video",
-          "type": "VIDEO",
-          "link": null,
-          "shape": 7
         },
         {
           "label": "音频",
@@ -1737,6 +1729,14 @@
           "link": 36
         },
         {
+          "label": "上一段视频（可选）",
+          "localized_name": "previous_video",
+          "name": "previous_video",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": null
+        },
+        {
           "label": "提示词",
           "localized_name": "prompt",
           "name": "prompt",
@@ -1747,7 +1747,7 @@
           "link": null
         },
         {
-          "label": "宽度",
+          "label": "最终宽度",
           "localized_name": "width",
           "name": "width",
           "type": "INT",
@@ -1757,7 +1757,7 @@
           "link": null
         },
         {
-          "label": "高度",
+          "label": "最终高度",
           "localized_name": "height",
           "name": "height",
           "type": "INT",
@@ -1997,6 +1997,56 @@
           "link": null
         },
         {
+          "label": "二采方案",
+          "localized_name": "sampling_plan",
+          "name": "sampling_plan",
+          "type": "COMBO",
+          "widget": {
+            "name": "sampling_plan"
+          },
+          "link": null
+        },
+        {
+          "label": "Film 2× 模型",
+          "localized_name": "film_model",
+          "name": "film_model",
+          "type": "COMBO",
+          "widget": {
+            "name": "film_model"
+          },
+          "link": null
+        },
+        {
+          "label": "SelfLift 低分步数",
+          "localized_name": "selflift_transition_step",
+          "name": "selflift_transition_step",
+          "type": "INT",
+          "widget": {
+            "name": "selflift_transition_step"
+          },
+          "link": null
+        },
+        {
+          "label": "SelfLift VAE 校正比例",
+          "localized_name": "selflift_rho",
+          "name": "selflift_rho",
+          "type": "FLOAT",
+          "widget": {
+            "name": "selflift_rho"
+          },
+          "link": null
+        },
+        {
+          "label": "SelfLift 高分空间分块",
+          "localized_name": "selflift_highres_tiling",
+          "name": "selflift_highres_tiling",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "selflift_highres_tiling"
+          },
+          "link": null
+        },
+        {
           "label": "启用上下文",
           "localized_name": "enable_context",
           "name": "enable_context",
@@ -2027,7 +2077,6 @@
           "slot_index": 1
         }
       ],
-      "title": "H3 全模态生成 · 视频上下文",
       "properties": {
         "ue_properties": {
           "widget_ue_connectable": {},
@@ -2041,17 +2090,22 @@
         1920,
         1088,
         "普通模式",
-        10.0,
+        10,
         "match",
         "二采",
         4,
         "euler",
         "simple",
         1,
+        "传统二采",
         0.5,
         "minimax_h3_latent_upscaler_3d_fp16.safetensors",
+        "h3_clean_latent_upscaler_film_epoch200.safetensors",
         "sa_solver",
         "0.631578922, 0.3158, 0",
+        2,
+        0,
+        false,
         true,
         1,
         1,
@@ -2071,17 +2125,22 @@
         "width": 1920,
         "height": 1088,
         "mode": "普通模式",
-        "duration": 10.0,
+        "duration": 10,
         "ref_image_size": "match",
         "sampling_mode": "二采",
         "steps": 4,
         "sampler_name": "euler",
         "scheduler": "simple",
         "denoise": 1,
+        "sampling_plan": "传统二采",
         "first_pass_scale": 0.5,
         "upscale_model": "minimax_h3_latent_upscaler_3d_fp16.safetensors",
+        "film_model": "h3_clean_latent_upscaler_film_epoch200.safetensors",
         "second_sampler": "sa_solver",
         "second_sigma_values": "0.631578922, 0.3158, 0",
+        "selflift_transition_step": 2,
+        "selflift_rho": 0,
+        "selflift_highres_tiling": false,
         "face_refine": true,
         "face_count": 1,
         "face_steps": 1,
@@ -2093,9 +2152,10 @@
         "face_reverse": false,
         "seed": 873790131440316,
         "control_after_generate": "fixed",
-        "clip_index": 1,
-        "enable_context": false
-      }
+        "enable_context": false,
+        "clip_index": 1
+      },
+      "title": "H3 全模态生成 · 视频上下文"
     },
     {
       "id": 39,
@@ -2395,7 +2455,7 @@
       "title": "上一段成片 · 续段时连接",
       "pos": [
         1850,
-        1450
+        1790
       ],
       "size": [
         420,
@@ -2435,7 +2495,7 @@
       "title": "视频上下文用法",
       "pos": [
         2320,
-        1450
+        1790
       ],
       "size": [
         460,
@@ -2618,7 +2678,7 @@
       43,
       0,
       38,
-      6,
+      5,
       "SIGMAS"
     ],
     [
@@ -2626,7 +2686,7 @@
       44,
       0,
       38,
-      7,
+      6,
       "SIGMAS"
     ],
     [
@@ -2650,7 +2710,7 @@
       40,
       0,
       38,
-      9,
+      8,
       "MODEL"
     ]
   ],
@@ -2688,7 +2748,7 @@
         1820,
         80,
         1220,
-        1260
+        1580
       ],
       "color": "#8b8050",
       "flags": {},
@@ -2712,7 +2772,7 @@
       "title": "05 · 上一段视频",
       "bounding": [
         1820,
-        1360,
+        1700,
         1220,
         620
       ],
@@ -2729,7 +2789,12 @@
         -30,
         -40
       ]
-    }
+    },
+    "h3_sampling_plans": [
+      "传统二采",
+      "SelfLift Progressive Sampler (MiniMax H3)",
+      "Film 2×"
+    ]
   },
   "version": 0.4
 }
