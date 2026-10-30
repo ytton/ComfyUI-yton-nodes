@@ -1681,11 +1681,12 @@
           "link": 29
         },
         {
-          "label": "上一段视频",
+          "label": "上一段视频（可选）",
           "localized_name": "previous_video",
           "name": "previous_video",
           "type": "VIDEO",
-          "link": null
+          "link": null,
+          "shape": 7
         },
         {
           "label": "音频",
@@ -1994,6 +1995,16 @@
             "name": "face_reverse"
           },
           "link": null
+        },
+        {
+          "label": "启用上下文",
+          "localized_name": "enable_context",
+          "name": "enable_context",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enable_context"
+          },
+          "link": null
         }
       ],
       "outputs": [
@@ -2052,6 +2063,7 @@
         false,
         873790131440316,
         "fixed",
+        false,
         1
       ],
       "widgets_values_named": {
@@ -2081,7 +2093,8 @@
         "face_reverse": false,
         "seed": 873790131440316,
         "control_after_generate": "fixed",
-        "clip_index": 1
+        "clip_index": 1,
+        "enable_context": false
       }
     },
     {

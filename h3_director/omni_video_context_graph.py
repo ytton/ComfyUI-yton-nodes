@@ -49,9 +49,11 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                               face_denoise, face_detector, face_reverse, face_large_strength,
                               face_fallback_detector, face_seed, image=None, video=None, audio=None,
                               sigmas=None, second_sigmas=None, previous_video=None, second_model=None,
-                              face_model=None, face_sigmas=None):
+                              face_model=None, face_sigmas=None, enable_context=False):
     if sampling_mode not in ("单采", "二采"):
         raise ValueError("采样模式请选择单采或二采。")
+    if not enable_context:
+        previous_video = None
     graph = GraphBuilder()
     models = graph.node("fast modelFromLoader", id="models", **{"模型加载器": model_loader})
     two_pass = sampling_mode == "二采"

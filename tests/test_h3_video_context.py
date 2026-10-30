@@ -50,8 +50,11 @@ def expanded(**overrides):
 class VideoContextGraphTests(unittest.TestCase):
     def test_previous_video_is_a_distinct_video_socket(self):
         schema = YtonH3VideoContextOmniGenerate.INPUT_TYPES()
+        self.assertNotIn("previous_video", schema["required"])
         self.assertEqual(schema["optional"]["previous_video"][0], "VIDEO")
         self.assertTrue(schema["optional"]["previous_video"][1]["rawLink"])
+        self.assertEqual(schema["required"]["enable_context"][0], "BOOLEAN")
+        self.assertFalse(schema["required"]["enable_context"][1]["default"])
         for name, kind in (("image", "IMAGE"), ("video", "VIDEO"), ("audio", "AUDIO"),
                            ("second_model", "MODEL"), ("face_model", "MODEL")):
             self.assertEqual(schema["optional"][name][0], kind)
@@ -60,16 +63,48 @@ class VideoContextGraphTests(unittest.TestCase):
         self.assertEqual(YtonH3VideoContextOmniGenerate.RETURN_TYPES, ("VIDEO", "LATENT"))
 
     def test_first_segment_needs_only_its_inputs_and_no_previous_file(self):
-        graph, result = expanded(clip_index=2, duration=10)
-        self.assertNotIn("previous", graph)
-        self.assertNotIn("seamless_color_match", graph)
-        self.assertEqual(graph["reference"]["inputs"]["length"], 243)
-        self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 0)
-        self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 3)
-        self.assertEqual(len(result["result"]), 2)
+        for enabled in (False, True):
+            with self.subTest(enable_context=enabled):
+                graph, result = expanded(clip_index=2, duration=10, enable_context=enabled)
+                self.assertNotIn("previous", graph)
+                self.assertNotIn("seamless_color_match", graph)
+                self.assertEqual(graph["reference"]["inputs"]["length"], 243)
+                self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 0)
+                self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 3)
+                self.assertEqual(len(result["result"]), 2)
+
+    def test_connected_previous_video_is_ignored_while_context_is_off(self):
+        for sampling_mode in ("单采", "二采"):
+            for source_mode in ("text", "普通模式", "复刻模式"):
+                with self.subTest(sampling_mode=sampling_mode, source_mode=source_mode):
+                    inputs = {"sampling_mode": sampling_mode, "duration": 10,
+                              "previous_video": ["prior_clip", 0]}
+                    if source_mode != "text":
+                        inputs.update(mode=source_mode, video=["source", 0])
+                    graph, _ = expanded(**inputs)
+                    self.assertNotIn("previous", graph)
+                    self.assertNotIn("seamless_color_match", graph)
+                    self.assertNotIn("main_context_add_guide", graph)
+                    self.assertNotIn("high_context_add_guide", graph)
+                    for node in graph.values():
+                        self.assertNotIn(["prior_clip", 0], node["inputs"].values())
+                    if source_mode == "text":
+                        self.assertEqual(graph["reference"]["inputs"]["length"], 243)
+                        self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 0)
+                        self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 3)
+                    else:
+                        plan = "segment" if source_mode == "普通模式" else "replica"
+                        self.assertEqual(graph[plan]["inputs"]["context_frames"], 0)
+                        if source_mode == "普通模式":
+                            self.assertEqual(graph["source_components"]["inputs"]["video"], ["source", 0])
+                            self.assertIn("source_guide", graph)
+                            if sampling_mode == "二采":
+                                self.assertIn("high_source_guide", graph)
+                        else:
+                            self.assertEqual(graph["reference"]["inputs"]["video"], ["source", 0])
 
     def test_continuation_follows_video_tail_to_both_sampling_guiders(self):
-        graph, _ = expanded(previous_video=["prior_clip", 0], sampling_mode="二采", duration=10)
+        graph, _ = expanded(previous_video=["prior_clip", 0], enable_context=True, sampling_mode="二采", duration=10)
         self.assertEqual(graph["previous"]["class_type"], "YtonH3VideoTail")
         self.assertEqual(graph["previous"]["inputs"]["video"], ["prior_clip", 0])
         for stage, guider in (("main", "guider"), ("high", "high_guider")):
@@ -95,18 +130,18 @@ class VideoContextGraphTests(unittest.TestCase):
                              or "LatentHeadReplace" in node["class_type"] for node in graph.values()))
 
     def test_source_video_and_context_video_stay_separate(self):
-        graph, _ = expanded(clip_index=2, duration=10, video=["source", 0], previous_video=["prior_clip", 0])
+        graph, _ = expanded(clip_index=2, duration=10, video=["source", 0], previous_video=["prior_clip", 0], enable_context=True)
         self.assertEqual(graph["segment"]["inputs"]["context_frames"], 22)
         self.assertEqual(graph["source_components"]["inputs"]["video"], ["source", 0])
         self.assertEqual(graph["previous"]["inputs"]["video"], ["prior_clip", 0])
         self.assertNotIn("source_guide", graph)
-        graph, _ = expanded(mode="复刻模式", video=["cut_source", 0], previous_video=["prior_clip", 0])
+        graph, _ = expanded(mode="复刻模式", video=["cut_source", 0], previous_video=["prior_clip", 0], enable_context=True)
         self.assertEqual(graph["replica"]["inputs"]["context_frames"], 22)
         self.assertEqual(graph["reference"]["inputs"]["video"], ["cut_source", 0])
 
     def test_sampling_models_sigmas_and_face_settings_are_preserved(self):
         graph, _ = expanded(sampling_mode="二采", width=1920, height=1088, first_pass_scale=0.5,
-                            previous_video=["prior_clip", 0], sigmas=["sigma", 0],
+                            previous_video=["prior_clip", 0], enable_context=True, sigmas=["sigma", 0],
                             second_sigmas=["sigma2", 0], second_model=["model2", 0],
                             face_refine=True, face_sigmas=["face_sigma", 0], face_model=["face_model", 0])
         self.assertEqual((graph["reference"]["inputs"]["width"], graph["reference"]["inputs"]["height"]), (960, 544))

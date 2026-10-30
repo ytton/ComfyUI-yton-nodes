@@ -6,7 +6,7 @@ const sections = [
   ["二采 · 潜空间放大", ["first_pass_scale", "upscale_model", "second_sampler", "second_sigma_values"]],
   ["小脸修复", ["face_refine", "face_count", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
-  ["分段上下文", ["latent_path", "clip_index", "context_path", "h3_context_length"]],
+  ["分段上下文", ["enable_context", "latent_path", "clip_index", "context_path", "h3_context_length"]],
 ];
 const labels = {
   prompt: "提示词", width: "宽度", height: "高度", duration: "成片目标时长 / 秒",
@@ -14,6 +14,7 @@ const labels = {
   ref_image_size: "参考图尺寸", steps: "调度步数", sampler_name: "采样器",
   scheduler: "调度器", denoise: "调度降噪", seed: "随机种子",
   latent_path: "上下文保存目录", clip_index: "当前片段序号", context_path: "指定上一段上下文",
+  enable_context: "启用上下文",
   first_pass_scale: "首采宽高比例", upscale_model: "潜空间放大模型",
   second_sampler: "二采采样器", second_sigma_values: "二采 Sigma",
   face_refine: "启用小脸修复", face_count: "修脸人数", face_steps: "修脸步数",
@@ -77,7 +78,7 @@ function setupSections(node) {
   }
   node.widgets = ordered;
   function labelSockets() {
-    const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", previous_video: "上一段视频", sigmas: "主采样 Sigma",
+    const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", previous_video: "上一段视频（可选）", sigmas: "主采样 Sigma",
       second_sigmas: "二采 Sigma", face_sigmas: "修脸 Sigma",
       second_model: "二采模型（可选）", face_model: "修脸模型（可选）", ...labels };
     for (const input of node.inputs) if (inputLabels[input.name]) input.label = inputLabels[input.name];

@@ -36,12 +36,16 @@ class YtonH3VideoContextOmniGenerate:
         schema = YtonH3OmniGenerate.INPUT_TYPES()
         del schema["required"]["latent_path"]
         del schema["optional"]["context_path"]
+        schema["required"]["enable_context"] = ("BOOLEAN", {
+            "default": False,
+            "tooltip": "仅开启并接入上一段视频时，才提取尾部 22 帧与音频接续；关闭时忽略上一段视频，按独立片段生成。",
+        })
         schema["required"]["clip_index"][1]["tooltip"] = (
-            "普通模式按序号从源视频截取当前片段；接入上一段视频后，自动增加并裁除 22 帧上下文。"
+            "普通模式按序号从源视频截取当前片段；开启上下文并接入上一段视频后，自动增加并裁除 22 帧上下文。"
         )
         schema["optional"]["previous_video"] = ("VIDEO", {
             "rawLink": True,
-            "tooltip": "接上一段生成的视频，或用加载视频节点读取已有成片。节点自动提取尾部画面与音频；首段留空。",
+            "tooltip": "可选。接上一段生成的视频，或用加载视频节点读取已有成片；仅在启用上下文时提取尾部画面与音频。独立生成时可留空。",
         })
         return schema
 
@@ -51,7 +55,8 @@ class YtonH3VideoContextOmniGenerate:
     CATEGORY = "yton-nodes/MiniMax H3"
     OUTPUT_NODE = True
     DESCRIPTION = (
-        "传入上一段视频，自动提取尾部 22 帧与音频进行接续。前 21 帧加微量噪声，"
+        "支持独立的全模态生成，上下文默认关闭，上一段视频为可选输入。"
+        "启用上下文并传入上一段视频后，提取尾部 22 帧与音频进行接续。前 21 帧加微量噪声，"
         "末帧保持原样；本段生成后裁除重叠帧，并参照上一段末帧对齐颜色。"
         "支持单采、二采、自定义 Sigma 和小脸修复。"
     )
