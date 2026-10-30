@@ -50,9 +50,10 @@ for (const name of Object.keys(values)) assert.ok(widgets.has(name), `missing ${
 const videoNode = {
   ...node,
   comfyClass: 'YtonH3VideoContextOmniGenerate',
-  widgets: Object.entries({ ...values, enable_context: false, sampling_plan: '传统二采',
-    film_model: 'h3_clean_latent_upscaler_film_epoch200.safetensors', selflift_transition_step: 2,
-    selflift_rho: 0, selflift_highres_tiling: false }).filter(([name]) => !['latent_path', 'context_path'].includes(name)).map(([name, value]) => ({ name, value })),
+  widgets: Object.entries({ ...values, enable_context: false, sampling_mode: '二采',
+    film_model: 'h3_clean_latent_upscaler_film_epoch200.safetensors' })
+    .filter(([name]) => !['latent_path', 'context_path', 'first_pass_scale', 'upscale_model'].includes(name))
+    .map(([name, value]) => ({ name, value })),
   inputs: ['sigmas', 'second_sigmas', 'face_sigmas', 'image', 'video', 'audio', 'previous_video'].map(name => ({ name, link: null })),
   outputs: [{ name: 'video' }, { name: 'av_latent' }],
   onConfigure: undefined, onConnectionsChange: undefined,
@@ -78,38 +79,31 @@ assert.equal(contextToggle.value, true)
 assert.ok(!widgets.has('enable_context'))
 const videoWidgets = new Map(videoNode.widgets.map(w => [w.name, w]))
 function videoChange(name, value) { const w = videoWidgets.get(name); w.value = value; w.callback() }
-videoChange('sampling_mode', '二采')
-videoChange('first_pass_scale', 0.7)
-videoChange('sampling_plan', 'Film 2×')
 assert.equal(videoWidgets.get('first_pass_scale').value, 0.5)
 assert.ok(videoWidgets.get('first_pass_scale').disabled)
-assert.ok(videoWidgets.get('upscale_model').disabled)
+assert.equal(videoWidgets.get('first_pass_scale').serialize, false)
+assert.equal(videoWidgets.get('sampling_plan').value, 'Film 2×')
+assert.ok(videoWidgets.get('sampling_plan').disabled)
+assert.equal(videoWidgets.get('sampling_plan').serialize, false)
+assert.ok(!videoWidgets.has('upscale_model'))
+assert.ok(!videoWidgets.has('selflift_transition_step'))
 assert.equal(videoWidgets.get('film_model').disabled, false)
 assert.equal(videoWidgets.get('second_sampler').disabled, false)
 assert.equal(videoWidgets.get('second_sigma_values').disabled, false)
 videoChange('first_pass_scale', 0.8)
-assert.equal(videoWidgets.get('first_pass_scale').value, 0.5, 'Film ratio stays fixed even on external value changes')
-videoChange('sampling_plan', '传统二采')
-assert.equal(videoWidgets.get('first_pass_scale').value, 0.7)
-assert.equal(videoWidgets.get('first_pass_scale').disabled, false)
-videoChange('sampler_name', 'sa_solver')
-videoChange('sampling_plan', 'SelfLift Progressive Sampler (MiniMax H3)')
-assert.equal(videoWidgets.get('sampler_name').value, 'euler')
-assert.ok(videoWidgets.get('sampler_name').disabled)
-assert.equal(videoWidgets.get('first_pass_scale').disabled, false)
-assert.equal(videoWidgets.get('upscale_model').disabled, false)
-assert.equal(videoWidgets.get('selflift_transition_step').disabled, false)
-assert.ok(videoWidgets.get('second_sampler').disabled)
-assert.ok(videoWidgets.get('second_sigma_values').disabled)
+assert.equal(videoWidgets.get('first_pass_scale').value, 0.5)
 videoNode.inputs.find(i => i.name === 'second_sigmas').link = 22
 videoNode.onConnectionsChange()
 assert.ok(videoWidgets.get('second_sigma_values').disabled)
-videoChange('sampling_plan', '传统二采')
-assert.equal(videoWidgets.get('sampler_name').value, 'sa_solver')
-assert.ok(videoWidgets.get('selflift_transition_step').disabled)
-assert.ok(videoWidgets.get('second_sigma_values').disabled)
 videoChange('sampling_mode', '单采')
-assert.ok(videoWidgets.get('sampling_plan').disabled)
+assert.ok(videoWidgets.get('film_model').disabled)
 assert.ok(videoWidgets.get('first_pass_scale').disabled)
+assert.ok(videoWidgets.get('second_sampler').disabled)
+videoChange('sampling_mode', '二采')
+assert.equal(videoWidgets.get('first_pass_scale').value, 0.5)
+assert.ok(videoWidgets.get('first_pass_scale').disabled)
+assert.equal(videoWidgets.get('film_model').disabled, false)
+assert.equal(videoWidgets.get('second_sampler').disabled, false)
+assert.ok(videoWidgets.get('second_sigma_values').disabled)
 assert.equal(videoWidgets.get('width').label, '最终宽度')
-console.log('H3 node controls: three sampling plans, fixed Film ratio, SelfLift Euler, independent sigmas and toggles passed.')
+console.log('H3 controls: Film 2×, fixed visible ratio, Sigma links, single pass and face controls passed.')

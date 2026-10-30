@@ -3,8 +3,7 @@ import { app } from "../../../scripts/app.js";
 const sections = [
   ["生成", ["prompt", "width", "height", "mode", "duration", "ref_image_size"]],
   ["主采样", ["sampling_mode", "steps", "sampler_name", "scheduler", "denoise"]],
-  ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "film_model", "second_sampler", "second_sigma_values",
-    "selflift_transition_step", "selflift_rho", "selflift_highres_tiling"]],
+  ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "film_model", "second_sampler", "second_sigma_values"]],
   ["小脸修复", ["face_refine", "face_count", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
   ["分段上下文", ["enable_context", "latent_path", "clip_index", "context_path", "h3_context_length"]],
@@ -19,18 +18,20 @@ const labels = {
   first_pass_scale: "首采宽高比例", upscale_model: "潜空间放大模型",
   second_sampler: "二采采样器", second_sigma_values: "二采 Sigma",
   sampling_plan: "二采方案", film_model: "Film 2× 模型",
-  selflift_transition_step: "SelfLift 低分步数", selflift_rho: "SelfLift VAE 校正比例",
-  selflift_highres_tiling: "SelfLift 高分空间分块",
   face_refine: "启用小脸修复", face_count: "修脸人数", face_steps: "修脸步数",
   face_denoise: "小脸降噪强度", face_detector: "人脸检测模型", face_reverse: "倒序修脸",
   face_large_strength: "大脸降噪倍率", face_fallback_detector: "人体兜底检测", face_seed: "修脸种子",
 };
 
 function setupSections(node) {
+  const videoContext = node.comfyClass === "YtonH3VideoContextOmniGenerate";
   const widgets = new Map(node.widgets.map(widget => [widget.name, widget]));
-  for (const [name, label, value] of [
-    ["h3_context_length", "接续重叠区（固定）", 22],
-  ]) {
+  const info = [["h3_context_length", "接续重叠区（固定）", 22, " 帧"]];
+  if (videoContext) info.push(
+    ["sampling_plan", "二采方式（固定）", "Film 2×", ""],
+    ["first_pass_scale", "首采宽高比例（固定）", 0.5, ""],
+  );
+  for (const [name, label, value, suffix] of info) {
     widgets.set(name, node.addCustomWidget({
       name, type: "h3_context_info", value, disabled: true, serialize: false,
       options: { serialize: false },
@@ -43,7 +44,7 @@ function setupSections(node) {
         ctx.textAlign = "left";
         ctx.fillText(label, 14, y + 16);
         ctx.textAlign = "right";
-        ctx.fillText(`${value} 帧`, width - 14, y + 16);
+        ctx.fillText(`${value}${suffix}`, width - 14, y + 16);
         ctx.restore();
       },
     }));
@@ -90,10 +91,6 @@ function setupSections(node) {
       output.label = { video: "本段视频", av_latent: "最终 AV latent", latent_path: "本段上下文路径" }[output.name];
     }
   }
-  let manualScale = widgets.get("first_pass_scale").value;
-  let manualSampler = widgets.get("sampler_name").value;
-  let wasFilm = false;
-  let wasSelfLift = false;
   function syncControlState() {
     const custom = node.inputs.find(input => input.name === "sigmas")?.link != null;
     for (const name of ["steps", "scheduler", "denoise"]) {
@@ -101,29 +98,14 @@ function setupSections(node) {
     }
     widgets.get("duration").disabled = widgets.get("mode").value === "复刻模式";
     const twoPass = widgets.get("sampling_mode").value === "二采";
-    const plan = widgets.get("sampling_plan")?.value;
-    const film = twoPass && plan === "Film 2×";
-    const selfLift = twoPass && plan === "SelfLift Progressive Sampler (MiniMax H3)";
     const scale = widgets.get("first_pass_scale");
-    if (film && !wasFilm) manualScale = scale.value;
-    if (film) scale.value = 0.5;
-    else if (wasFilm) scale.value = manualScale;
-    scale.disabled = !twoPass || film;
-    scale.label = film ? "首采宽高比例（固定 0.5）" : labels.first_pass_scale;
-    if (selfLift && !wasSelfLift) manualSampler = widgets.get("sampler_name").value;
-    if (selfLift) widgets.get("sampler_name").value = "euler";
-    else if (wasSelfLift) widgets.get("sampler_name").value = manualSampler;
-    widgets.get("sampler_name").disabled = selfLift;
-    wasFilm = film;
-    wasSelfLift = selfLift;
-    if (widgets.has("sampling_plan")) widgets.get("sampling_plan").disabled = !twoPass;
-    widgets.get("upscale_model").disabled = !twoPass || film;
-    widgets.get("second_sampler").disabled = !twoPass || selfLift;
-    widgets.get("second_sigma_values").disabled = !twoPass || selfLift || node.inputs.find(input => input.name === "second_sigmas")?.link != null;
-    if (widgets.has("film_model")) widgets.get("film_model").disabled = !film;
-    for (const name of ["selflift_transition_step", "selflift_rho", "selflift_highres_tiling"]) {
-      if (widgets.has(name)) widgets.get(name).disabled = !selfLift;
-    }
+    if (videoContext) scale.value = 0.5;
+    scale.disabled = !twoPass || videoContext;
+    scale.label = videoContext ? "首采宽高比例（固定 0.5）" : labels.first_pass_scale;
+    if (widgets.has("upscale_model")) widgets.get("upscale_model").disabled = !twoPass;
+    widgets.get("second_sampler").disabled = !twoPass;
+    widgets.get("second_sigma_values").disabled = !twoPass || node.inputs.find(input => input.name === "second_sigmas")?.link != null;
+    if (widgets.has("film_model")) widgets.get("film_model").disabled = !twoPass;
     for (const name of ["face_count", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]) {
       widgets.get(name).disabled = !widgets.get("face_refine").value;
     }
@@ -133,7 +115,7 @@ function setupSections(node) {
     }
     node.setDirtyCanvas(true, true);
   }
-  for (const name of ["mode", "sampling_mode", "sampling_plan", "face_refine", "first_pass_scale", "sampler_name"]) {
+  for (const name of ["mode", "sampling_mode", "face_refine", "first_pass_scale"]) {
     const widget = widgets.get(name);
     if (!widget) continue;
     const callback = widget.callback;

@@ -5,7 +5,7 @@ import math
 from comfy_execution.graph_utils import GraphBuilder
 
 from .omni_face import add_face_refinement
-from .omni_sampling import FILM, FILM_MODEL, SELFLIFT, TRADITIONAL, sampling_dimensions
+from .omni_sampling import FILM_MODEL, sampling_dimensions
 
 CONTEXT_FRAMES = 22
 
@@ -45,24 +45,20 @@ def _color_match(graph, frames, previous, prefix):
 
 def build_video_context_graph(model_loader, prompt, width, height, mode, duration, ref_image_size,
                               sampling_mode, steps, sampler_name, scheduler, denoise, seed,
-                              first_pass_scale, upscale_model, second_sampler, second_sigma_values,
+                              second_sampler, second_sigma_values,
                               clip_index, face_refine, face_count, face_steps,
                               face_denoise, face_detector, face_reverse, face_large_strength,
                               face_fallback_detector, face_seed, image=None, video=None, audio=None,
                               sigmas=None, second_sigmas=None, previous_video=None, second_model=None,
                               face_model=None, face_sigmas=None, enable_context=False,
-                              sampling_plan=TRADITIONAL, film_model=FILM_MODEL,
-                              selflift_transition_step=2, selflift_rho=0.0, selflift_highres_tiling=False):
+                              film_model=FILM_MODEL):
     width, height, main_width, main_height = sampling_dimensions(
-        width, height, sampling_mode, sampling_plan, first_pass_scale)
+        width, height, sampling_mode)
     if not enable_context:
         previous_video = None
     graph = GraphBuilder()
     models = graph.node("fast modelFromLoader", id="models", **{"模型加载器": model_loader})
     two_pass = sampling_mode == "二采"
-    selflift = two_pass and sampling_plan == SELFLIFT
-    if selflift and sigmas is None and not 1 <= selflift_transition_step < steps:
-        raise ValueError("SelfLift 低分步数必须小于主采样总步数；例如总计 4 步时，低分设为 2 步。")
     overlap = CONTEXT_FRAMES if previous_video is not None else 0
 
     source_images = source_audio = source_video = None
@@ -108,8 +104,7 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
 
     reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id="reference",
                            clip=models.out(1), vae=models.out(2), audio_vae=models.out(3),
-                           prompt=prompt, width=width if selflift else main_width,
-                           height=height if selflift else main_height,
+                           prompt=prompt, width=main_width, height=main_height,
                            length=length, ref_image_size=ref_image_size)
     for name, link in (("image", image), ("video", source_video if source_video is not None else video),
                        ("audio", audio if source_video is None else None)):
@@ -131,27 +126,14 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
     if schedule is None:
         schedule = graph.node("BasicScheduler", id="schedule", model=models.out(0),
                               scheduler=scheduler, steps=steps, denoise=denoise).out(0)
-    if selflift:
-        # SelfLift owns both stages and consumes a target-resolution template.
-        # CFG=1 preserves the generator's BasicGuider behavior; no uncond pass.
-        sampler = graph.node("KSamplerSelect", id="sampler", sampler_name="euler")
-        negative = graph.node("ConditioningZeroOut", id="selflift_negative", conditioning=conditioning)
-        main = graph.node("SelfLiftH3Sampler", id="main", model=models.out(0), positive=conditioning,
-                          negative=negative.out(0), vae=models.out(2), latent_image=reference.out(1),
-                          sampler=sampler.out(0), sigmas=schedule, seed=seed, cfg=1.0,
-                          transition_step=selflift_transition_step, lowres_scale=first_pass_scale,
-                          rho=selflift_rho, w_min=0.5, w_max=1.0, upscaler_model=upscale_model,
-                          highres_tiles="auto", highres_tiling=selflift_highres_tiling,
-                          upscaler_unload=True, model_hires=models.out(0) if second_model is None else second_model)
-    else:
-        noise = graph.node("RandomNoise", id="noise", noise_seed=seed)
-        guider = graph.node("BasicGuider", id="guider", model=models.out(0), conditioning=conditioning)
-        sampler = graph.node("KSamplerSelect", id="sampler", sampler_name=sampler_name)
-        main = graph.node("SamplerCustomAdvanced", id="main", noise=noise.out(0), guider=guider.out(0),
-                          sampler=sampler.out(0), sigmas=schedule, latent_image=reference.out(1))
+    noise = graph.node("RandomNoise", id="noise", noise_seed=seed)
+    guider = graph.node("BasicGuider", id="guider", model=models.out(0), conditioning=conditioning)
+    sampler = graph.node("KSamplerSelect", id="sampler", sampler_name=sampler_name)
+    main = graph.node("SamplerCustomAdvanced", id="main", noise=noise.out(0), guider=guider.out(0),
+                      sampler=sampler.out(0), sigmas=schedule, latent_image=reference.out(1))
     final = main.out(0)
 
-    if two_pass and not selflift:
+    if two_pass:
         second_model = models.out(0) if second_model is None else second_model
         high_reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id="high_reference",
                                     clip=models.out(1), vae=models.out(2), audio_vae=models.out(3),
@@ -176,24 +158,13 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
         high_guider = graph.node("BasicGuider", id="high_guider", model=second_model,
                                  conditioning=high_conditioning)
         high_noise = graph.node("RandomNoise", id="high_noise", noise_seed=seed)
-        if sampling_plan == FILM:
-            # Combined adds CONST noise at exactly this schedule's first sigma.
-            # Passing RandomNoise to the sampler again would add noise twice.
-            upscaled = graph.node("MiniMaxH3LatentUpscaleCombined", id="upscale", samples=main.out(1),
-                                  method="learned model", learned_model=film_model, model=second_model,
-                                  noise=high_noise.out(0), sigmas=high_schedule, audio_denoise=0.0,
-                                  noise_resample="independent", match_stats=0.0)
-            latent = upscaled.out(0)
-            sampling_noise = graph.node("DisableNoise", id="film_disable_noise").out(0)
-        else:
-            split = graph.node("LTXVSeparateAVLatent", id="split_main", av_latent=main.out(0))
-            upscaled = graph.node("easy minimaxH3LatentUpscaler", id="upscale", latent=split.out(0),
-                                  model_name=upscale_model, mode="target dimensions",
-                                  **{"mode.width": width, "mode.height": height}, align=32,
-                                  enable_temporal_chunking=True, force_unload=True)
-            latent = graph.node("LTXVConcatAVLatent", id="high_av", video_latent=upscaled.out(0),
-                                audio_latent=split.out(1)).out(0)
-            sampling_noise = high_noise.out(0)
+        # Combined adds noise at this schedule's first sigma; do not add it twice.
+        upscaled = graph.node("MiniMaxH3LatentUpscaleCombined", id="upscale", samples=main.out(1),
+                              method="learned model", learned_model=film_model, model=second_model,
+                              noise=high_noise.out(0), sigmas=high_schedule, audio_denoise=0.0,
+                              noise_resample="independent", match_stats=0.0)
+        latent = upscaled.out(0)
+        sampling_noise = graph.node("DisableNoise", id="film_disable_noise").out(0)
         high_sampler = graph.node("KSamplerSelect", id="high_sampler", sampler_name=second_sampler)
         final = graph.node("SamplerCustomAdvanced", id="high_sample", noise=sampling_noise,
                            guider=high_guider.out(0), sampler=high_sampler.out(0), sigmas=high_schedule,

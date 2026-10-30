@@ -148,19 +148,15 @@ class VideoContextGraphTests(unittest.TestCase):
         self.assertEqual(graph["reference"]["inputs"]["video"], ["cut_source", 0])
 
     def test_sampling_models_sigmas_and_face_settings_are_preserved(self):
-        graph, _ = expanded(sampling_mode="二采", width=1920, height=1088, first_pass_scale=0.5,
+        graph, _ = expanded(sampling_mode="二采", width=1920, height=1088,
                             previous_video=["prior_clip", 0], enable_context=True, sigmas=["sigma", 0],
                             second_sigmas=["sigma2", 0], second_model=["model2", 0],
-                            upscale_model="h3_upscaler_lms_v0.1.safetensors",
                             face_refine=True, face_sigmas=["face_sigma", 0], face_model=["face_model", 0])
         self.assertEqual((graph["reference"]["inputs"]["width"], graph["reference"]["inputs"]["height"]), (960, 544))
-        self.assertEqual(graph["upscale"]["inputs"]["mode.width"], 1920)
-        self.assertEqual(graph["upscale"]["class_type"], "easy minimaxH3LatentUpscaler")
-        self.assertEqual(graph["upscale"]["inputs"]["model_name"], "h3_upscaler_lms_v0.1.safetensors")
-        self.assertTrue(graph["upscale"]["inputs"]["enable_temporal_chunking"])
-        self.assertTrue(graph["upscale"]["inputs"]["force_unload"])
-        self.assertEqual(graph["high_av"]["inputs"]["video_latent"][0].split(".")[-1], "upscale")
-        self.assertEqual(graph["high_av"]["inputs"]["audio_latent"][1], 1)
+        self.assertEqual(graph["upscale"]["class_type"], "MiniMaxH3LatentUpscaleCombined")
+        self.assertEqual(graph["upscale"]["inputs"]["learned_model"], "h3_clean_latent_upscaler_film_epoch200.safetensors")
+        self.assertEqual(graph["upscale"]["inputs"]["audio_denoise"], 0.0)
+        self.assertEqual(graph["high_reference"]["inputs"]["width"], 1920)
         self.assertEqual(graph["main"]["inputs"]["sigmas"], ["sigma", 0])
         self.assertEqual(graph["high_sample"]["inputs"]["sigmas"], ["sigma2", 0])
         self.assertEqual(graph["high_guider"]["inputs"]["model"], ["model2", 0])

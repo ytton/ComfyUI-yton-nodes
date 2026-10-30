@@ -1651,7 +1651,7 @@
       ],
       "size": [
         620,
-        1268
+        1180
       ],
       "flags": {},
       "order": 35,
@@ -1867,26 +1867,6 @@
           "link": null
         },
         {
-          "label": "首采宽高比例",
-          "localized_name": "first_pass_scale",
-          "name": "first_pass_scale",
-          "type": "FLOAT",
-          "widget": {
-            "name": "first_pass_scale"
-          },
-          "link": null
-        },
-        {
-          "label": "潜空间放大模型",
-          "localized_name": "upscale_model",
-          "name": "upscale_model",
-          "type": "COMBO",
-          "widget": {
-            "name": "upscale_model"
-          },
-          "link": null
-        },
-        {
           "label": "二采采样器",
           "localized_name": "second_sampler",
           "name": "second_sampler",
@@ -1997,52 +1977,12 @@
           "link": null
         },
         {
-          "label": "二采方案",
-          "localized_name": "sampling_plan",
-          "name": "sampling_plan",
-          "type": "COMBO",
-          "widget": {
-            "name": "sampling_plan"
-          },
-          "link": null
-        },
-        {
           "label": "Film 2× 模型",
           "localized_name": "film_model",
           "name": "film_model",
           "type": "COMBO",
           "widget": {
             "name": "film_model"
-          },
-          "link": null
-        },
-        {
-          "label": "SelfLift 低分步数",
-          "localized_name": "selflift_transition_step",
-          "name": "selflift_transition_step",
-          "type": "INT",
-          "widget": {
-            "name": "selflift_transition_step"
-          },
-          "link": null
-        },
-        {
-          "label": "SelfLift VAE 校正比例",
-          "localized_name": "selflift_rho",
-          "name": "selflift_rho",
-          "type": "FLOAT",
-          "widget": {
-            "name": "selflift_rho"
-          },
-          "link": null
-        },
-        {
-          "label": "SelfLift 高分空间分块",
-          "localized_name": "selflift_highres_tiling",
-          "name": "selflift_highres_tiling",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "selflift_highres_tiling"
           },
           "link": null
         },
@@ -2097,15 +2037,9 @@
         "euler",
         "simple",
         1,
-        "传统二采",
-        0.5,
-        "minimax_h3_latent_upscaler_3d_fp16.safetensors",
         "h3_clean_latent_upscaler_film_epoch200.safetensors",
         "sa_solver",
         "0.631578922, 0.3158, 0",
-        2,
-        0,
-        false,
         true,
         1,
         1,
@@ -2132,15 +2066,9 @@
         "sampler_name": "euler",
         "scheduler": "simple",
         "denoise": 1,
-        "sampling_plan": "传统二采",
-        "first_pass_scale": 0.5,
-        "upscale_model": "minimax_h3_latent_upscaler_3d_fp16.safetensors",
         "film_model": "h3_clean_latent_upscaler_film_epoch200.safetensors",
         "second_sampler": "sa_solver",
         "second_sigma_values": "0.631578922, 0.3158, 0",
-        "selflift_transition_step": 2,
-        "selflift_rho": 0,
-        "selflift_highres_tiling": false,
         "face_refine": true,
         "face_count": 1,
         "face_steps": 1,
@@ -2789,12 +2717,7 @@
         -30,
         -40
       ]
-    },
-    "h3_sampling_plans": [
-      "传统二采",
-      "SelfLift Progressive Sampler (MiniMax H3)",
-      "Film 2×"
-    ]
+    }
   },
   "version": 0.4
 }
