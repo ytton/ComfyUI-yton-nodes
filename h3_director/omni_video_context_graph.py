@@ -46,13 +46,12 @@ def _color_match(graph, frames, previous, prefix):
 def build_video_context_graph(model_loader, prompt, width, height, mode, duration, ref_image_size,
                               sampling_mode, steps, sampler_name, scheduler, denoise, seed,
                               second_sampler, second_sigma_values,
-                              clip_index, face_refine, face_count, face_steps,
-                              face_denoise, face_detector, face_reverse, face_large_strength,
-                              face_fallback_detector, face_seed, image=None, video=None, audio=None,
+                              clip_index, face_refine, face_count, face_reverse, image=None, video=None, audio=None,
                               sigmas=None, previous_video=None, second_model=None,
                               face_model=None, face_sigmas=None, enable_context=False,
                               film_model=FILM_MODEL, film_method="learned model",
-                              film_audio_denoise=0.0, film_noise_resample="independent", film_match_stats=0.0):
+                              film_audio_denoise=0.0, film_noise_resample="independent", film_match_stats=0.0,
+                              second_steps=4, second_sigma_start=0.4, second_rho=7.0, film_ff_chunks="8"):
     width, height, main_width, main_height = sampling_dimensions(
         width, height, sampling_mode)
     if not enable_context:
@@ -136,35 +135,26 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
 
     if two_pass:
         second_model = models.out(0) if second_model is None else second_model
-        high_reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id="high_reference",
-                                    clip=models.out(1), vae=models.out(2), audio_vae=models.out(3),
-                                    prompt="Enhance this video with sharp, crisp details while preserving a natural photorealistic appearance.",
-                                    width=width, height=height, length=length, ref_image_size=ref_image_size)
-        if image is not None:
-            high_reference.set_input("image", image)
-        if source_video is not None:
-            high_reference.set_input("video", source_video)
-        high_conditioning = high_reference.out(0)
-        if previous is not None:
-            high_guide_images = _guide_from_previous(graph, previous, "high_ctx_")
-            high_conditioning = _add_guide(graph, high_conditioning, high_reference.out(1), models.out(2), models.out(3),
-                                            high_guide_images, previous.out(1), "high_context_add_guide")
-        if source_images is not None and previous is None:
-            high_conditioning = graph.node("MiniMaxH3AddGuide", id="high_source_guide", positive=high_conditioning,
-                                            latent=high_reference.out(1), vae=models.out(2), image=source_images,
-                                            frame_idx=0).out(0)
+        if film_ff_chunks != "沿用模型":
+            second_model = graph.node("MiniMaxChunkFeedForward", id="high_ff_chunks", model=second_model,
+                                      chunks=int(film_ff_chunks), seq_threshold=4096).out(0)
         if isinstance(second_sigma_values, str):
-            high_schedule = graph.node("ManualSigmas", id="high_sigmas", sigmas=second_sigma_values).out(0)
+            if second_sigma_values.strip():
+                high_schedule = graph.node("ManualSigmas", id="high_sigmas", sigmas=second_sigma_values).out(0)
+            else:
+                high_schedule = graph.node("KarrasScheduler", id="high_sigmas", steps=second_steps,
+                                           sigma_max=second_sigma_start, sigma_min=0.01, rho=second_rho).out(0)
         else:
             high_schedule = second_sigma_values
-        high_guider = graph.node("BasicGuider", id="high_guider", model=second_model,
-                                 conditioning=high_conditioning)
         high_noise = graph.node("RandomNoise", id="high_noise", noise_seed=seed)
         # Combined adds noise at this schedule's first sigma; do not add it twice.
         upscaled = graph.node("MiniMaxH3LatentUpscaleCombined", id="upscale", samples=main.out(1),
                               method=film_method, learned_model=film_model, model=second_model,
                               noise=high_noise.out(0), sigmas=high_schedule, audio_denoise=film_audio_denoise,
-                              noise_resample=film_noise_resample, match_stats=film_match_stats)
+                              noise_resample=film_noise_resample, match_stats=film_match_stats,
+                              positive=conditioning)
+        high_guider = graph.node("BasicGuider", id="high_guider", model=second_model,
+                                 conditioning=upscaled.out(1))
         latent = upscaled.out(0)
         sampling_noise = graph.node("DisableNoise", id="film_disable_noise").out(0)
         high_sampler = graph.node("KSamplerSelect", id="high_sampler", sampler_name=second_sampler)
@@ -179,9 +169,8 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
             face_sigmas = graph.node("ManualSigmas", id="face_sigmas", sigmas=face_sigmas).out(0) if face_sigmas.strip() else None
         face_model = models.out(0) if face_model is None else face_model
         frames = add_face_refinement(graph, frames, final, face_model, models.out(1), models.out(2), models.out(3),
-                                     image, prompt, ref_image_size, face_count, face_steps, face_denoise,
-                                     face_detector, face_reverse, face_seed, face_sigmas,
-                                     face_large_strength, face_fallback_detector)
+                                     image, prompt, ref_image_size, face_count, 4, 0.4,
+                                     "bbox\\face_yolov8m.pt", face_reverse, 42, face_sigmas, 0.35, "none")
 
     trimmed = graph.node("YtonH3SegmentTrim", id="trim", images=frames, audio=sound,
                          head_trim_frames=head_trim_frames, tail_trim_frames=tail_trim_frames, fps=24.0)

@@ -1449,59 +1449,6 @@
       }
     },
     {
-      "id": 31,
-      "type": "ManualSigmas",
-      "pos": [
-        1060,
-        1460
-      ],
-      "size": [
-        340,
-        58
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "sigmas",
-          "name": "sigmas",
-          "type": "STRING",
-          "widget": {
-            "name": "sigmas"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "Sigmas",
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "links": [
-            25
-          ],
-          "slot_index": 0
-        }
-      ],
-      "title": "二采 Sigma · 2 步",
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.42.3",
-        "Node name for S&R": "ManualSigmas"
-      },
-      "widgets_values": [
-        "0.631578922, 0.3158, 0"
-      ],
-      "widgets_values_named": {
-        "sigmas": "0.631578922, 0.3158, 0"
-      }
-    },
-    {
       "id": 32,
       "type": "ManualSigmas",
       "pos": [
@@ -1553,50 +1500,6 @@
       "widgets_values_named": {
         "sigmas": "0.615, 0"
       }
-    },
-    {
-      "id": 33,
-      "type": "SetNode",
-      "pos": [
-        1236,
-        1518
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 32,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "link": 25
-        }
-      ],
-      "outputs": [
-        {
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "links": null,
-          "slot_index": 0
-        }
-      ],
-      "title": "Set_1029 · 二采 Sigma",
-      "properties": {
-        "Node name for S&R": "SetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "previousName": "1029 · 二采 Sigma"
-      },
-      "widgets_values": [
-        "1029 · 二采 Sigma"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 二采 Sigma"
-      },
-      "color": "#485248",
-      "bgcolor": "#272e27"
     },
     {
       "id": 34,
@@ -1879,7 +1782,7 @@
           "widget": {
             "name": "second_sigma_values"
           },
-          "link": 31
+          "link": null
         },
         {
           "label": "启用小脸修复",
@@ -1898,66 +1801,6 @@
           "type": "INT",
           "widget": {
             "name": "face_count"
-          },
-          "link": null
-        },
-        {
-          "label": "修脸步数",
-          "localized_name": "face_steps",
-          "name": "face_steps",
-          "type": "INT",
-          "widget": {
-            "name": "face_steps"
-          },
-          "link": null
-        },
-        {
-          "label": "小脸降噪强度",
-          "localized_name": "face_denoise",
-          "name": "face_denoise",
-          "type": "FLOAT",
-          "widget": {
-            "name": "face_denoise"
-          },
-          "link": null
-        },
-        {
-          "label": "大脸降噪倍率",
-          "localized_name": "face_large_strength",
-          "name": "face_large_strength",
-          "type": "FLOAT",
-          "widget": {
-            "name": "face_large_strength"
-          },
-          "link": null
-        },
-        {
-          "label": "人脸检测模型",
-          "localized_name": "face_detector",
-          "name": "face_detector",
-          "type": "STRING",
-          "widget": {
-            "name": "face_detector"
-          },
-          "link": null
-        },
-        {
-          "label": "人体兜底检测",
-          "localized_name": "face_fallback_detector",
-          "name": "face_fallback_detector",
-          "type": "STRING",
-          "widget": {
-            "name": "face_fallback_detector"
-          },
-          "link": null
-        },
-        {
-          "label": "修脸种子",
-          "localized_name": "face_seed",
-          "name": "face_seed",
-          "type": "INT",
-          "widget": {
-            "name": "face_seed"
           },
           "link": null
         },
@@ -2030,6 +1873,38 @@
             "name": "film_match_stats"
           },
           "link": null
+        },
+        {
+          "name": "second_steps",
+          "type": "INT",
+          "widget": {
+            "name": "second_steps"
+          },
+          "link": null
+        },
+        {
+          "name": "second_sigma_start",
+          "type": "FLOAT",
+          "widget": {
+            "name": "second_sigma_start"
+          },
+          "link": null
+        },
+        {
+          "name": "second_rho",
+          "type": "FLOAT",
+          "widget": {
+            "name": "second_rho"
+          },
+          "link": null
+        },
+        {
+          "name": "film_ff_chunks",
+          "type": "COMBO",
+          "widget": {
+            "name": "film_ff_chunks"
+          },
+          "link": null
         }
       ],
       "outputs": [
@@ -2074,20 +1949,18 @@
         1,
         "learned model",
         "h3_clean_latent_upscaler_film_epoch200.safetensors",
+        "euler",
+        4,
+        0.4,
+        7,
+        "",
+        "8",
         0.0,
         "independent",
         0.0,
-        "sa_solver",
-        "0.631578922, 0.3158, 0",
         true,
         1,
         "",
-        1,
-        0.4,
-        1,
-        "bbox\\face_yolov8m.pt",
-        "segm\\person_yolov8m-seg.pt",
-        42,
         false,
         873790131440316,
         "fixed",
@@ -2111,22 +1984,20 @@
         "film_audio_denoise": 0.0,
         "film_noise_resample": "independent",
         "film_match_stats": 0.0,
-        "second_sampler": "sa_solver",
-        "second_sigma_values": "0.631578922, 0.3158, 0",
+        "second_sampler": "euler",
+        "second_sigma_values": "",
         "face_refine": true,
         "face_count": 1,
         "face_sigmas": "",
-        "face_steps": 1,
-        "face_denoise": 0.4,
-        "face_large_strength": 1,
-        "face_detector": "bbox\\face_yolov8m.pt",
-        "face_fallback_detector": "segm\\person_yolov8m-seg.pt",
-        "face_seed": 42,
         "face_reverse": false,
         "seed": 873790131440316,
         "control_after_generate": "fixed",
         "enable_context": false,
-        "clip_index": 1
+        "clip_index": 1,
+        "second_steps": 4,
+        "second_sigma_start": 0.4,
+        "second_rho": 7,
+        "film_ff_chunks": "8"
       },
       "title": "H3 全模态生成 · 视频上下文"
     },
@@ -2204,45 +2075,6 @@
       "widgets_values_named": {
         "Constant": "1029 · 修脸模型"
       }
-    },
-    {
-      "id": 43,
-      "type": "GetNode",
-      "pos": [
-        1900,
-        660
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 15,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "links": [
-            31
-          ],
-          "slot_index": 0
-        }
-      ],
-      "title": "Get_1029 · 二采 Sigma",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes"
-      },
-      "widgets_values": [
-        "1029 · 二采 Sigma"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 二采 Sigma"
-      },
-      "color": "#485248",
-      "bgcolor": "#272e27"
     },
     {
       "id": 44,
@@ -2607,14 +2439,6 @@
       "STRING"
     ],
     [
-      25,
-      31,
-      0,
-      33,
-      0,
-      "SIGMAS"
-    ],
-    [
       26,
       32,
       0,
@@ -2645,14 +2469,6 @@
       38,
       2,
       "VIDEO"
-    ],
-    [
-      31,
-      43,
-      0,
-      38,
-      23,
-      "SIGMAS"
     ],
     [
       32,

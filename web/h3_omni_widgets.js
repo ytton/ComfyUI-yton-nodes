@@ -3,7 +3,7 @@ import { app } from "../../../scripts/app.js";
 const sections = [
   ["生成", ["prompt", "width", "height", "mode", "duration", "ref_image_size"]],
   ["主采样", ["sampling_mode", "steps", "sampler_name", "scheduler", "denoise"]],
-  ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "film_method", "film_model", "film_audio_denoise", "film_noise_resample", "film_match_stats", "second_sampler", "second_sigma_values"]],
+  ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "film_method", "film_model", "second_sampler", "second_steps", "second_sigma_start", "second_rho", "second_sigma_values", "film_ff_chunks", "film_audio_denoise", "film_noise_resample", "film_match_stats"]],
   ["小脸修复", ["face_refine", "face_count", "face_sigmas", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
   ["分段上下文", ["enable_context", "latent_path", "clip_index", "context_path", "h3_context_length"]],
@@ -17,6 +17,8 @@ const labels = {
   enable_context: "启用上下文",
   first_pass_scale: "首采宽高比例", upscale_model: "潜空间放大模型",
   second_sampler: "二采采样器", second_sigma_values: "二采 Sigma（手填）",
+  second_steps: "二采步数", second_sigma_start: "二采起始 Sigma / 重绘力度", second_rho: "去网格曲线 / rho",
+  film_ff_chunks: "二采前馈分块",
   sampling_plan: "二采方案", film_model: "Film 2× 模型",
   film_method: "放大方式 / method", film_audio_denoise: "音频降噪 / audio_denoise",
   film_noise_resample: "噪声重采样 / noise_resample", film_match_stats: "统计匹配 / match_stats",
@@ -84,6 +86,25 @@ function setupSections(node) {
     }
   }
   node.widgets = ordered;
+  const secondPassWidgets = node.widgets.filter(widget =>
+    widget.name === "h3_section_二采方案" || sections[2][1].includes(widget.name));
+  const visibleLayout = new Map(secondPassWidgets.map(widget => [widget, {
+    type: widget.type, computeSize: widget.computeSize, computeLayoutSize: widget.computeLayoutSize,
+  }]));
+  let secondPassVisible = true;
+  function showSecondPass(visible) {
+    if (!videoContext || secondPassVisible === visible) return;
+    secondPassVisible = visible;
+    for (const widget of secondPassWidgets) {
+      const layout = visibleLayout.get(widget);
+      widget.hidden = !visible;
+      if (widget.options) widget.options.hidden = !visible;
+      widget.type = visible ? layout.type : "hidden";
+      widget.computeSize = visible ? layout.computeSize : () => [0, -4];
+      widget.computeLayoutSize = visible ? layout.computeLayoutSize : () => ({ minHeight: 0, maxHeight: 0, minWidth: 0 });
+    }
+    node.setSize([node.size[0], node.computeSize()[1]]);
+  }
   function labelSockets() {
     const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", previous_video: "上一段视频（可选）", sigmas: "主采样 Sigma（连线）",
       second_sigmas: "二采 Sigma（连线）", face_sigmas: "修脸 Sigma（连线）",
@@ -104,6 +125,7 @@ function setupSections(node) {
     }
     widgets.get("duration").disabled = widgets.get("mode").value === "复刻模式";
     const twoPass = widgets.get("sampling_mode").value === "二采";
+    showSecondPass(twoPass);
     const scale = widgets.get("first_pass_scale");
     if (videoContext) scale.value = 0.5;
     scale.disabled = !twoPass || videoContext;
@@ -113,8 +135,14 @@ function setupSections(node) {
     const secondSigmaLinked = node.inputs.find(input => input.name === (videoContext ? "second_sigma_values" : "second_sigmas"))?.link != null;
     const secondSigmaText = widgets.get("second_sigma_values");
     secondSigmaText.disabled = !twoPass || secondSigmaLinked;
-    secondSigmaText.label = videoContext ? "二采 Sigma" : secondSigmaLinked ? "二采 Sigma（已由连线提供）" : labels.second_sigma_values;
-    for (const name of ["film_method", "film_model", "film_audio_denoise", "film_noise_resample", "film_match_stats"]) {
+    secondSigmaText.label = videoContext ? (secondSigmaLinked ? "二采 Sigma（已由连线提供）" : "二采 Sigma（留空自动）") : secondSigmaLinked ? "二采 Sigma（已由连线提供）" : labels.second_sigma_values;
+    if (videoContext) {
+      const customSecondSigma = secondSigmaLinked || secondSigmaText.value.trim() !== "";
+      for (const name of ["second_steps", "second_sigma_start", "second_rho"]) {
+        widgets.get(name).disabled = !twoPass || customSecondSigma;
+      }
+    }
+    for (const name of ["film_method", "film_model", "film_ff_chunks", "film_audio_denoise", "film_noise_resample", "film_match_stats"]) {
       if (widgets.has(name)) widgets.get(name).disabled = !twoPass;
     }
     if (videoContext) {
@@ -124,20 +152,19 @@ function setupSections(node) {
       widgets.get("film_noise_resample").label = "噪声重采样 / noise_resample（当前插件同效）";
     }
     for (const name of ["face_count", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]) {
-      widgets.get(name).disabled = !widgets.get("face_refine").value;
+      if (widgets.has(name)) widgets.get(name).disabled = !widgets.get("face_refine").value;
     }
     if (videoContext) {
       widgets.get("face_sigmas").label = "修脸 Sigma";
       widgets.get("face_sigmas").disabled = !widgets.get("face_refine").value;
     }
-    if (node.inputs.find(input => input.name === "face_sigmas")?.link != null
-        || (videoContext && widgets.get("face_sigmas").value.trim() !== "")) {
+    if (!videoContext && node.inputs.find(input => input.name === "face_sigmas")?.link != null) {
       widgets.get("face_steps").disabled = true;
       widgets.get("face_denoise").disabled = true;
     }
     node.setDirtyCanvas(true, true);
   }
-  for (const name of ["mode", "sampling_mode", "face_refine", "first_pass_scale", "face_sigmas", "film_method"]) {
+  for (const name of ["mode", "sampling_mode", "face_refine", "first_pass_scale", "face_sigmas", "film_method", "second_sigma_values"]) {
     const widget = widgets.get(name);
     if (!widget) continue;
     const callback = widget.callback;

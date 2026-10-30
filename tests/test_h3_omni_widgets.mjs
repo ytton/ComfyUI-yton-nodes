@@ -52,8 +52,10 @@ const videoNode = {
   comfyClass: 'YtonH3VideoContextOmniGenerate',
   widgets: Object.entries({ ...values, enable_context: false, sampling_mode: '二采',
     film_model: 'h3_clean_latent_upscaler_film_epoch200.safetensors', film_method: 'learned model',
-    film_audio_denoise: 0, film_noise_resample: 'independent', film_match_stats: 0, face_sigmas: '' })
-    .filter(([name]) => !['latent_path', 'context_path', 'first_pass_scale', 'upscale_model'].includes(name))
+    film_audio_denoise: 0, film_noise_resample: 'independent', film_match_stats: 0, face_sigmas: '',
+    second_sigma_values: '', second_steps: 4, second_sigma_start: 0.4, second_rho: 7, film_ff_chunks: '8' })
+    .filter(([name]) => !['latent_path', 'context_path', 'first_pass_scale', 'upscale_model',
+      'face_steps', 'face_denoise', 'face_large_strength', 'face_detector', 'face_fallback_detector', 'face_seed'].includes(name))
     .map(([name, value]) => ({ name, value })),
   inputs: ['sigmas', 'second_sigma_values', 'face_sigmas', 'image', 'video', 'audio', 'previous_video'].map(name => ({ name, link: null })),
   outputs: [{ name: 'video' }, { name: 'av_latent' }],
@@ -80,6 +82,13 @@ assert.equal(contextToggle.value, true)
 assert.ok(!widgets.has('enable_context'))
 const videoWidgets = new Map(videoNode.widgets.map(w => [w.name, w]))
 function videoChange(name, value) { const w = videoWidgets.get(name); w.value = value; w.callback() }
+assert.equal(videoNode.widgets.filter(w => w.name.startsWith('face_')).map(w => w.name).join(','),
+  'face_refine,face_count,face_sigmas,face_reverse')
+videoChange('face_refine', true)
+assert.equal(videoWidgets.get('face_count').disabled, false)
+assert.equal(videoWidgets.get('face_sigmas').disabled, false)
+assert.equal(videoWidgets.get('face_reverse').disabled, false)
+videoChange('face_refine', false)
 assert.equal(videoWidgets.get('first_pass_scale').value, 0.5)
 assert.ok(videoWidgets.get('first_pass_scale').disabled)
 assert.equal(videoWidgets.get('first_pass_scale').serialize, false)
@@ -89,7 +98,7 @@ assert.equal(videoWidgets.get('sampling_plan').serialize, false)
 assert.ok(!videoWidgets.has('upscale_model'))
 assert.ok(!videoWidgets.has('selflift_transition_step'))
 assert.equal(videoWidgets.get('film_model').disabled, false)
-for (const name of ['film_method', 'film_model', 'film_audio_denoise', 'film_noise_resample', 'film_match_stats']) {
+for (const name of ['film_method', 'film_model', 'film_ff_chunks', 'film_audio_denoise', 'film_noise_resample', 'film_match_stats']) {
   assert.ok(videoNode.widgets.indexOf(videoWidgets.get(name)) > videoNode.widgets.findIndex(w => w.name === 'h3_section_二采方案'))
   assert.ok(videoNode.widgets.indexOf(videoWidgets.get(name)) < videoNode.widgets.findIndex(w => w.name === 'h3_section_小脸修复'))
   assert.equal(videoWidgets.get(name).disabled, false)
@@ -106,19 +115,37 @@ videoNode.onConnectionsChange()
 assert.match(videoWidgets.get('film_match_stats').label, /当前方式忽略/)
 assert.equal(videoWidgets.get('second_sampler').disabled, false)
 assert.equal(videoWidgets.get('second_sigma_values').disabled, false)
+const autoSecond = ['second_steps', 'second_sigma_start', 'second_rho']
+for (const name of autoSecond) assert.equal(videoWidgets.get(name).disabled, false)
+videoChange('second_sigma_values', '0.4, 0.2, 0')
+for (const name of autoSecond) assert.ok(videoWidgets.get(name).disabled)
+videoChange('second_sigma_values', '  ')
+for (const name of autoSecond) assert.equal(videoWidgets.get(name).disabled, false)
 videoChange('first_pass_scale', 0.8)
 assert.equal(videoWidgets.get('first_pass_scale').value, 0.5)
 videoNode.inputs.find(i => i.name === 'second_sigma_values').link = 22
 videoNode.onConnectionsChange()
 assert.ok(videoWidgets.get('second_sigma_values').disabled)
+for (const name of autoSecond) assert.ok(videoWidgets.get(name).disabled)
 videoChange('sampling_mode', '单采')
-for (const name of ['film_method', 'film_model', 'film_audio_denoise', 'film_noise_resample', 'film_match_stats']) {
+const hiddenSecond = ['h3_section_二采方案', 'sampling_plan', 'first_pass_scale', 'film_method', 'film_model',
+  'film_ff_chunks', 'film_audio_denoise', 'film_noise_resample', 'film_match_stats', 'second_sampler',
+  'second_sigma_values', ...autoSecond]
+for (const name of hiddenSecond) {
+  assert.ok(videoWidgets.get(name).hidden)
+  assert.equal(videoWidgets.get(name).type, 'hidden')
+}
+assert.equal(videoWidgets.get('h3_context_length').hidden, undefined)
+for (const name of ['film_method', 'film_model', 'film_ff_chunks', 'film_audio_denoise', 'film_noise_resample', 'film_match_stats']) {
   assert.ok(videoWidgets.get(name).disabled)
 }
 assert.ok(videoWidgets.get('film_model').disabled)
 assert.ok(videoWidgets.get('first_pass_scale').disabled)
 assert.ok(videoWidgets.get('second_sampler').disabled)
 videoChange('sampling_mode', '二采')
+for (const name of hiddenSecond) assert.equal(videoWidgets.get(name).hidden, false)
+assert.equal(videoWidgets.get('h3_section_二采方案').type, 'h3_section')
+assert.equal(videoWidgets.get('first_pass_scale').type, 'h3_context_info')
 for (const name of ['film_method', 'film_model', 'film_audio_denoise', 'film_noise_resample', 'film_match_stats']) {
   assert.equal(videoWidgets.get(name).disabled, false)
 }
@@ -127,5 +154,8 @@ assert.ok(videoWidgets.get('first_pass_scale').disabled)
 assert.equal(videoWidgets.get('film_model').disabled, false)
 assert.equal(videoWidgets.get('second_sampler').disabled, false)
 assert.ok(videoWidgets.get('second_sigma_values').disabled)
+videoNode.inputs.find(i => i.name === 'second_sigma_values').link = null
+videoNode.onConnectionsChange()
+for (const name of autoSecond) assert.equal(videoWidgets.get(name).disabled, false)
 assert.equal(videoWidgets.get('width').label, '最终宽度')
 console.log('H3 controls: Film 2×, fixed visible ratio, Sigma links, single pass and face controls passed.')

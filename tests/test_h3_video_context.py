@@ -107,7 +107,7 @@ class VideoContextGraphTests(unittest.TestCase):
                             self.assertEqual(graph["source_components"]["inputs"]["video"], ["source", 0])
                             self.assertIn("source_guide", graph)
                             if sampling_mode == "二采":
-                                self.assertIn("high_source_guide", graph)
+                                self.assertEqual(graph["upscale"]["inputs"]["positive"], graph["guider"]["inputs"]["conditioning"])
                         else:
                             self.assertEqual(graph["reference"]["inputs"]["video"], ["source", 0])
 
@@ -115,7 +115,7 @@ class VideoContextGraphTests(unittest.TestCase):
         graph, _ = expanded(previous_video=["prior_clip", 0], enable_context=True, sampling_mode="二采", duration=10)
         self.assertEqual(graph["previous"]["class_type"], "YtonH3VideoTail")
         self.assertEqual(graph["previous"]["inputs"]["video"], ["prior_clip", 0])
-        for stage, guider in (("main", "guider"), ("high", "high_guider")):
+        for stage, guider in (("main", "guider"),):
             self.assertEqual(graph[f"{stage}_ctx_context_first"]["inputs"]["num_frames"], 21)
             self.assertEqual(graph[f"{stage}_ctx_context_last"]["inputs"]["start_index"], 21)
             self.assertEqual(graph[f"{stage}_ctx_context_first_noise"]["inputs"]["strength"], 0.1)
@@ -127,6 +127,9 @@ class VideoContextGraphTests(unittest.TestCase):
             release = graph[f"{stage}_context_add_guide_audio_feather"]
             self.assertEqual(release["inputs"]["audio_feather_ticks"], 256)
             self.assertTrue(graph[guider]["inputs"]["conditioning"][0].endswith(f"{stage}_context_add_guide_audio_feather"))
+        self.assertEqual(graph["upscale"]["inputs"]["positive"], graph["guider"]["inputs"]["conditioning"])
+        self.assertTrue(graph["high_guider"]["inputs"]["conditioning"][0].endswith("upscale"))
+        self.assertEqual(graph["high_guider"]["inputs"]["conditioning"][1], 1)
         self.assertEqual(graph["reference"]["inputs"]["length"], 277)
         self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 22)
         self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 15)
@@ -156,10 +159,11 @@ class VideoContextGraphTests(unittest.TestCase):
         self.assertEqual(graph["upscale"]["class_type"], "MiniMaxH3LatentUpscaleCombined")
         self.assertEqual(graph["upscale"]["inputs"]["learned_model"], "h3_clean_latent_upscaler_film_epoch200.safetensors")
         self.assertEqual(graph["upscale"]["inputs"]["audio_denoise"], 0.0)
-        self.assertEqual(graph["high_reference"]["inputs"]["width"], 1920)
+        self.assertEqual(graph["upscale"]["inputs"]["positive"], graph["guider"]["inputs"]["conditioning"])
         self.assertEqual(graph["main"]["inputs"]["sigmas"], ["sigma", 0])
         self.assertEqual(graph["high_sample"]["inputs"]["sigmas"], ["sigma2", 0])
-        self.assertEqual(graph["high_guider"]["inputs"]["model"], ["model2", 0])
+        self.assertEqual(graph["high_ff_chunks"]["inputs"]["model"], ["model2", 0])
+        self.assertTrue(graph["high_guider"]["inputs"]["model"][0].endswith("high_ff_chunks"))
         self.assertEqual(graph["face_0_denoise"]["inputs"]["model"], ["face_model", 0])
         self.assertEqual(graph["face_0_sample"]["inputs"]["sigmas"], ["face_sigma", 0])
 
@@ -189,7 +193,7 @@ class OptionalMediaRuntimeTests(unittest.TestCase):
                     self.assertNotIn("source_guide", graph)
                     self.assertNotIn("segment", graph)
                     self.assertEqual(graph["reference"]["inputs"]["image"], ["media", 0])
-                    for stage in ("reference", "high_reference") if sampling_mode == "二采" else ("reference",):
+                    for stage in ("reference",):
                         self.assertNotIn("video", graph[stage]["inputs"])
                         self.assertNotIn("audio", graph[stage]["inputs"])
                     self.assertEqual(graph["reference"]["inputs"]["length"], 243)

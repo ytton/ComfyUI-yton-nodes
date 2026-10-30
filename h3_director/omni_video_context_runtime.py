@@ -49,6 +49,9 @@ class YtonH3VideoContextOmniGenerate:
         required = schema["required"]
         del required["first_pass_scale"]
         del required["upscale_model"]
+        for name in ("face_steps", "face_denoise", "face_large_strength", "face_detector",
+                     "face_fallback_detector", "face_seed"):
+            del required[name]
         required["sampling_mode"][1].update(default="二采",
             tooltip="二采固定使用 Film 2×：半尺寸首采、潜空间放大两倍，再进行二采。单采直接按最终宽高生成。")
         required["film_method"] = (["learned model", "nearest-exact", "nearest", "bilinear", "bicubic", "area", "bislerp"], {
@@ -73,12 +76,29 @@ class YtonH3VideoContextOmniGenerate:
         for name in ("width", "height"):
             required[name][1]["tooltip"] = "最终输出尺寸，按 32 像素对齐；Film 2× 要求为 64 的倍数，例如 1920×1088。"
         required["second_sigma_values"] = ("STRING,SIGMAS", {
-            **required["second_sigma_values"][1], "widgetType": "STRING", "lazy": True,
-            "tooltip": "填写二采时间表，或在此控件连接 STRING / SIGMAS。Film 加噪与二采共用该时间表；单采时不执行。",
+            "default": "", "widgetType": "STRING", "lazy": True,
+            "tooltip": "留空自动生成交错去网格曲线；手填或连接 STRING / SIGMAS 时覆盖自动调度。Film 加噪和二采始终共用同一时间表。",
+        })
+        required["second_steps"] = ("INT", {
+            "default": 4, "min": 1, "max": 100,
+            "tooltip": "自动二采的实际步数，默认 4 步；增加步数可给纹理更多细化时间。手填或连线 Sigma 时不使用。",
+        })
+        required["second_sigma_start"] = ("FLOAT", {
+            "default": 0.4, "min": 0.01, "max": 1.0, "step": 0.01, "round": False,
+            "tooltip": "实际起始 Sigma，直接控制重绘力度，不受主模型 Sigma Shift 的调度换算影响。建议先试 0.4；网格残留可小幅调高，内容变化过大则调低。0.25–0.45 是作者建议的试验范围。",
+        })
+        required["second_rho"] = ("FLOAT", {
+            "default": 7.0, "min": 0.5, "max": 30.0, "step": 0.5, "round": False,
+            "tooltip": "Karras 曲线强度。固定起点与步数，较高值将更多降噪放在前几步；默认 7。曲线末端为 0.01，最后归零。手填或连线 Sigma 时不使用。",
+        })
+        required["second_sampler"][1]["default"] = "euler"
+        required["film_ff_chunks"] = (["沿用模型", "4", "8", "16", "32", "64"], {
+            "default": "8",
+            "tooltip": "二采的前馈计算分块，默认 8 块以降低长片段显存峰值；显存仍不足可选 16 或 32。仅分批计算同一组 token，不裁切视频、不改变采样步数。选择沿用模型可保留外部模型的分块设置。",
         })
         schema["optional"]["face_sigmas"] = ("STRING,SIGMAS", {
             "widgetType": "STRING", "default": "", "lazy": True,
-            "tooltip": "留空使用修脸步数和降噪；也可填写时间表或在此控件连接 STRING / SIGMAS。关闭修脸时不执行。",
+            "tooltip": "可手填时间表或连接 STRING / SIGMAS；留空使用内部 4 步、降噪 0.4。检测、种子和大小脸倍率由节点内部配置。关闭修脸时不执行。",
         })
         schema["optional"]["second_model"][1]["tooltip"] = (
             "Film 2× 的二采模型；可接串好 LoRA 的 MODEL。"
