@@ -44,11 +44,17 @@ class YtonH3VideoContextOmniGenerate:
             "普通模式按序号从源视频截取当前片段；开启上下文并接入上一段视频后，自动增加并裁除 22 帧上下文。"
         )
         schema["optional"]["previous_video"] = ("VIDEO", {
-            "rawLink": True,
+            "lazy": True,
             "tooltip": "可选。接上一段生成的视频，或用加载视频节点读取已有成片；仅在启用上下文时提取尾部画面与音频。独立生成时可留空。",
         })
+        for name in ("image", "video", "audio"):
+            options = schema["optional"][name][1]
+            del options["rawLink"]
+            options["lazy"] = True
+        schema["hidden"] = {"dynprompt": "DYNPROMPT", "unique_id": "UNIQUE_ID"}
         return schema
 
+    INPUT_IS_LIST = True
     RETURN_TYPES = ("VIDEO", "LATENT")
     RETURN_NAMES = ("video", "av_latent")
     FUNCTION = "generate"
@@ -61,8 +67,25 @@ class YtonH3VideoContextOmniGenerate:
         "支持单采、二采、自定义 Sigma 和小脸修复。"
     )
 
-    def generate(self, **inputs):
-        return build_video_context_graph(**inputs)
+    def check_lazy_status(self, enable_context, **inputs):
+        media = ("image", "video", "audio") + (("previous_video",) if enable_context[0] else ())
+        return [name for name in media if name in inputs
+                and not any(item is not None for item in inputs[name])]
+
+    def generate(self, dynprompt, unique_id, **inputs):
+        links = dynprompt[0].get_node(unique_id[0])["inputs"]
+        values = {}
+        for name, items in inputs.items():
+            if name in ("image", "video", "audio", "previous_video"):
+                if name == "previous_video" and not inputs["enable_context"][0]:
+                    continue
+                # A connected media-loader socket can still yield an empty list.
+                # Inspect its values before passing its original link to the graph.
+                if any(item is not None for item in items):
+                    values[name] = links[name]
+            else:
+                values[name] = items[0]
+        return build_video_context_graph(**values)
 
 
 NODE_CLASS_MAPPINGS = {

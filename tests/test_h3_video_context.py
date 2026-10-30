@@ -1,4 +1,5 @@
 """Check VIDEO continuation wiring and native frame/audio operations on CPU."""
+import asyncio
 import importlib.util
 from fractions import Fraction
 from pathlib import Path
@@ -14,7 +15,9 @@ sys.argv = [sys.argv[0], "--cpu"]
 import comfy.options
 comfy.options.enable_args_parsing()
 import torch
+import execution
 from comfy_api.latest import InputImpl, Types
+from comfy_execution.graph import DynamicPrompt
 from comfy_extras.nodes_images import ImageAddNoise
 from comfy_extras.nodes_minimax_h3 import MiniMaxH3AddGuide, _empty_av_latent
 from comfy_extras.nodes_post_processing import ColorTransfer
@@ -23,6 +26,7 @@ package = types.ModuleType("video_context_test")
 package.__path__ = [str(PLUGIN / "h3_director")]
 sys.modules[package.__name__] = package
 from video_context_test.omni_video_context_runtime import YtonH3VideoContextOmniGenerate, YtonH3VideoTail
+from video_context_test.omni_video_context_graph import build_video_context_graph
 from video_context_test.omni_runtime import YtonH3SegmentTrim
 
 feather_package = types.ModuleType("video_context_feather_test")
@@ -34,7 +38,7 @@ feather = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(feather)
 
 
-def expanded(**overrides):
+def defaults(**overrides):
     values = {}
     for name, definition in YtonH3VideoContextOmniGenerate.INPUT_TYPES()["required"].items():
         options = definition[1] if len(definition) > 1 else {}
@@ -43,7 +47,11 @@ def expanded(**overrides):
         elif isinstance(definition[0], list):
             values[name] = definition[0][0]
     values.update(model_loader=["loader", 0], **overrides)
-    result = YtonH3VideoContextOmniGenerate().generate(**values)
+    return values
+
+
+def expanded(**overrides):
+    result = build_video_context_graph(**defaults(**overrides))
     return {key.split(".")[-1]: value for key, value in result["expand"].items()}, result
 
 
@@ -52,7 +60,7 @@ class VideoContextGraphTests(unittest.TestCase):
         schema = YtonH3VideoContextOmniGenerate.INPUT_TYPES()
         self.assertNotIn("previous_video", schema["required"])
         self.assertEqual(schema["optional"]["previous_video"][0], "VIDEO")
-        self.assertTrue(schema["optional"]["previous_video"][1]["rawLink"])
+        self.assertTrue(schema["optional"]["previous_video"][1]["lazy"])
         self.assertEqual(schema["required"]["enable_context"][0], "BOOLEAN")
         self.assertFalse(schema["required"]["enable_context"][1]["default"])
         for name, kind in (("image", "IMAGE"), ("video", "VIDEO"), ("audio", "AUDIO"),
@@ -151,6 +159,74 @@ class VideoContextGraphTests(unittest.TestCase):
         self.assertEqual(graph["high_guider"]["inputs"]["model"], ["model2", 0])
         self.assertEqual(graph["face_0_denoise"]["inputs"]["model"], ["face_model", 0])
         self.assertEqual(graph["face_0_sample"]["inputs"]["sigmas"], ["face_sigma", 0])
+
+
+class OptionalMediaRuntimeTests(unittest.TestCase):
+    def execute(self, media_outputs, **overrides):
+        values = defaults(image=["media", 0], video=["media", 1], audio=["media", 2], **overrides)
+        prompt = DynamicPrompt({"omni": {"class_type": "YtonH3VideoContextOmniGenerate", "inputs": values}})
+        cache = execution.CacheEntry(ui={}, outputs=media_outputs)
+        execution_list = types.SimpleNamespace(get_cache=lambda source, target: cache)
+        inputs, missing, _ = execution.get_input_data(values, YtonH3VideoContextOmniGenerate,
+                                                     "omni", execution_list=execution_list, dynprompt=prompt)
+        self.assertFalse(missing)
+        results = asyncio.run(execution._async_map_node_over_list(
+            "optional-media-test", "omni", YtonH3VideoContextOmniGenerate(), inputs, "generate"))
+        self.assertEqual(len(results), 1)
+        return {key.split(".")[-1]: value for key, value in results[0]["expand"].items()}
+
+    def test_image_only_loader_does_not_create_empty_video_or_audio_branches(self):
+        image = torch.zeros(1, 32, 32, 3)
+        for empty in ([], [None]):
+            for sampling_mode in ("单采", "二采"):
+                with self.subTest(empty=empty, sampling_mode=sampling_mode):
+                    graph = self.execute(([image, image.clone()], empty, empty),
+                                         duration=10, sampling_mode=sampling_mode)
+                    self.assertNotIn("source_components", graph)
+                    self.assertNotIn("source_guide", graph)
+                    self.assertNotIn("segment", graph)
+                    self.assertEqual(graph["reference"]["inputs"]["image"], ["media", 0])
+                    for stage in ("reference", "high_reference") if sampling_mode == "二采" else ("reference",):
+                        self.assertNotIn("video", graph[stage]["inputs"])
+                        self.assertNotIn("audio", graph[stage]["inputs"])
+                    self.assertEqual(graph["reference"]["inputs"]["length"], 243)
+
+    def test_all_empty_connected_sockets_allow_text_to_video(self):
+        graph = self.execute(([], [], []))
+        for name in ("image", "video", "audio"):
+            self.assertNotIn(name, graph["reference"]["inputs"])
+        self.assertNotIn("source_components", graph)
+
+    def test_valid_video_still_uses_source_segmentation(self):
+        video = InputImpl.VideoFromComponents(Types.VideoComponents(
+            images=torch.zeros(60, 32, 32, 3), frame_rate=Fraction(24)))
+        graph = self.execute(([], [video], []), duration=1)
+        self.assertEqual(graph["source_components"]["inputs"]["video"], ["media", 1])
+        self.assertIn("source_guide", graph)
+
+    def test_audio_only_loader_preserves_audio_reference(self):
+        audio = {"waveform": torch.zeros(1, 1, 3200), "sample_rate": 32000}
+        graph = self.execute(([], [], [audio]))
+        self.assertEqual(graph["reference"]["inputs"]["audio"], ["media", 2])
+        self.assertNotIn("source_components", graph)
+        self.assertNotIn("image", graph["reference"]["inputs"])
+
+    def test_empty_replica_source_reports_missing_video_instead_of_demuxing(self):
+        with self.assertRaisesRegex(ValueError, "复刻模式需要传入至少一个视频"):
+            self.execute(([], [], []), mode="复刻模式")
+
+    def test_previous_video_is_only_evaluated_when_context_is_enabled(self):
+        node = YtonH3VideoContextOmniGenerate()
+        for enabled in (False, True):
+            with self.subTest(enable_context=enabled):
+                values = defaults(enable_context=enabled, image=["media", 0], video=["media", 1],
+                                  audio=["media", 2], previous_video=["previous", 0])
+                inputs, _, _ = execution.get_input_data(values, type(node), "omni")
+                requested = asyncio.run(execution._async_map_node_over_list(
+                    "optional-media-test", "omni", node, inputs, "check_lazy_status"))[0]
+                self.assertEqual(set(requested), {"image", "video", "audio"}
+                                 | ({"previous_video"} if enabled else set()))
+                self.assertTrue(type(node).INPUT_TYPES()["optional"]["previous_video"][1]["lazy"])
 
 
 class NativeVideoOperationsTests(unittest.TestCase):
