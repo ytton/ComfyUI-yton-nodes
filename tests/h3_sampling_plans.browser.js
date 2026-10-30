@@ -28,6 +28,20 @@ export async function runH3SamplingBrowserRegression(page, schema, example, base
       node.pos = [180, 70]
       const w = name => node.widgets.find(widget => widget.name === name)
       const change = (name, value) => { const widget = w(name); widget.value = value; widget.callback?.(value) }
+      const socketSections = { second_model: '二采方案', face_model: '小脸修复' }
+      const checkSockets = () => {
+        assert(JSON.stringify(node.inputs.filter(input => !input.widget).map(input => input.name)) === JSON.stringify(['model_loader', 'image', 'video', 'audio', 'sigmas', 'previous_video']), 'main inputs and previous video stay above the sections')
+        assert(node.inputs.find(input => input.name === 'sigmas').label === '自定义 Sigma', 'main Sigma uses the requested label')
+        for (const [name, section] of Object.entries(socketSections)) {
+          const input = node.inputs.find(input => input.name === name)
+          assert(input.widget?.name === name && w(name).serialize === false, name + ' is a link-only row')
+          const index = node.widgets.indexOf(w(name))
+          assert(index > node.widgets.findIndex(widget => widget.name === 'h3_section_' + section), name + ' appears in its section')
+          const nextHeading = node.widgets.slice(index + 1).find(widget => widget.type === 'h3_section')
+          assert(nextHeading, name + ' stays within the sections')
+        }
+      }
+      checkSockets()
       assert(w('sampling_mode').value === '二采', 'new node defaults to Film second pass')
       assert(w('sampling_plan').value === 'Film 2×' && w('sampling_plan').disabled, 'Film method is visible and fixed')
       assert(w('first_pass_scale').value === 0.5 && w('first_pass_scale').disabled, 'half-size ratio is visible and fixed')
@@ -42,7 +56,7 @@ export async function runH3SamplingBrowserRegression(page, schema, example, base
       assert(w('second_sampler').value === 'euler', 'second pass defaults to non-ancestral Euler')
       assert(w('film_ff_chunks').value === '8', 'second pass limits feedforward memory by default')
       const faceControls = ['face_refine', 'face_count', 'face_sigmas', 'face_reverse']
-      assert(JSON.stringify(node.widgets.filter(w => w.name.startsWith('face_')).map(w => w.name)) === JSON.stringify(faceControls), 'only four face controls remain')
+      assert(JSON.stringify(node.widgets.filter(w => w.name.startsWith('face_') && w.type !== 'h3_input').map(w => w.name)) === JSON.stringify(faceControls), 'only four face controls remain')
       const internalFace = ['face_steps', 'face_denoise', 'face_large_strength', 'face_detector', 'face_fallback_detector', 'face_seed']
       assert(internalFace.every(name => !w(name) && node.findInputSlot(name) === -1), 'internal face settings have no widgets or sockets')
       const autoSecond = ['second_steps', 'second_sigma_start', 'second_rho']
@@ -95,7 +109,7 @@ export async function runH3SamplingBrowserRegression(page, schema, example, base
       prompt = (await app.graphToPrompt()).output[id]
       assert(Array.isArray(prompt.inputs.second_sigma_values), 'Sigma link is exported')
       const twoPassHeight = node.size[1]
-      const secondWidgets = ['sampling_plan', 'first_pass_scale', 'film_method', 'film_model', 'film_ff_chunks',
+      const secondWidgets = ['sampling_plan', 'first_pass_scale', 'second_model', 'film_method', 'film_model', 'film_ff_chunks',
         'film_audio_denoise', 'film_noise_resample', 'film_match_stats', 'second_sampler', 'second_sigma_values', ...autoSecond]
       change('sampling_mode', '单采')
       assert(secondWidgets.every(name => w(name).hidden), 'single pass hides every second-pass widget')
@@ -119,6 +133,7 @@ export async function runH3SamplingBrowserRegression(page, schema, example, base
       const singleSaved = app.graph.serialize()
       await app.loadGraphData(singleSaved)
       node = app.graph.getNodeById(id)
+      checkSockets()
       assert(w('sampling_mode').value === '单采' && secondWidgets.every(name => w(name).hidden), 'single-pass visibility survives reload')
       assert(Array.isArray((await app.graphToPrompt()).output[id].inputs.second_sigma_values), 'hidden Sigma connection survives reload')
       node.disconnectInput(node.findInputSlot('second_sigma_values'))
@@ -141,9 +156,56 @@ export async function runH3SamplingBrowserRegression(page, schema, example, base
       assert(Array.isArray(prompt.inputs.face_sigmas), 'example face Sigma link targets lower control')
       assert(typeof prompt.inputs.seed === 'number' && prompt.inputs.clip_index === 1, 'seed and clip index remain aligned')
       assert(!('upscale_model' in prompt.inputs) && !('sampling_plan' in prompt.inputs), 'example has only current inputs')
+      checkSockets()
+      const media = app.graph.getNodeById(27)
+      media.connect(2, node, node.findInputSlot('audio'))
+      const mainSigma = LiteGraph.createNode('ManualSigmas')
+      app.graph.add(mainSigma)
+      mainSigma.connect(0, node, node.findInputSlot('sigmas'))
+      app.graph.getNodeById(12).connect(0, node, node.findInputSlot('second_model'))
+      prompt = (await app.graphToPrompt()).output[node.id]
+      const linkedInputs = ['model_loader', 'image', 'video', 'audio', 'sigmas', 'second_model', 'face_model']
+      for (const name of linkedInputs) assert(Array.isArray(prompt.inputs[name]), name + ' exports its original link')
+      assert(w('steps').disabled && w('scheduler').disabled && w('denoise').disabled, 'custom Sigma overrides the main schedule')
+      change('sampling_mode', '单采')
+      const savedInputs = app.graph.serialize()
+      const nodeId = node.id
+      await app.loadGraphData(savedInputs)
+      node = app.graph.getNodeById(nodeId)
+      checkSockets()
+      prompt = (await app.graphToPrompt()).output[node.id]
+      for (const name of linkedInputs) assert(Array.isArray(prompt.inputs[name]), name + ' retains its link after reload')
+      app.canvas.ds.scale = 0.7
+      app.canvas.ds.offset = [200 - node.pos[0], 180 - node.pos[1]]
+      app.canvas.draw(true, true)
+      for (const name of ['second_model', 'second_sigma_values']) {
+        const slot = node.findInputSlot(name)
+        assert(Number.isNaN(node.getInputPos(slot)[1]), name + ' has no single-pass hit target')
+        assert(node.getConnectionPos(true, slot)[1] < node.pos[1], name + ' connection collapses to the title in single pass')
+        assert(!node._concreteInputs.includes(node.inputs[slot]), name + ' is excluded from single-pass socket drawing')
+        assert(node.inputs[slot].boundingRect[2] === 0, name + ' has no single-pass hit area')
+      }
+      change('sampling_mode', '二采')
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      app.canvas.draw(true, true)
+      const previousY = node.getInputPos(node.findInputSlot('previous_video'))[1]
+      let lastY = previousY
+      for (const name of ['second_model', 'face_model']) {
+        const slot = node.findInputSlot(name)
+        const position = node.getInputPos(slot)
+        const connection = node.getConnectionPos(true, slot)
+        assert(Number.isFinite(position[1]) && position[1] > lastY + 10, name + ' has a distinct lower socket position')
+        assert(Math.abs(position[1] - connection[1]) < 1, name + ' link endpoint matches the socket')
+        assert(!w(name).connectionSuppressed, name + ' label remains visible when connected')
+        const heading = w('h3_section_' + socketSections[name])
+        const nextHeading = node.widgets.slice(node.widgets.indexOf(w(name)) + 1).find(widget => widget.type === 'h3_section')
+        assert(position[1] > node.pos[1] + heading.y && position[1] < node.pos[1] + nextHeading.y, name + ' is drawn within its section')
+        lastY = position[1]
+      }
       return { checks: ['Film default', 'visible fixed ratio', 'native save/reload', 'final dimensions',
         'display values excluded from API', 'unified STRING/SIGMAS control', 'face Sigma control and blank schedule',
-        'single-pass hiding and reload', 'four face controls', 'Film parameter editing, links and reload', 'shipped example Sigma links'],
+        'single-pass hiding and reload', 'four face controls', 'Film parameter editing, links and reload', 'shipped example Sigma links',
+        'section input sockets', 'socket geometry', 'all input links survive reload'],
         size: [...node.size] }
     }, example)
     if (errors.length) throw new Error(errors.join('\n'))

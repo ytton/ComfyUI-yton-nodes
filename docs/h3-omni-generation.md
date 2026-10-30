@@ -6,6 +6,8 @@
 
 采样模式切换为“单采”时，整个二采配置区自动隐藏，节点高度随之收紧；切回“二采”后恢复控件及设置。上下文帧数继续显示。
 
+顶部保留主模型、图片、视频、音频、自定义 Sigma 和上一段视频输入。二采模型与二采 Sigma 位于二采配置区，修脸模型与修脸 Sigma 位于小脸修复区，均可直接连线。
+
 `H3 全模态生成 · 视频上下文` 的二采固定为半尺寸首采、Film 2× 放大。二采保留首采的原提示词、图片／视频／音频参考和接续条件，由 Film 放大参考 latent 与尺寸信息，再重建二采 Guider。首采使用 `denoised_output`，Film 加噪后通过 `DisableNoise` 进入二采，避免重复加噪。
 
 二采 Sigma 留空时自动生成前段降幅较大的 Karras 曲线：默认 Euler、4 步、实际起始 Sigma `0.4`、rho `7`，末端 `0.01` 后归零。这里的起始 Sigma 是实际噪声值，不是 BasicScheduler 的 denoise；修改步数和 rho 不会改变起点。手填或连线 Sigma 时覆盖自动曲线，自动控件变灰。已有工作流若仍填着原时间表，需要清空“二采 Sigma”才会使用自动配置。
@@ -14,7 +16,7 @@
 
 二采前馈分块默认 8，复用 KJNodes 的 `MiniMaxChunkFeedForward` 降低长片段的显存峰值。这是同一次模型前馈的 token 分批计算，不是视频分段二采；不会产生时间拼接边界。可选 16／32／64，或选择“沿用模型”保留外部设置。二采模型的 LoRA 和注意力配置继续沿用输入模型。
 
-视频上下文版的小脸修复仅保留“启用小脸修复、修脸人数、修脸 Sigma、倒序修脸”。Sigma 仍支持手填和外部连线；留空时内部使用 4 步、降噪 0.4。内部固定检测模型 `bbox\face_yolov8m.pt`、不启用人体兜底、修脸种子 42、大脸降噪倍率 0.35。修脸模型仍可从顶部 MODEL 接口单独提供。
+视频上下文版的小脸修复仅保留“启用小脸修复、修脸人数、修脸 Sigma、倒序修脸”。Sigma 仍支持手填和外部连线；留空时内部使用 4 步、降噪 0.4。内部固定检测模型 `bbox\face_yolov8m.pt`、不启用人体兜底、修脸种子 42、大脸降噪倍率 0.35。修脸模型可在该配置区的 MODEL 接口单独提供。
 
 调度参考：[Film 作者的去网格建议](https://github.com/Tr1dae/ComfyUI-MiniMaxH3_LatentUpscaler#fewer-pass-2-steps-without-under-denoising-the-grid)。本节点直接设置实际 Sigma 起点，使用 ComfyUI 原生 `KarrasScheduler` 构造曲线。
 

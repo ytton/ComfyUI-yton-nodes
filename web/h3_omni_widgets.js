@@ -3,8 +3,8 @@ import { app } from "../../../scripts/app.js";
 const sections = [
   ["生成", ["prompt", "width", "height", "mode", "duration", "ref_image_size"]],
   ["主采样", ["sampling_mode", "steps", "sampler_name", "scheduler", "denoise"]],
-  ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "film_method", "film_model", "second_sampler", "second_steps", "second_sigma_start", "second_rho", "second_sigma_values", "film_ff_chunks", "film_audio_denoise", "film_noise_resample", "film_match_stats"]],
-  ["小脸修复", ["face_refine", "face_count", "face_sigmas", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]],
+  ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "second_model", "film_method", "film_model", "second_sampler", "second_steps", "second_sigma_start", "second_rho", "second_sigma_values", "film_ff_chunks", "film_audio_denoise", "film_noise_resample", "film_match_stats"]],
+  ["小脸修复", ["face_model", "face_refine", "face_count", "face_sigmas", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
   ["分段上下文", ["enable_context", "latent_path", "clip_index", "context_path", "h3_context_length"]],
 ];
@@ -30,6 +30,25 @@ const labels = {
 function setupSections(node) {
   const videoContext = node.comfyClass === "YtonH3VideoContextOmniGenerate";
   const widgets = new Map(node.widgets.map(widget => [widget.name, widget]));
+  const socketLabels = { second_model: "二采模型（可选）", face_model: "修脸模型（可选）" };
+  if (videoContext) {
+    for (const [name, label] of Object.entries(socketLabels)) {
+      const widget = node.addCustomWidget({
+        name, label, type: "h3_input", value: "", serialize: false, options: { serialize: false },
+        computeSize: () => [0, 24],
+        computeLayoutSize: () => ({ minHeight: 24, maxHeight: 24, minWidth: 0 }),
+        draw(ctx, currentNode, width, y) {
+          ctx.save();
+          ctx.font = "12px sans-serif";
+          ctx.fillStyle = currentNode.title_text_color || LiteGraph.NODE_TEXT_COLOR;
+          ctx.textAlign = "left";
+          ctx.fillText(label, 14, y + 16);
+          ctx.restore();
+        },
+      });
+      widgets.set(name, widget);
+    }
+  }
   const info = [["h3_context_length", "接续重叠区（固定）", 22, " 帧"]];
   if (videoContext) info.push(
     ["sampling_plan", "二采方式（固定）", "Film 2×", ""],
@@ -92,6 +111,44 @@ function setupSections(node) {
     type: widget.type, computeSize: widget.computeSize, computeLayoutSize: widget.computeLayoutSize,
   }]));
   let secondPassVisible = true;
+  if (videoContext) {
+    const hiddenInput = input => !secondPassVisible && secondPassWidgets.some(widget => widget.name === input?.widget?.name);
+    const updateDisabled = node.updateComputedDisabled;
+    node.updateComputedDisabled = function () {
+      updateDisabled.apply(this, arguments);
+      for (const widget of this.widgets) {
+        if (socketLabels[widget.name]) widget.connectionSuppressed = false;
+      }
+    };
+    const setConcreteSlots = node._setConcreteSlots;
+    node._setConcreteSlots = function () {
+      setConcreteSlots.apply(this, arguments);
+      this._concreteInputs = this._concreteInputs.filter(input => {
+        if (!hiddenInput(input)) return true;
+        input.boundingRect[0] = input.boundingRect[1] = Number.NaN;
+        input.boundingRect[2] = input.boundingRect[3] = 0;
+        return false;
+      });
+    };
+    const measureSlot = node._measureSlot;
+    // Filter drawing slots without changing the input indices saved in links.
+    node._measureSlot = function (slot, index, isInput) {
+      return measureSlot.call(this, slot, isInput ? this.inputs.indexOf(slot) : index, isInput);
+    };
+    const connectionPos = node.getConnectionPos;
+    node.getConnectionPos = function (isInput, index, out) {
+      const result = connectionPos.call(this, isInput, index, out);
+      if (isInput && hiddenInput(this.inputs[index])) {
+        result[0] = this.pos[0];
+        result[1] = this.pos[1] - LiteGraph.NODE_TITLE_HEIGHT * 0.5;
+      }
+      return result;
+    };
+    const inputPos = node.getInputPos;
+    node.getInputPos = function (index) {
+      return hiddenInput(this.inputs[index]) ? [Number.NaN, Number.NaN] : inputPos.call(this, index);
+    };
+  }
   function showSecondPass(visible) {
     if (!videoContext || secondPassVisible === visible) return;
     secondPassVisible = visible;
@@ -104,16 +161,21 @@ function setupSections(node) {
       widget.computeLayoutSize = visible ? layout.computeLayoutSize : () => ({ minHeight: 0, maxHeight: 0, minWidth: 0 });
     }
     node.setSize([node.size[0], node.computeSize()[1]]);
+    if (node.graph) node.arrange();
   }
   function labelSockets() {
     const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", previous_video: "上一段视频（可选）", sigmas: "主采样 Sigma（连线）",
       second_sigmas: "二采 Sigma（连线）", face_sigmas: "修脸 Sigma（连线）",
       second_model: "二采模型（可选）", face_model: "修脸模型（可选）", ...labels };
     if (videoContext) {
+      inputLabels.sigmas = "自定义 Sigma";
       inputLabels.second_sigma_values = "二采 Sigma";
       inputLabels.face_sigmas = "修脸 Sigma";
     }
-    for (const input of node.inputs) if (inputLabels[input.name]) input.label = inputLabels[input.name];
+    for (const input of node.inputs) {
+      if (inputLabels[input.name]) input.label = inputLabels[input.name];
+      if (videoContext && socketLabels[input.name]) input.widget = { name: input.name };
+    }
     for (const output of node.outputs) {
       output.label = { video: "本段视频", av_latent: "最终 AV latent", latent_path: "本段上下文路径" }[output.name];
     }

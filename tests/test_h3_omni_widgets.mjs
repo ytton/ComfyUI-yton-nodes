@@ -57,7 +57,7 @@ const videoNode = {
     .filter(([name]) => !['latent_path', 'context_path', 'first_pass_scale', 'upscale_model',
       'face_steps', 'face_denoise', 'face_large_strength', 'face_detector', 'face_fallback_detector', 'face_seed'].includes(name))
     .map(([name, value]) => ({ name, value })),
-  inputs: ['sigmas', 'second_sigma_values', 'face_sigmas', 'image', 'video', 'audio', 'previous_video'].map(name => ({ name, link: null })),
+  inputs: ['model_loader', 'sigmas', 'second_sigma_values', 'face_sigmas', 'image', 'video', 'audio', 'second_model', 'face_model', 'previous_video'].map(name => ({ name, link: null })),
   outputs: [{ name: 'video' }, { name: 'av_latent' }],
   onConfigure: undefined, onConnectionsChange: undefined,
 }
@@ -82,7 +82,7 @@ assert.equal(contextToggle.value, true)
 assert.ok(!widgets.has('enable_context'))
 const videoWidgets = new Map(videoNode.widgets.map(w => [w.name, w]))
 function videoChange(name, value) { const w = videoWidgets.get(name); w.value = value; w.callback() }
-assert.equal(videoNode.widgets.filter(w => w.name.startsWith('face_')).map(w => w.name).join(','),
+assert.equal(videoNode.widgets.filter(w => w.name.startsWith('face_') && w.type !== 'h3_input').map(w => w.name).join(','),
   'face_refine,face_count,face_sigmas,face_reverse')
 videoChange('face_refine', true)
 assert.equal(videoWidgets.get('face_count').disabled, false)
@@ -128,7 +128,7 @@ videoNode.onConnectionsChange()
 assert.ok(videoWidgets.get('second_sigma_values').disabled)
 for (const name of autoSecond) assert.ok(videoWidgets.get(name).disabled)
 videoChange('sampling_mode', '单采')
-const hiddenSecond = ['h3_section_二采方案', 'sampling_plan', 'first_pass_scale', 'film_method', 'film_model',
+const hiddenSecond = ['h3_section_二采方案', 'sampling_plan', 'first_pass_scale', 'second_model', 'film_method', 'film_model',
   'film_ff_chunks', 'film_audio_denoise', 'film_noise_resample', 'film_match_stats', 'second_sampler',
   'second_sigma_values', ...autoSecond]
 for (const name of hiddenSecond) {
@@ -158,4 +158,13 @@ videoNode.inputs.find(i => i.name === 'second_sigma_values').link = null
 videoNode.onConnectionsChange()
 for (const name of autoSecond) assert.equal(videoWidgets.get(name).disabled, false)
 assert.equal(videoWidgets.get('width').label, '最终宽度')
+for (const name of ['second_model', 'face_model']) {
+  assert.equal(videoNode.inputs.find(input => input.name === name).widget.name, name)
+  assert.equal(videoWidgets.get(name).serialize, false)
+}
+for (const name of ['model_loader', 'image', 'video', 'audio', 'sigmas', 'previous_video']) {
+  assert.equal(videoNode.inputs.find(input => input.name === name).widget, undefined)
+  assert.equal(videoWidgets.has(name), false)
+}
+assert.equal(videoNode.inputs.find(input => input.name === 'sigmas').label, '自定义 Sigma')
 console.log('H3 controls: Film 2×, fixed visible ratio, Sigma links, single pass and face controls passed.')
