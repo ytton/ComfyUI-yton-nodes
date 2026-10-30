@@ -69,6 +69,9 @@ class ExpansionTests(unittest.TestCase):
         self.assertEqual(graph["reference"]["inputs"]["height"], 448)
         self.assertEqual(graph["upscale"]["inputs"]["mode.width"], 1280)
         self.assertEqual(graph["upscale"]["inputs"]["mode.height"], 704)
+        self.assertEqual(graph["upscale"]["class_type"], "easy minimaxH3LatentUpscaler")
+        self.assertTrue(graph["upscale"]["inputs"]["enable_temporal_chunking"])
+        self.assertTrue(graph["upscale"]["inputs"]["force_unload"])
         for key, slot in (("main_context", 0), ("high_context", 1)):
             inputs = graph[key]["inputs"]
             self.assertTrue(inputs["latent_tail"][0].endswith("previous"))

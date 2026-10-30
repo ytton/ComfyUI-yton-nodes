@@ -100,9 +100,9 @@ def build_omni_graph(model_loader, prompt, width, height, mode, duration, ref_im
         if source_video is not None:
             high_reference.set_input("video", source_video)
         split = graph.node("LTXVSeparateAVLatent", id="split_main", av_latent=main.out(0))
-        upscaled = graph.node("MinimaxH3LatentUpscaler3D", id="upscale", latent=split.out(0),
+        upscaled = graph.node("easy minimaxH3LatentUpscaler", id="upscale", latent=split.out(0),
             model_name=upscale_model, mode="target dimensions", **{"mode.width": width, "mode.height": height},
-            align=32, enable_temporal_chunking=True, force_unload=True, device="cuda", precision="fp16")
+            align=32, enable_temporal_chunking=True, force_unload=True)
         latent = graph.node("LTXVConcatAVLatent", id="high_av",
             video_latent=upscaled.out(0), audio_latent=split.out(1)).out(0)
         if previous is not None:

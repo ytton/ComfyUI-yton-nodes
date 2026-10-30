@@ -153,10 +153,10 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                                             latent=high_reference.out(1), vae=models.out(2), image=source_images,
                                             frame_idx=0).out(0)
         split = graph.node("LTXVSeparateAVLatent", id="split_main", av_latent=main.out(0))
-        upscaled = graph.node("MinimaxH3LatentUpscaler3D", id="upscale", latent=split.out(0),
+        upscaled = graph.node("easy minimaxH3LatentUpscaler", id="upscale", latent=split.out(0),
                               model_name=upscale_model, mode="target dimensions",
                               **{"mode.width": width, "mode.height": height}, align=32,
-                              enable_temporal_chunking=True, force_unload=True, device="cuda", precision="fp16")
+                              enable_temporal_chunking=True, force_unload=True)
         latent = graph.node("LTXVConcatAVLatent", id="high_av", video_latent=upscaled.out(0),
                             audio_latent=split.out(1)).out(0)
         high_schedule = second_sigmas
