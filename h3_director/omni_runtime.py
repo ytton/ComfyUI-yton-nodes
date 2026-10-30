@@ -159,10 +159,10 @@ class YtonH3OmniGenerate:
             "face_seed": ("INT", {"default": 42, "min": 0, "max": 0xffffffffffffffff}),
             "face_reverse": ("BOOLEAN", {"default": False, "tooltip": "倒序修脸，贴回后恢复正常播放顺序。"}),
         }, "optional": {
-            "image": ("IMAGE", {"rawLink": True, "tooltip": "人物或风格参考图。"}),
-            "video": ("VIDEO", {"rawLink": True,
+            "image": ("IMAGE", {"lazy": True, "tooltip": "可选，人物或风格参考图；空输出视为未提供。"}),
+            "video": ("VIDEO", {"lazy": True,
                 "tooltip": "普通模式接完整源视频，节点按片段序号和时长自动截取；复刻模式接已经准备好的当前片段。"}),
-            "audio": ("AUDIO", {"rawLink": True, "tooltip": "没有视频输入时使用的独立音频参考；普通模式接源视频后由节点自动使用其音轨。"}),
+            "audio": ("AUDIO", {"lazy": True, "tooltip": "没有视频输入时使用的独立音频参考；普通模式接源视频后由节点自动使用其音轨。"}),
             "sigmas": ("SIGMAS", {
                 "tooltip": "连接后用于主采样，主采样步数、调度器和降噪失效。"}),
             "second_sigmas": ("SIGMAS", {"tooltip": "仅用于二采，优先于二采Sigma文本。"}),
@@ -171,8 +171,9 @@ class YtonH3OmniGenerate:
             "context_path": ("STRING", {"default": "", "tooltip": "指定已采用片段的上下文文件；填写后优先于按序号读取上一段，可用于工作台重抽与分支。"}),
             "second_model": ("MODEL", {"rawLink": True, "tooltip": "可选的二采模型；直接接模型或串好 LoRA 的 MODEL。"}),
             "face_model": ("MODEL", {"rawLink": True, "tooltip": "可选的修脸模型；直接接模型或串好 LoRA 的 MODEL。"}),
-        }}
+        }, "hidden": {"dynprompt": "DYNPROMPT", "unique_id": "UNIQUE_ID"}}
 
+    INPUT_IS_LIST = True
     RETURN_TYPES = ("VIDEO", "LATENT", "STRING")
     RETURN_NAMES = ("video", "av_latent", "latent_path")
     FUNCTION = "generate"
@@ -181,12 +182,25 @@ class YtonH3OmniGenerate:
     DESCRIPTION = "分段式H3全模态生成：单采或二采，22帧latent尾部注入与锁定，支持逐人小脸修复。每次输出一个新片段及完整上下文文件。"
 
     @classmethod
-    def IS_CHANGED(cls, latent_path, clip_index, context_path="", **kwargs):
-        previous = context_path or (context_name(latent_path, clip_index - 1) if clip_index > 1 else "")
+    def IS_CHANGED(cls, latent_path, clip_index, context_path=None, **kwargs):
+        previous = context_path[0] if context_path else ""
+        previous = previous or (context_name(latent_path[0], clip_index[0] - 1) if clip_index[0] > 1 else "")
         return YtonH3LoadOmniContext.IS_CHANGED(previous) if previous else "first-clip"
 
-    def generate(self, **inputs):
-        return build_omni_graph(**inputs)
+    def check_lazy_status(self, **inputs):
+        return [name for name in ("image", "video", "audio") if name in inputs
+                and not any(item is not None for item in inputs[name])]
+
+    def generate(self, dynprompt, unique_id, **inputs):
+        links = dynprompt[0].get_node(unique_id[0])["inputs"]
+        values = {}
+        for name, items in inputs.items():
+            if name in ("image", "video", "audio"):
+                if any(item is not None for item in items):
+                    values[name] = links[name]
+            else:
+                values[name] = items[0]
+        return build_omni_graph(**values)
 
 
 NODE_CLASS_MAPPINGS = {"YtonH3OmniGenerate": YtonH3OmniGenerate,

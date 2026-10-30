@@ -1,4 +1,5 @@
 """CPU checks for actual expansion, latent preservation and atomic context files."""
+import asyncio
 import importlib.util
 from fractions import Fraction
 import os
@@ -17,8 +18,10 @@ import comfy.options
 comfy.options.enable_args_parsing()
 import folder_paths
 import torch
+import execution
 from comfy.nested_tensor import NestedTensor
 from comfy_api.latest import InputImpl, Types
+from comfy_execution.graph import DynamicPrompt
 from safetensors.torch import load_file
 
 folder_paths.add_model_folder_path("latent_upscale_models", str(COMFY / "models/latent_upscale_models"))
@@ -45,7 +48,10 @@ def defaults(**overrides):
 
 
 def expanded(**overrides):
-    result = omni_runtime.YtonH3OmniGenerate().generate(**defaults(**overrides))
+    values = defaults(**overrides)
+    prompt = DynamicPrompt({"omni": {"class_type": "YtonH3OmniGenerate", "inputs": values}})
+    result = omni_runtime.YtonH3OmniGenerate().generate(
+        dynprompt=[prompt], unique_id=["omni"], **{name: [value] for name, value in values.items()})
     return {key.split(".")[-1]: value for key, value in result["expand"].items()}, result
 
 
@@ -213,6 +219,79 @@ class ExpansionTests(unittest.TestCase):
         self.assertTrue(torch.equal(result_audio["waveform"].flatten(), torch.arange(2, 7).float()))
 
 
+class OptionalMediaRuntimeTests(unittest.TestCase):
+    def execute(self, media_outputs, **overrides):
+        values = defaults(image=["media", 0], video=["media", 1], audio=["media", 2], **overrides)
+        prompt = DynamicPrompt({"omni": {"class_type": "YtonH3OmniGenerate", "inputs": values}})
+        cache = execution.CacheEntry(ui={}, outputs=media_outputs)
+        execution_list = types.SimpleNamespace(get_cache=lambda source, target: cache)
+        node = omni_runtime.YtonH3OmniGenerate()
+        inputs, missing, _ = execution.get_input_data(values, type(node), "omni",
+                                                     execution_list=execution_list, dynprompt=prompt)
+        self.assertFalse(missing)
+        results = asyncio.run(execution._async_map_node_over_list(
+            "optional-media-test", "omni", node, inputs, "generate"))
+        self.assertEqual(len(results), 1)
+        return {key.split(".")[-1]: value for key, value in results[0]["expand"].items()}
+
+    def test_image_only_with_connected_empty_video_and_audio(self):
+        image = torch.zeros(1, 32, 32, 3)
+        for empty in ([], [None]):
+            for mode in ("单采", "二采"):
+                for index in (1, 2):
+                    with self.subTest(empty=empty, sampling_mode=mode, clip_index=index):
+                        graph = self.execute(([image, image.clone()], empty, empty),
+                                             sampling_mode=mode, clip_index=index)
+                        for name in ("source_components", "source_guide", "segment", "source_video"):
+                            self.assertNotIn(name, graph)
+                        self.assertEqual(graph["reference"]["inputs"]["image"], ["media", 0])
+                        for stage in ("reference", "high_reference") if mode == "二采" else ("reference",):
+                            self.assertNotIn("video", graph[stage]["inputs"])
+                            self.assertNotIn("audio", graph[stage]["inputs"])
+                        length = graph["reference"]["inputs"]["length"]
+                        trim = graph["trim"]["inputs"]
+                        self.assertEqual(length - trim["head_trim_frames"] - trim["tail_trim_frames"], 120)
+
+    def test_empty_media_allows_text_to_video(self):
+        for empty in ([], [None]):
+            with self.subTest(empty=empty):
+                graph = self.execute((empty, empty, empty))
+                for name in ("image", "video", "audio"):
+                    self.assertNotIn(name, graph["reference"]["inputs"])
+                self.assertNotIn("source_components", graph)
+
+    def test_audio_reference_with_empty_video(self):
+        audio = {"waveform": torch.zeros(1, 1, 3200), "sample_rate": 32000}
+        graph = self.execute(([], [], [audio]))
+        self.assertEqual(graph["reference"]["inputs"]["audio"], ["media", 2])
+        self.assertNotIn("source_components", graph)
+
+    def test_valid_video_uses_source_segmentation(self):
+        video = InputImpl.VideoFromComponents(Types.VideoComponents(
+            images=torch.zeros(60, 32, 32, 3), frame_rate=Fraction(24)))
+        for mode in ("单采", "二采"):
+            with self.subTest(sampling_mode=mode):
+                graph = self.execute(([], [video], []), sampling_mode=mode, duration=1)
+                self.assertEqual(graph["source_components"]["inputs"]["video"], ["media", 1])
+                self.assertIn("source_guide", graph)
+
+    def test_replica_requires_nonempty_video(self):
+        for empty in ([], [None]):
+            with self.subTest(empty=empty), self.assertRaisesRegex(ValueError, "复刻模式需要传入至少一个视频"):
+                self.execute(([], empty, []), mode="复刻模式")
+
+    def test_media_dependencies_are_evaluated_before_expansion(self):
+        node = omni_runtime.YtonH3OmniGenerate()
+        values = defaults(image=["media", 0], video=["media", 1], audio=["media", 2])
+        inputs, _, _ = execution.get_input_data(values, type(node), "omni")
+        requested = asyncio.run(execution._async_map_node_over_list(
+            "optional-media-test", "omni", node, inputs, "check_lazy_status"))[0]
+        self.assertEqual(set(requested), {"image", "video", "audio"})
+        for name in requested:
+            self.assertTrue(node.INPUT_TYPES()["optional"][name][1]["lazy"])
+            self.assertNotIn("rawLink", node.INPUT_TYPES()["optional"][name][1])
+
+
 class ContextTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -294,11 +373,11 @@ class ContextTests(unittest.TestCase):
         saver = omni_context.YtonH3SaveOmniContext()
         args = (self.video(), self.latent(), self.latent(), "单采", "task", 1)
         saver.save(*args)
-        before = omni_runtime.YtonH3OmniGenerate.IS_CHANGED("task", 2)
+        before = omni_runtime.YtonH3OmniGenerate.IS_CHANGED(["task"], [2])
         path = Path(self.temporary.name) / "task/clip_00001.safetensors"
         stat = path.stat()
         os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1000000000))
-        self.assertNotEqual(before, omni_runtime.YtonH3OmniGenerate.IS_CHANGED("task", 2))
+        self.assertNotEqual(before, omni_runtime.YtonH3OmniGenerate.IS_CHANGED(["task"], [2]))
 
 
 if __name__ == "__main__":

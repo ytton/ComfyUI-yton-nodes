@@ -94,10 +94,6 @@ class YtonH3VideoContextOmniGenerate:
             "lazy": True,
             "tooltip": "可选。接上一段生成的视频，或用加载视频节点读取已有成片；仅在启用上下文时提取尾部画面与音频。独立生成时可留空。",
         })
-        for name in ("image", "video", "audio"):
-            options = schema["optional"][name][1]
-            del options["rawLink"]
-            options["lazy"] = True
         schema["hidden"] = {"dynprompt": "DYNPROMPT", "unique_id": "UNIQUE_ID"}
         return schema
 
