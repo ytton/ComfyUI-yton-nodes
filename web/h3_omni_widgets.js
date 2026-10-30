@@ -16,7 +16,7 @@ const labels = {
   latent_path: "上下文保存目录", clip_index: "当前片段序号", context_path: "指定上一段上下文",
   enable_context: "启用上下文",
   first_pass_scale: "首采宽高比例", upscale_model: "潜空间放大模型",
-  second_sampler: "二采采样器", second_sigma_values: "二采 Sigma",
+  second_sampler: "二采采样器", second_sigma_values: "二采 Sigma（手填）",
   sampling_plan: "二采方案", film_model: "Film 2× 模型",
   face_refine: "启用小脸修复", face_count: "修脸人数", face_steps: "修脸步数",
   face_denoise: "小脸降噪强度", face_detector: "人脸检测模型", face_reverse: "倒序修脸",
@@ -83,8 +83,8 @@ function setupSections(node) {
   }
   node.widgets = ordered;
   function labelSockets() {
-    const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", previous_video: "上一段视频（可选）", sigmas: "主采样 Sigma",
-      second_sigmas: "二采 Sigma", face_sigmas: "修脸 Sigma",
+    const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", previous_video: "上一段视频（可选）", sigmas: "主采样 Sigma（连线）",
+      second_sigmas: "二采 Sigma（连线）", face_sigmas: "修脸 Sigma（连线）",
       second_model: "二采模型（可选）", face_model: "修脸模型（可选）", ...labels };
     for (const input of node.inputs) if (inputLabels[input.name]) input.label = inputLabels[input.name];
     for (const output of node.outputs) {
@@ -104,7 +104,10 @@ function setupSections(node) {
     scale.label = videoContext ? "首采宽高比例（固定 0.5）" : labels.first_pass_scale;
     if (widgets.has("upscale_model")) widgets.get("upscale_model").disabled = !twoPass;
     widgets.get("second_sampler").disabled = !twoPass;
-    widgets.get("second_sigma_values").disabled = !twoPass || node.inputs.find(input => input.name === "second_sigmas")?.link != null;
+    const secondSigmaLinked = node.inputs.find(input => input.name === "second_sigmas")?.link != null;
+    const secondSigmaText = widgets.get("second_sigma_values");
+    secondSigmaText.disabled = !twoPass || secondSigmaLinked;
+    secondSigmaText.label = secondSigmaLinked ? "二采 Sigma（已由连线提供）" : labels.second_sigma_values;
     if (widgets.has("film_model")) widgets.get("film_model").disabled = !twoPass;
     for (const name of ["face_count", "face_steps", "face_denoise", "face_large_strength", "face_detector", "face_fallback_detector", "face_seed", "face_reverse"]) {
       widgets.get(name).disabled = !widgets.get("face_refine").value;
