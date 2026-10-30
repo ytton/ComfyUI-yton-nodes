@@ -37,6 +37,7 @@ class YtonH3VideoContextOmniGenerate:
         schema = YtonH3OmniGenerate.INPUT_TYPES()
         del schema["required"]["latent_path"]
         del schema["optional"]["context_path"]
+        del schema["optional"]["second_sigmas"]
         required = schema["required"]
         del required["first_pass_scale"]
         del required["upscale_model"]
@@ -46,11 +47,14 @@ class YtonH3VideoContextOmniGenerate:
             "tooltip": "Film 2× 专用模型，放在 models/h3_latent_upscalers。"})
         for name in ("width", "height"):
             required[name][1]["tooltip"] = "最终输出尺寸，按 32 像素对齐；Film 2× 要求为 64 的倍数，例如 1920×1088。"
-        required["second_sigma_values"][1]["tooltip"] = (
-            "Film 2× 的二采时间表，同时用于超分后的加噪和二采；接入二采 Sigma 后由连线决定。"
-        )
-        schema["optional"]["second_sigmas"][1].update(lazy=True,
-            tooltip="用于 Film 2× 的加噪和二采，优先于二采 Sigma 文本；单采时不执行此输入。")
+        required["second_sigma_values"] = ("STRING,SIGMAS", {
+            **required["second_sigma_values"][1], "widgetType": "STRING", "lazy": True,
+            "tooltip": "填写二采时间表，或在此控件连接 STRING / SIGMAS。Film 加噪与二采共用该时间表；单采时不执行。",
+        })
+        schema["optional"]["face_sigmas"] = ("STRING,SIGMAS", {
+            "widgetType": "STRING", "default": "", "lazy": True,
+            "tooltip": "留空使用修脸步数和降噪；也可填写时间表或在此控件连接 STRING / SIGMAS。关闭修脸时不执行。",
+        })
         schema["optional"]["second_model"][1]["tooltip"] = (
             "Film 2× 的二采模型；可接串好 LoRA 的 MODEL。"
         )
@@ -88,7 +92,9 @@ class YtonH3VideoContextOmniGenerate:
     def check_lazy_status(self, enable_context, **inputs):
         media = ("image", "video", "audio") + (("previous_video",) if enable_context[0] else ())
         if inputs["sampling_mode"][0] == "二采":
-            media += ("second_sigmas",)
+            media += ("second_sigma_values",)
+        if inputs["face_refine"][0]:
+            media += ("face_sigmas",)
         return [name for name in media if name in inputs
                 and not any(item is not None for item in inputs[name])]
 

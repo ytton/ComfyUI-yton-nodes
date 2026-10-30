@@ -51,10 +51,10 @@ const videoNode = {
   ...node,
   comfyClass: 'YtonH3VideoContextOmniGenerate',
   widgets: Object.entries({ ...values, enable_context: false, sampling_mode: '二采',
-    film_model: 'h3_clean_latent_upscaler_film_epoch200.safetensors' })
+    film_model: 'h3_clean_latent_upscaler_film_epoch200.safetensors', face_sigmas: '' })
     .filter(([name]) => !['latent_path', 'context_path', 'first_pass_scale', 'upscale_model'].includes(name))
     .map(([name, value]) => ({ name, value })),
-  inputs: ['sigmas', 'second_sigmas', 'face_sigmas', 'image', 'video', 'audio', 'previous_video'].map(name => ({ name, link: null })),
+  inputs: ['sigmas', 'second_sigma_values', 'face_sigmas', 'image', 'video', 'audio', 'previous_video'].map(name => ({ name, link: null })),
   outputs: [{ name: 'video' }, { name: 'av_latent' }],
   onConfigure: undefined, onConnectionsChange: undefined,
 }
@@ -92,7 +92,7 @@ assert.equal(videoWidgets.get('second_sampler').disabled, false)
 assert.equal(videoWidgets.get('second_sigma_values').disabled, false)
 videoChange('first_pass_scale', 0.8)
 assert.equal(videoWidgets.get('first_pass_scale').value, 0.5)
-videoNode.inputs.find(i => i.name === 'second_sigmas').link = 22
+videoNode.inputs.find(i => i.name === 'second_sigma_values').link = 22
 videoNode.onConnectionsChange()
 assert.ok(videoWidgets.get('second_sigma_values').disabled)
 videoChange('sampling_mode', '单采')

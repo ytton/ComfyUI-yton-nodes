@@ -1697,20 +1697,15 @@
           "link": null
         },
         {
-          "label": "二采 Sigma",
-          "localized_name": "second_sigmas",
-          "name": "second_sigmas",
-          "shape": 7,
-          "type": "SIGMAS",
-          "link": 31
-        },
-        {
           "label": "修脸 Sigma",
           "localized_name": "face_sigmas",
           "name": "face_sigmas",
           "shape": 7,
-          "type": "SIGMAS",
-          "link": 32
+          "type": "STRING,SIGMAS",
+          "link": 32,
+          "widget": {
+            "name": "face_sigmas"
+          }
         },
         {
           "label": "二采模型（可选）",
@@ -1880,11 +1875,11 @@
           "label": "二采 Sigma",
           "localized_name": "second_sigma_values",
           "name": "second_sigma_values",
-          "type": "STRING",
+          "type": "STRING,SIGMAS",
           "widget": {
             "name": "second_sigma_values"
           },
-          "link": null
+          "link": 31
         },
         {
           "label": "启用小脸修复",
@@ -2042,6 +2037,7 @@
         "0.631578922, 0.3158, 0",
         true,
         1,
+        "",
         1,
         0.4,
         1,
@@ -2071,6 +2067,7 @@
         "second_sigma_values": "0.631578922, 0.3158, 0",
         "face_refine": true,
         "face_count": 1,
+        "face_sigmas": "",
         "face_steps": 1,
         "face_denoise": 0.4,
         "face_large_strength": 1,
@@ -2606,7 +2603,7 @@
       43,
       0,
       38,
-      5,
+      23,
       "SIGMAS"
     ],
     [
@@ -2614,7 +2611,7 @@
       44,
       0,
       38,
-      6,
+      5,
       "SIGMAS"
     ],
     [
@@ -2638,7 +2635,7 @@
       40,
       0,
       38,
-      8,
+      7,
       "MODEL"
     ]
   ],

@@ -5,7 +5,7 @@ import sys
 import types
 import unittest
 
-from test_h3_video_context import PLUGIN, expanded, defaults, YtonH3VideoContextOmniGenerate
+from test_h3_video_context import PLUGIN, expanded, defaults, torch, YtonH3VideoContextOmniGenerate
 from video_context_test.omni_sampling import FILM_MODEL, sampling_dimensions
 
 
@@ -39,7 +39,7 @@ class FilmSamplingTests(unittest.TestCase):
                 self.assertNotIn("positive", upscale["inputs"])
 
     def test_film_custom_sigma_is_shared_by_renoise_and_sampling(self):
-        graph, _ = expanded(second_sigmas=["custom_sigma", 0])
+        graph, _ = expanded(second_sigma_values=["custom_sigma", 0])
         self.assertNotIn("high_sigmas", graph)
         self.assertEqual(graph["upscale"]["inputs"]["sigmas"], ["custom_sigma", 0])
         self.assertEqual(graph["high_sample"]["inputs"]["sigmas"], ["custom_sigma", 0])
@@ -51,11 +51,34 @@ class FilmSamplingTests(unittest.TestCase):
 
     def test_second_sigma_link_is_only_evaluated_in_second_pass(self):
         node = YtonH3VideoContextOmniGenerate()
-        self.assertTrue(node.INPUT_TYPES()["optional"]["second_sigmas"][1]["lazy"])
+        self.assertNotIn("second_sigmas", node.INPUT_TYPES()["optional"])
+        self.assertEqual(node.INPUT_TYPES()["required"]["second_sigma_values"][0], "STRING,SIGMAS")
+        self.assertTrue(node.INPUT_TYPES()["required"]["second_sigma_values"][1]["lazy"])
         for mode in ("单采", "二采"):
             inputs = {name: [value] for name, value in defaults(sampling_mode=mode).items()}
-            inputs["second_sigmas"] = [None]
-            self.assertEqual("second_sigmas" in node.check_lazy_status(**inputs), mode == "二采")
+            inputs["second_sigma_values"] = [None]
+            self.assertEqual("second_sigma_values" in node.check_lazy_status(**inputs), mode == "二采")
+
+    def test_tensor_schedule_reaches_film_and_sampler_unchanged(self):
+        sigmas = torch.tensor([0.35, 0.175, 0.0])
+        graph, _ = expanded(second_sigma_values=sigmas)
+        self.assertIs(graph["upscale"]["inputs"]["sigmas"], sigmas)
+        self.assertIs(graph["high_sample"]["inputs"]["sigmas"], sigmas)
+
+    def test_face_sigma_accepts_text_or_empty_for_scheduler(self):
+        graph, _ = expanded(face_refine=True, face_sigmas="0.615, 0")
+        self.assertEqual(graph["face_sigmas"]["inputs"]["sigmas"], "0.615, 0")
+        self.assertTrue(graph["face_0_sample"]["inputs"]["sigmas"][0].endswith("face_sigmas"))
+        self.assertNotIn("face_0_schedule", graph)
+        graph, _ = expanded(face_refine=True, face_sigmas="")
+        self.assertIn("face_0_schedule", graph)
+
+    def test_face_sigma_link_is_lazy_while_face_refine_is_off(self):
+        node = YtonH3VideoContextOmniGenerate()
+        for enabled in (False, True):
+            inputs = {name: [value] for name, value in defaults(face_refine=enabled).items()}
+            inputs["face_sigmas"] = [None]
+            self.assertEqual("face_sigmas" in node.check_lazy_status(**inputs), enabled)
 
     def test_video_context_and_face_refine_share_final_output(self):
         graph, _ = expanded(duration=7.5, enable_context=True,

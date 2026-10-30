@@ -150,7 +150,7 @@ class VideoContextGraphTests(unittest.TestCase):
     def test_sampling_models_sigmas_and_face_settings_are_preserved(self):
         graph, _ = expanded(sampling_mode="二采", width=1920, height=1088,
                             previous_video=["prior_clip", 0], enable_context=True, sigmas=["sigma", 0],
-                            second_sigmas=["sigma2", 0], second_model=["model2", 0],
+                            second_sigma_values=["sigma2", 0], second_model=["model2", 0],
                             face_refine=True, face_sigmas=["face_sigma", 0], face_model=["face_model", 0])
         self.assertEqual((graph["reference"]["inputs"]["width"], graph["reference"]["inputs"]["height"]), (960, 544))
         self.assertEqual(graph["upscale"]["class_type"], "MiniMaxH3LatentUpscaleCombined")

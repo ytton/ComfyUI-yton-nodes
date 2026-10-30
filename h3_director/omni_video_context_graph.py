@@ -49,7 +49,7 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                               clip_index, face_refine, face_count, face_steps,
                               face_denoise, face_detector, face_reverse, face_large_strength,
                               face_fallback_detector, face_seed, image=None, video=None, audio=None,
-                              sigmas=None, second_sigmas=None, previous_video=None, second_model=None,
+                              sigmas=None, previous_video=None, second_model=None,
                               face_model=None, face_sigmas=None, enable_context=False,
                               film_model=FILM_MODEL):
     width, height, main_width, main_height = sampling_dimensions(
@@ -152,9 +152,10 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
             high_conditioning = graph.node("MiniMaxH3AddGuide", id="high_source_guide", positive=high_conditioning,
                                             latent=high_reference.out(1), vae=models.out(2), image=source_images,
                                             frame_idx=0).out(0)
-        high_schedule = second_sigmas
-        if high_schedule is None:
+        if isinstance(second_sigma_values, str):
             high_schedule = graph.node("ManualSigmas", id="high_sigmas", sigmas=second_sigma_values).out(0)
+        else:
+            high_schedule = second_sigma_values
         high_guider = graph.node("BasicGuider", id="high_guider", model=second_model,
                                  conditioning=high_conditioning)
         high_noise = graph.node("RandomNoise", id="high_noise", noise_seed=seed)
@@ -173,6 +174,8 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
     frames = graph.node("VAEDecode", id="frames", samples=final, vae=models.out(2)).out(0)
     sound = graph.node("VAEDecodeAudio", id="sound", samples=final, vae=models.out(3)).out(0)
     if face_refine:
+        if isinstance(face_sigmas, str):
+            face_sigmas = graph.node("ManualSigmas", id="face_sigmas", sigmas=face_sigmas).out(0) if face_sigmas.strip() else None
         face_model = models.out(0) if face_model is None else face_model
         frames = add_face_refinement(graph, frames, final, face_model, models.out(1), models.out(2), models.out(3),
                                      image, prompt, ref_image_size, face_count, face_steps, face_denoise,
