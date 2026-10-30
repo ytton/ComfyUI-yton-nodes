@@ -43,10 +43,10 @@ export async function runH3SamplingBrowserRegression(page, schema, example, base
       }
       checkSockets()
       assert(w('sampling_mode').value === '二采', 'new node defaults to Film second pass')
-      assert(w('sampling_plan').value === 'Film 2×' && w('sampling_plan').disabled, 'Film method is visible and fixed')
+      assert(w('sampling_plan').value === 'TR · Film 2×' && w('sampling_plan').disabled, 'Film method is visible and fixed')
       assert(w('first_pass_scale').value === 0.5 && w('first_pass_scale').disabled, 'half-size ratio is visible and fixed')
       assert(!w('upscale_model') && !w('selflift_transition_step'), 'only Film model controls are present')
-      for (const name of ['film_method', 'film_model', 'film_ff_chunks', 'film_audio_denoise', 'film_noise_resample', 'film_match_stats']) {
+      for (const name of ['film_method', 'film_model', 'second_ff_chunks', 'film_audio_denoise', 'film_noise_resample', 'film_match_stats']) {
         assert(w(name) && !w(name).disabled, name + ' is editable')
         assert(node.widgets.indexOf(w(name)) > node.widgets.findIndex(w => w.name === 'h3_section_二采方案'), name + ' is below second-pass heading')
         assert(node.widgets.indexOf(w(name)) < node.widgets.findIndex(w => w.name === 'h3_section_小脸修复'), name + ' is above face heading')
@@ -54,7 +54,7 @@ export async function runH3SamplingBrowserRegression(page, schema, example, base
       assert(w('film_audio_denoise').value === 0, 'audio stays locked by default')
       assert(w('second_sigma_values').value === '', 'automatic second-pass schedule is the default')
       assert(w('second_sampler').value === 'euler', 'second pass defaults to non-ancestral Euler')
-      assert(w('film_ff_chunks').value === '8', 'second pass limits feedforward memory by default')
+      assert(w('second_ff_chunks').value === '8', 'second pass limits feedforward memory by default')
       const faceControls = ['face_refine', 'face_count', 'face_sigmas', 'face_reverse']
       assert(JSON.stringify(node.widgets.filter(w => w.name.startsWith('face_') && w.type !== 'h3_input').map(w => w.name)) === JSON.stringify(faceControls), 'only four face controls remain')
       const internalFace = ['face_steps', 'face_denoise', 'face_large_strength', 'face_detector', 'face_fallback_detector', 'face_seed']
@@ -109,7 +109,7 @@ export async function runH3SamplingBrowserRegression(page, schema, example, base
       prompt = (await app.graphToPrompt()).output[id]
       assert(Array.isArray(prompt.inputs.second_sigma_values), 'Sigma link is exported')
       const twoPassHeight = node.size[1]
-      const secondWidgets = ['sampling_plan', 'first_pass_scale', 'second_model', 'film_method', 'film_model', 'film_ff_chunks',
+      const secondWidgets = ['sampling_plan', 'first_pass_scale', 'second_model', 'film_method', 'film_model', 'second_ff_chunks',
         'film_audio_denoise', 'film_noise_resample', 'film_match_stats', 'second_sampler', 'second_sigma_values', ...autoSecond]
       change('sampling_mode', '单采')
       assert(secondWidgets.every(name => w(name).hidden), 'single pass hides every second-pass widget')
@@ -148,12 +148,12 @@ export async function runH3SamplingBrowserRegression(page, schema, example, base
       node = app.graph._nodes.find(node => node.comfyClass === 'YtonH3VideoContextOmniGenerate')
       prompt = (await app.graphToPrompt()).output[node.id]
       assert(prompt.inputs.width === 1920 && prompt.inputs.height === 1088, 'shipped example has final dimensions')
-      assert(prompt.inputs.sampling_mode === '二采' && prompt.inputs.face_refine === true, 'example widget ordering matches schema')
+      assert(prompt.inputs.sampling_mode === '二采' && prompt.inputs.face_refine === false, 'example widget ordering matches schema')
       assert(prompt.inputs.film_model === 'h3_clean_latent_upscaler_film_epoch200.safetensors', 'example selects Film')
       assert(prompt.inputs.film_method === 'learned model' && prompt.inputs.film_audio_denoise === 0, 'example keeps default method and audio')
       assert(prompt.inputs.film_noise_resample === 'independent' && prompt.inputs.film_match_stats === 0, 'example keeps default noise and statistics')
       assert(prompt.inputs.second_sigma_values === '' && prompt.inputs.second_steps === 4, 'example uses automatic second-pass schedule')
-      assert(Array.isArray(prompt.inputs.face_sigmas), 'example face Sigma link targets lower control')
+      assert(prompt.inputs.face_sigmas === '', 'example starts with internal face schedule')
       assert(typeof prompt.inputs.seed === 'number' && prompt.inputs.clip_index === 1, 'seed and clip index remain aligned')
       assert(!('upscale_model' in prompt.inputs) && !('sampling_plan' in prompt.inputs), 'example has only current inputs')
       checkSockets()

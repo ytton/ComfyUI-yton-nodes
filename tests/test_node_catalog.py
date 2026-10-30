@@ -18,7 +18,7 @@ class CatalogTests(unittest.TestCase):
                 ("YtonInputSwitch", "yton-nodes/Logic"),
                 ("YtonEasyMediaLoader", "yton-nodes/Media"),
                 ("YtonVideoParser", "yton-nodes/Media/解析"),
-                ("YtonH3OmniGenerate", "yton-nodes/MiniMax H3"),
+                ("YtonH3TraditionalOmniGenerate", "yton-nodes/MiniMax H3"),
                 ("YtonH3VideoContextOmniGenerate", "yton-nodes/MiniMax H3"),
                 ("YuanH3ContextWindowPlan", "yton-nodes/H3"),
                 ("YuanH3NikoLoadLatent", "H3-Motion-Context"),

@@ -31,7 +31,7 @@ class FilmSamplingTests(unittest.TestCase):
         self.assertEqual(required["film_match_stats"][1]["default"], 0.0)
         self.assertEqual(required["second_sampler"][1]["default"], "euler")
         self.assertEqual(required["second_sigma_values"][1]["default"], "")
-        self.assertEqual(required["film_ff_chunks"][1]["default"], "8")
+        self.assertEqual(required["second_ff_chunks"][1]["default"], "8")
         for name in ("sampling_plan", "first_pass_scale", "upscale_model",
                      "selflift_transition_step", "selflift_rho", "selflift_highres_tiling"):
             self.assertNotIn(name, required)
@@ -59,11 +59,11 @@ class FilmSamplingTests(unittest.TestCase):
                 self.assertEqual(graph["high_guider"]["inputs"]["conditioning"][1], 1)
 
     def test_second_pass_chunking_is_optional_and_keeps_the_selected_model(self):
-        graph, _ = expanded(second_model=["custom_model", 0], film_ff_chunks="16")
+        graph, _ = expanded(second_model=["custom_model", 0], second_ff_chunks="16")
         self.assertEqual(graph["high_ff_chunks"]["class_type"], "MiniMaxChunkFeedForward")
         self.assertEqual(graph["high_ff_chunks"]["inputs"],
                          {"model": ["custom_model", 0], "chunks": 16, "seq_threshold": 4096})
-        graph, _ = expanded(second_model=["custom_model", 0], film_ff_chunks="沿用模型")
+        graph, _ = expanded(second_model=["custom_model", 0], second_ff_chunks="沿用模型")
         self.assertNotIn("high_ff_chunks", graph)
         self.assertEqual(graph["high_guider"]["inputs"]["model"], ["custom_model", 0])
         self.assertEqual(graph["upscale"]["inputs"]["model"], ["custom_model", 0])

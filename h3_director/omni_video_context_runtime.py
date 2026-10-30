@@ -2,11 +2,11 @@
 
 import os
 
+import comfy.samplers
 import folder_paths
 
-from .omni_runtime import YtonH3OmniGenerate
 from .omni_video_context_graph import build_video_context_graph
-from .omni_sampling import FILM_MODEL
+from .omni_sampling import FILM_MODEL, UPSCALE_MODEL
 
 if "h3_latent_upscalers" not in folder_paths.folder_names_and_paths:
     folder_paths.add_model_folder_path("h3_latent_upscalers", os.path.join(folder_paths.models_dir, "h3_latent_upscalers"))
@@ -39,21 +39,42 @@ class YtonH3VideoTail:
         return frames[-22:].clone(), audio
 
 
-class YtonH3VideoContextOmniGenerate:
+class H3OmniGenerate:
+    SAMPLING_PLAN = "tr"
+
     @classmethod
     def INPUT_TYPES(cls):
-        schema = YtonH3OmniGenerate.INPUT_TYPES()
-        del schema["required"]["latent_path"]
-        del schema["optional"]["context_path"]
-        del schema["optional"]["second_sigmas"]
-        required = schema["required"]
-        del required["first_pass_scale"]
-        del required["upscale_model"]
-        for name in ("face_steps", "face_denoise", "face_large_strength", "face_detector",
-                     "face_fallback_detector", "face_seed"):
-            del required[name]
-        required["sampling_mode"][1].update(default="二采",
-            tooltip="二采固定使用 Film 2×：半尺寸首采、潜空间放大两倍，再进行二采。单采直接按最终宽高生成。")
+        required = {
+            "model_loader": ("FAST_MODEL_LOADER", {"rawLink": True}),
+            "prompt": ("STRING", {"default": "", "multiline": True}),
+            "width": ("INT", {"default": 1344, "min": 32, "max": 16384, "step": 32}),
+            "height": ("INT", {"default": 768, "min": 32, "max": 16384, "step": 32}),
+            "mode": (["普通模式", "复刻模式"], {"default": "普通模式",
+                "tooltip": "普通模式使用填写时长；复刻模式按第一个视频的实际时长生成。"}),
+            "duration": ("FLOAT", {"default": 5.0, "min": 0.21, "max": 149.66, "step": 0.1,
+                "tooltip": "普通模式成片时长。开启上下文后自动补 22 帧，并在输出时裁除。"}),
+            "ref_image_size": (["match", "max"], {"default": "match"}),
+            "sampling_mode": (["单采", "二采"], {"default": "二采",
+                "tooltip": "单采直接按最终宽高生成；二采采用此节点对应的升分辨率方案。"}),
+            "steps": ("INT", {"default": 4, "min": 1, "max": 1000}),
+            "sampler_name": (comfy.samplers.KSampler.SAMPLERS, {"default": "euler"}),
+            "scheduler": (comfy.samplers.KSampler.SCHEDULERS, {"default": "simple"}),
+            "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
+            "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
+            "clip_index": ("INT", {"default": 1, "min": 1, "max": 9999}),
+            "face_refine": ("BOOLEAN", {"default": False}),
+            "face_count": ("INT", {"default": 1, "min": 1, "max": 64}),
+            "face_reverse": ("BOOLEAN", {"default": False}),
+        }
+        schema = {"required": required, "optional": {
+            "image": ("IMAGE", {"lazy": True, "tooltip": "可选图片参考；空输出视为未提供。"}),
+            "video": ("VIDEO", {"lazy": True, "tooltip": "可选视频参考。普通模式按片段截取，复刻模式取第一个视频的时长。"}),
+            "audio": ("AUDIO", {"lazy": True, "tooltip": "可选音频参考。"}),
+            "sigmas": ("SIGMAS", {"tooltip": "自定义主采时间表；连接后替代主采步数、调度器与降噪。SelfLift 使用同一条完整时间表。"}),
+            "second_model": ("MODEL", {"rawLink": True, "tooltip": "可选的高分辨率阶段模型；未接时使用主模型。"}),
+            "face_model": ("MODEL", {"rawLink": True, "tooltip": "可选的修脸模型；未接时使用主模型。"}),
+        }}
+        required["second_sampler"] = (comfy.samplers.KSampler.SAMPLERS, {"default": "euler"})
         required["film_method"] = (["learned model", "nearest-exact", "nearest", "bilinear", "bicubic", "area", "bislerp"], {
             "default": "learned model",
             "tooltip": "默认 learned model 使用 Film 模型；其他选项使用对应的潜空间插值。放大倍率固定为 2×。",
@@ -92,7 +113,7 @@ class YtonH3VideoContextOmniGenerate:
             "tooltip": "Karras 曲线强度。固定起点与步数，较高值将更多降噪放在前几步；默认 7。曲线末端为 0.01，最后归零。手填或连线 Sigma 时不使用。",
         })
         required["second_sampler"][1]["default"] = "euler"
-        required["film_ff_chunks"] = (["沿用模型", "4", "8", "16", "32", "64"], {
+        required["second_ff_chunks"] = (["沿用模型", "4", "8", "16", "32", "64"], {
             "default": "8",
             "tooltip": "二采的前馈计算分块，默认 8 块以降低长片段显存峰值；显存仍不足可选 16 或 32。仅分批计算同一组 token，不裁切视频、不改变采样步数。选择沿用模型可保留外部模型的分块设置。",
         })
@@ -114,6 +135,40 @@ class YtonH3VideoContextOmniGenerate:
             "lazy": True,
             "tooltip": "可选。接上一段生成的视频，或用加载视频节点读取已有成片；仅在启用上下文时提取尾部画面与音频。独立生成时可留空。",
         })
+        if cls.SAMPLING_PLAN != "tr":
+            for name in tuple(required):
+                if name.startswith("film_"):
+                    del required[name]
+            for name in ("width", "height"):
+                required[name][1]["tooltip"] = "最终输出尺寸，按 32 像素对齐，例如 1920×1088。"
+            required["first_pass_scale"] = ("FLOAT", {
+                "default": 0.5 if cls.SAMPLING_PLAN == "selflift" else 0.625,
+                "min": 0.25, "max": 1.0, "step": 0.025,
+                "tooltip": "低分辨率阶段相对最终宽高的比例。传统二采按 32 对齐；SelfLift 由采样器计算低分辨率画布。",
+            })
+            upscalers = folder_paths.get_filename_list("latent_upscale_models")
+            required["upscale_model"] = ([UPSCALE_MODEL, *[name for name in upscalers if name != UPSCALE_MODEL]], {
+                "default": UPSCALE_MODEL, "tooltip": "3D latent 放大模型，位于 models/latent_upscale_models。",
+            })
+            schema["optional"]["second_model"][1]["tooltip"] = "可选的高分辨率阶段模型；未接时使用主模型。"
+        if cls.SAMPLING_PLAN == "traditional":
+            required["second_sampler"][1]["default"] = "sa_solver"
+            required["second_sigma_values"][1].update(default="0.631578922, 0.3158, 0",
+                tooltip="传统二采时间表；手填或连线覆盖自动调度，留空使用下方 Karras 配置。")
+        if cls.SAMPLING_PLAN == "selflift":
+            for name in ("second_sampler", "second_sigma_values", "second_steps", "second_sigma_start", "second_rho"):
+                del required[name]
+            required["sampler_name"] = (["euler"], {"default": "euler",
+                "tooltip": "SelfLift 固定标准 Euler；低分与高分阶段共用主采完整 Sigma，不额外追加二采步数。"})
+            required["upscale_model"][0].append("none")
+            required["selflift_transition_step"] = ("INT", {"default": 2, "min": 1, "max": 999,
+                "tooltip": "低分辨率阶段执行的步数；必须小于完整时间表的总步数。默认 4 步时低分 2 步、高分 2 步。"})
+            required["selflift_rho"] = ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05,
+                "tooltip": "VAE 校正范围。默认 0，使用所选 latent 超分模型；超分选择 none 时必须大于 0。"})
+            required["selflift_w_min"] = ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.05})
+            required["selflift_w_max"] = ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05})
+            required["selflift_highres_tiling"] = ("BOOLEAN", {"default": False})
+            required["selflift_highres_tiles"] = (["auto", "2", "4", "8"], {"default": "auto"})
         schema["hidden"] = {"dynprompt": "DYNPROMPT", "unique_id": "UNIQUE_ID"}
         return schema
 
@@ -132,7 +187,7 @@ class YtonH3VideoContextOmniGenerate:
 
     def check_lazy_status(self, enable_context, **inputs):
         media = ("image", "video", "audio") + (("previous_video",) if enable_context[0] else ())
-        if inputs["sampling_mode"][0] == "二采":
+        if inputs["sampling_mode"][0] == "二采" and self.SAMPLING_PLAN != "selflift":
             media += ("second_sigma_values",)
         if inputs["face_refine"][0]:
             media += ("face_sigmas",)
@@ -152,14 +207,32 @@ class YtonH3VideoContextOmniGenerate:
                     values[name] = links[name]
             else:
                 values[name] = items[0]
-        return build_video_context_graph(**values)
+        return build_video_context_graph(sampling_plan=self.SAMPLING_PLAN, **values)
+
+
+class YtonH3VideoContextOmniGenerate(H3OmniGenerate):
+    SAMPLING_PLAN = "tr"
+
+
+class YtonH3SelfLiftOmniGenerate(H3OmniGenerate):
+    SAMPLING_PLAN = "selflift"
+    DESCRIPTION = "全模态生成与可选视频上下文。SelfLift 共用一条完整 Euler 时间表，从低分辨率升到最终宽高；支持单采与小脸修复。"
+
+
+class YtonH3TraditionalOmniGenerate(H3OmniGenerate):
+    SAMPLING_PLAN = "traditional"
+    DESCRIPTION = "全模态生成与可选视频上下文。传统二采先低分辨率生成，3D latent 超分到最终宽高，再独立采样；支持单采与小脸修复。"
 
 
 NODE_CLASS_MAPPINGS = {
     "YtonH3VideoContextOmniGenerate": YtonH3VideoContextOmniGenerate,
+    "YtonH3SelfLiftOmniGenerate": YtonH3SelfLiftOmniGenerate,
+    "YtonH3TraditionalOmniGenerate": YtonH3TraditionalOmniGenerate,
     "YtonH3VideoTail": YtonH3VideoTail,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "YtonH3VideoContextOmniGenerate": "H3 全模态生成 · 视频上下文",
+    "YtonH3VideoContextOmniGenerate": "H3 全模态生成 · TR",
+    "YtonH3SelfLiftOmniGenerate": "H3 全模态生成 · SelfLift",
+    "YtonH3TraditionalOmniGenerate": "H3 全模态生成",
     "YtonH3VideoTail": "H3 提取视频尾部",
 }

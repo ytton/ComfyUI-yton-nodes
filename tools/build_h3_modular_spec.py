@@ -51,7 +51,7 @@ def build(variant):
     media = node("media", "YtonEasyMediaLoader", None, "当前素材 · 图片 / 视频 / 音频均可留空")
     previous_media = node("previous_media", "YtonEasyMediaLoader", None, "上一段成片 · 只填写第一个视频")
 
-    original = json.loads((ROOT / "examples/H3_全模态生成_单采二采_分段修脸_视频上下文.json").read_text(encoding="utf-8"))
+    original = json.loads((ROOT / "examples/H3_全模态生成_TR.json").read_text(encoding="utf-8"))
     loader_preset = next(n for n in original["nodes"] if n["type"] == "fast h3Loader")
     loader = node("loader", "fast h3Loader", "models", "H3 模型加载器")
     nodes[-1]["preset"] = loader_preset["widgets_values"]
