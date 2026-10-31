@@ -1,10 +1,10 @@
 .yton-panel.yton-h3-studio {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(380px, 1.25fr) minmax(270px, 1fr) 78px;
+  grid-template-columns: clamp(300px, 33%, 376px) minmax(320px, 1fr) 78px;
   align-items: stretch;
-  gap: 18px;
-  padding: 18px 12px 18px 18px;
+  gap: 14px;
+  padding: 14px 12px 14px 14px;
   background: var(--yton-node-bg, #1e1f22);
   color: var(--yton-node-fg, #e3e5e8);
   min-height: 560px;
@@ -12,6 +12,12 @@
 .yton-h3-controls { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .yton-h3-section { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
 .yton-h3-heading { font-size: 12px; font-weight: 600; opacity: .85; line-height: 20px; }
+.yton-h3-heading-row { display: flex; align-items: center; justify-content: space-between; }
+.yton-h3-auto-ratio {
+  padding: 1px 7px; border: 1px solid #ffffff25; border-radius: 5px;
+  color: inherit; background: transparent; font-size: 11px; cursor: pointer;
+}
+.yton-h3-auto-ratio.active { background: #ffffff25; border-color: #ffffff70; }
 .yton-h3-prompt {
   width: 100%; min-height: 168px; resize: vertical; padding: 10px;
   border: 1px solid #ffffff25; border-radius: 7px;
@@ -26,33 +32,33 @@
   font-size: 11px; cursor: pointer; white-space: nowrap;
 }
 .yton-h3-choice:hover { background: #ffffff15; }
-.yton-h3-choice.active { background: #5865f240; border-color: #829be0; }
-.yton-h3-tiers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.yton-h3-ratios { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.yton-h3-durations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.yton-h3-choice.active { background: #ffffff20; border-color: #ffffff65; }
+.yton-h3-tiers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.yton-h3-ratios { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.yton-h3-studio .yton-pill-btn,
+.yton-h3-studio .yton-ratio-card { background: #ffffff0d; border-color: #ffffff20; color: inherit; }
+.yton-h3-studio .yton-pill-btn:hover,
+.yton-h3-studio .yton-ratio-card:hover { background: #ffffff18; }
+.yton-h3-studio .yton-pill-btn.active,
+.yton-h3-studio .yton-ratio-card.active { background: #ffffff30; border-color: #ffffff65; color: inherit; }
+.yton-h3-studio .yton-pill-btn.active .yton-subtext { color: inherit; opacity: .75; }
+.yton-h3-studio .yton-ratio-card { min-height: 70px; }
+.yton-h3-durations { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .yton-h3-ref-size { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .yton-h3-custom-choice {
   display: flex; align-items: center; min-width: 0; gap: 3px;
-  border: 1px solid #ffffff18; border-radius: 7px; padding: 0 5px 0 0;
+  border: 1px solid #ffffff18; border-radius: 7px; padding: 0 8px;
   background: #ffffff05;
 }
-.yton-h3-custom-choice.active { background: #5865f240; border-color: #829be0; }
-.yton-h3-custom-choice .yton-h3-choice {
-  flex: 0 1 auto; min-width: 0; border: 0; background: transparent; padding: 7px 5px;
-}
+.yton-h3-custom-choice.active { background: #ffffff20; border-color: #ffffff65; }
 .yton-h3-custom-choice input {
-  min-width: 0; width: 44px; flex: 1; padding: 3px 1px; font: inherit; font-size: 12px;
-  color: inherit; background: #00000018; border: 0; border-radius: 3px; text-align: center;
+  min-width: 0; width: 44px; flex: 1; padding: 7px 0; font: inherit; font-size: 12px;
+  color: inherit; background: transparent; border: 0; border-radius: 3px; text-align: center;
   appearance: textfield;
 }
+.yton-h3-custom-choice input::placeholder { color: inherit; opacity: .6; }
 .yton-h3-custom-choice input::-webkit-inner-spin-button { appearance: none; }
 .yton-h3-unit { font-size: 10px; opacity: .55; }
-.yton-h3-custom-canvas { display: flex; gap: 8px; }
-.yton-h3-number { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-.yton-h3-number input {
-  width: 98px; min-width: 0; padding: 6px 8px; border: 1px solid #ffffff25;
-  border-radius: 5px; background: #00000020; color: inherit; font: inherit;
-}
 .yton-h3-size-info { font-size: 11px; opacity: .65; min-height: 15px; }
 .yton-h3-media { min-width: 0; padding-left: 14px; border-left: 1px solid #ffffff15; }
 .yton-h3-media .yton-media-panel { background: transparent; padding: 0; gap: 12px; margin-top: 8px; }

@@ -38,7 +38,7 @@ class Clip:
 class StudioTests(unittest.TestCase):
     def inputs(self, **extra):
         return dict(clip=Clip(), prompt="参考 <Picture 1>", aspect_ratio="16:9", resolution="480p",
-                    custom_width=1344, custom_height=768, ref_image_size="match", ref_scale=0.5,
+                    ref_image_size="match", ref_scale=0.5,
                     duration=5, **extra)
 
     def execute(self, **extra):
@@ -64,10 +64,6 @@ class StudioTests(unittest.TestCase):
         result, native = self.mocked(([], [], []), resolution="1080p", aspect_ratio="9:16", duration=7.5)
         self.assertEqual(result.result, ("positive", "latent", 1088, 1920, 192))
         self.assertEqual((native["width"], native["height"], native["length"]), (1088, 1920, 192))
-
-    def test_custom_dimensions_align_and_override_preset(self):
-        result, _ = self.mocked(([], [], []), resolution="自定义", custom_width=1000, custom_height=701)
-        self.assertEqual(result.result[2:4], (992, 672))
 
     def test_auto_ratio_uses_first_enabled_image(self):
         image = torch.zeros(1, 128, 72, 3)
@@ -118,6 +114,10 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(info["input"]["optional"]["vae"][0], "VAE")
         self.assertIn("disable_audio_3", info["input"]["required"])
         self.assertIn("16:9|1080p", info["input"]["required"]["resolution"][1]["yton_presets"])
+        resolution = info["input"]["required"]["resolution"][1]
+        self.assertEqual(resolution["options"], ["320p", "480p", "540p", "640p", "720p", "768p", "944p", "1024p", "1080p"])
+        self.assertEqual(resolution["yton_h3_multipliers"]["1080p"], 2.0)
+        self.assertNotIn("custom_width", info["input"]["required"])
 
 
 if __name__ == "__main__":

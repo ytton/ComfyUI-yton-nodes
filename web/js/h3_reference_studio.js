@@ -19,6 +19,7 @@ function setupStudio(node) {
   const widgets = Object.fromEntries(node.widgets.map(w => [w.name, w]));
   const spec = node.constructor.nodeData.input.required;
   const presets = spec.resolution[1].yton_presets;
+  const multipliers = spec.resolution[1].yton_h3_multipliers;
   const ratios = spec.aspect_ratio[1].options;
   const tiers = spec.resolution[1].options;
   node.convertWidgetToInput(widgets.prompt);
@@ -73,32 +74,22 @@ function setupStudio(node) {
   function customChoice(group, name, label, select) {
     const button = group.querySelector('[data-value="自定义"]');
     const tile = element("div", "yton-h3-custom-choice");
-    button.replaceWith(tile); tile.append(button);
+    button.replaceWith(tile);
     const input = element("input", "");
     input.type = "number"; input.step = name === "duration" ? "0.1" : "0.05";
+    input.placeholder = "自定义";
     input.min = spec[name][1].min; input.max = spec[name][1].max;
     input.setAttribute("aria-label", label);
-    input.onfocus = () => select();
+    input.onfocus = () => {
+      select(); input.value = widgets[name].value; input.select();
+    };
     input.onchange = () => {
-      if (!input.checkValidity() || !input.value.trim()) { input.reportValidity(); return; }
+      if (!input.value.trim()) { input.value = widgets[name].value; return; }
+      if (!input.checkValidity()) { input.reportValidity(); return; }
       const value = Number(input.value);
       select(); update(name, value);
     };
     tile.append(input, element("span", "yton-h3-unit", name === "duration" ? "秒" : "×"));
-    return input;
-  }
-  function number(name, label, host, step = 1) {
-    const field = element("label", "yton-h3-number");
-    const input = element("input", "");
-    input.type = "number"; input.step = String(step);
-    const inputSpec = spec[name][1];
-    input.min = inputSpec.min; input.max = inputSpec.max;
-    input.setAttribute("aria-label", label);
-    input.onchange = () => {
-      if (!input.checkValidity() || !input.value.trim()) { input.reportValidity(); return; }
-      update(name, Number(input.value));
-    };
-    field.append(element("span", "", label), input); host.append(field);
     return input;
   }
   const promptSection = section("提示词");
@@ -108,17 +99,39 @@ function setupStudio(node) {
   prompt.oninput = () => update("prompt", prompt.value);
   promptSection.append(prompt);
 
-  const canvasSection = section("画幅与分辨率");
-  const tiersGroup = segmented("resolution", tiers, canvasSection);
-  tiersGroup.classList.add("yton-h3-tiers");
-  const ratiosGroup = segmented("aspect_ratio", ratios, canvasSection, v => v === "auto" ? "自动" : v);
-  ratiosGroup.classList.add("yton-h3-ratios");
-  const customCanvas = element("div", "yton-h3-custom-canvas");
-  const widthInput = number("custom_width", "宽度", customCanvas, 32);
-  const heightInput = number("custom_height", "高度", customCanvas, 32);
-  canvasSection.append(customCanvas);
+  const resolutionSection = section("输出分辨率");
+  const tiersGroup = segmented("resolution", tiers, resolutionSection);
+  tiersGroup.className = "yton-grid-pills yton-h3-tiers";
+  for (const button of tiersGroup.children) {
+    const tier = button.dataset.value;
+    button.className = "yton-pill-btn";
+    button.replaceChildren(element("span", "", tier), element("span", "yton-subtext", `(${multipliers[tier].toFixed(1)})`));
+    button.title = "括号内为原分辨率控件的 H3 倍率";
+  }
+  const ratioSection = section("画面比例");
+  const ratioHeading = ratioSection.firstElementChild;
+  ratioHeading.classList.add("yton-h3-heading-row");
+  const autoRatio = element("button", "yton-h3-auto-ratio", "自动");
+  autoRatio.type = "button"; autoRatio.dataset.value = "auto";
+  autoRatio.setAttribute("aria-label", "画面比例 自动");
+  autoRatio.title = "按第一张启用图片匹配比例；没有图片时使用 16:9";
+  autoRatio.onclick = () => update("aspect_ratio", "auto");
+  ratioHeading.replaceChildren(element("span", "", "画面比例"), autoRatio);
+  const ratiosGroup = segmented("aspect_ratio", ratios.filter(r => r !== "auto"), ratioSection);
+  ratiosGroup.className = "yton-grid-ratios yton-h3-ratios";
+  for (const button of ratiosGroup.children) {
+    const ratio = button.dataset.value;
+    const [w, h] = ratio.split(":").map(Number);
+    const icon = element("span", "yton-ratio-icon");
+    icon.style.width = `${28 * w / Math.max(w, h)}px`;
+    icon.style.height = `${28 * h / Math.max(w, h)}px`;
+    icon.setAttribute("aria-hidden", "true");
+    button.className = "yton-ratio-card";
+    button.setAttribute("aria-label", `画面比例 ${ratio}`);
+    button.replaceChildren(icon, element("span", "yton-ratio-text", ratio));
+  }
   const sizeInfo = element("div", "yton-h3-size-info");
-  canvasSection.append(sizeInfo);
+  ratioSection.append(sizeInfo);
 
   const refSection = section("参考图尺寸");
   refSection.title = "match：按输出像素面积缩小参考图；max：使用原生最大参考尺寸；自定义：在 match 基础上缩放宽高。";
@@ -131,7 +144,7 @@ function setupStudio(node) {
   const durationSection = section("视频时长");
   const durationButtons = element("div", "yton-h3-segments");
   durationSection.append(durationButtons);
-  const durationOptions = [3, 5, 7.5, 10, 15, "自定义"].map(value => {
+  const durationOptions = [5, 10, 15, "自定义"].map(value => {
     const button = element("button", "yton-h3-choice", value === "自定义" ? value : `${value} 秒`);
     button.type = "button";
     button.dataset.value = value;
@@ -162,7 +175,6 @@ function setupStudio(node) {
   });
 
   function dimensions(ratio = widgets.aspect_ratio.value, tier = widgets.resolution.value) {
-    if (tier === "自定义") return [widgets.custom_width.value, widgets.custom_height.value].map(v => Math.max(32, Math.floor(v / 32) * 32));
     if (ratio === "auto") {
       const image = [...mediaColumn.querySelectorAll(".image-grid .has-media:not(.output-disabled) img")].find(img => img.naturalWidth);
       ratio = image ? ratios.filter(r => r !== "auto").reduce((best, r) => {
@@ -182,20 +194,18 @@ function setupStudio(node) {
     for (const [name, buttons] of groups) for (const [value, button] of buttons) {
       const active = widgets[name].value === value;
       button.classList.toggle("active", active); button.setAttribute("aria-pressed", String(active));
-      if (name === "resolution" && value !== "自定义") {
-        const [w, h] = dimensions(widgets.aspect_ratio.value, value);
-        button.textContent = `${value} · ${(w * h / 1e6).toFixed(2)} MP`;
-      }
     }
-    customCanvas.hidden = widgets.resolution.value !== "自定义";
-    scaleInput.parentElement.classList.toggle("active", widgets.ref_image_size.value === "自定义");
-    for (const [input, name] of [[widthInput, "custom_width"], [heightInput, "custom_height"], [scaleInput, "ref_scale"], [durationInput, "duration"]]) {
-      if (document.activeElement !== input) input.value = widgets[name].value;
-    }
+    const automatic = widgets.aspect_ratio.value === "auto";
+    autoRatio.classList.toggle("active", automatic);
+    autoRatio.setAttribute("aria-pressed", String(automatic));
+    const customScale = widgets.ref_image_size.value === "自定义";
+    scaleInput.parentElement.classList.toggle("active", customScale);
+    if (document.activeElement !== scaleInput) scaleInput.value = customScale ? widgets.ref_scale.value : "";
     const [width, height] = dimensions();
-    sizeInfo.textContent = `${width} × ${height} · ${(width * height / 1e6).toFixed(2)} MP`;
+    sizeInfo.textContent = `${width} × ${height}`;
     const custom = node.properties.ytonDurationCustom || !durationOptions.some(([v]) => v === widgets.duration.value);
     durationInput.parentElement.classList.toggle("active", Boolean(custom));
+    if (document.activeElement !== durationInput) durationInput.value = custom ? widgets.duration.value : "";
     for (const [value, button] of durationOptions) {
       const active = custom ? value === "自定义" : value === widgets.duration.value;
       button.classList.toggle("active", active); button.setAttribute("aria-pressed", String(active));

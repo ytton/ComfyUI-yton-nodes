@@ -5,7 +5,7 @@ export async function checkH3Studio(page, definition, imageBase64) {
   p.on("pageerror", error => { if (/h3_reference_studio|media_loader_panel|node_panel/i.test(error.stack || "")) errors.push(error.message); });
   await context.route(/\/(?:api\/)?object_info(?:\/[^?]+)?(?:\?.*)?$/, async route => {
     const response = await route.fetch();
-    const data = await response.json(); data[definition.name] = definition;
+    const data = await response.json(); data[definition.name] = { ...definition, python_module: "custom_nodes.ComfyUI-yton-nodes" };
     await route.fulfill({ response, json: data });
   });
   await context.route("**/userdata/**", route => route.request().method() === "GET" ? route.continue() : route.fulfill({ json: {} }));
@@ -41,9 +41,14 @@ export async function checkH3Studio(page, definition, imageBase64) {
     await panel.locator('[data-value="1080p"]').click();
     await panel.locator('[data-value="9:16"]').click();
     assert((await panel.locator(".yton-h3-size-info").first().textContent()).includes("1088 × 1920"), "resolution and ratio combine");
-    assert((await panel.locator('[data-value="1080p"]').textContent()).includes("MP"), "resolution displays megapixels");
+    assert((await panel.locator('[data-value="1080p"]').textContent()) === "1080p(2.0)", "resolution uses the original H3 multiplier");
+    await panel.locator('[data-value="21:9"]').click();
+    assert((await panel.locator('[data-value="1080p"]').textContent()) === "1080p(2.0)", "H3 multiplier is independent of canvas aspect");
+    await panel.locator('[data-value="9:16"]').click();
+    assert(await panel.getByText("输出分辨率", { exact: true }).isVisible() && await panel.getByText("画面比例", { exact: true }).isVisible(), "resolution and aspect have separate headings");
+    assert(await panel.locator(".yton-h3-ratios .yton-ratio-icon").count() === 8, "eight aspect cards retain their shape previews");
     const ref = panel.locator(".yton-h3-section").filter({ has: p.getByText("参考图尺寸", { exact: true }) });
-    await ref.getByRole("button", { name: "自定义", exact: true }).click();
+    assert(await ref.getByRole("spinbutton").getAttribute("placeholder") === "自定义" && await ref.getByRole("spinbutton").inputValue() === "", "custom reference choice uses an empty placeholder");
     await ref.getByRole("spinbutton").fill("0.75");
     await ref.getByRole("spinbutton").press("Tab");
     await ref.locator('[data-value="max"]').click();
@@ -53,7 +58,9 @@ export async function checkH3Studio(page, definition, imageBase64) {
     await ref.getByRole("spinbutton").focus();
     assert(await ref.locator(".yton-h3-custom-choice").evaluate(tile => tile.classList.contains("active")), "editing custom scale selects its mode");
     const duration = panel.locator(".yton-h3-section").filter({ has: p.getByText("视频时长", { exact: true }) });
-    await duration.getByRole("button", { name: "7.5 秒", exact: true }).click();
+    assert(await duration.getByRole("spinbutton").getAttribute("placeholder") === "自定义" && await duration.getByRole("spinbutton").inputValue() === "", "custom duration choice uses an empty placeholder");
+    await duration.getByRole("spinbutton").fill("7.5");
+    await duration.getByRole("spinbutton").press("Tab");
     assert((await duration.locator(".yton-h3-size-info").textContent()).includes("192 帧"), "fractional seconds show aligned frames");
     await duration.getByRole("spinbutton").focus();
     assert(await duration.locator(".yton-h3-custom-choice").evaluate(tile => tile.classList.contains("active")), "editing custom duration selects its mode");
@@ -94,15 +101,14 @@ export async function checkH3Studio(page, definition, imageBase64) {
       const controls = panel.querySelector(".yton-h3-controls").getBoundingClientRect();
       const media = panel.querySelector(".yton-h3-media").getBoundingClientRect();
       const output = panel.querySelector(".yton-h3-outputs").getBoundingClientRect();
-      return { columns: controls.right < media.left && media.right < output.left, overflow: panel.scrollWidth > panel.clientWidth + 2 };
+      return { columns: controls.right < media.left && media.right < output.left, overflow: panel.scrollWidth > panel.clientWidth + 2, mediaWider: media.width > controls.width };
     });
-    assert(layout.columns && !layout.overflow, "three columns follow the sketch without overflow");
-    assert(await panel.locator(".yton-h3-ratios").evaluate(group => getComputedStyle(group).gridTemplateColumns.split(" ").length === 3), "nine aspect choices form a 3 by 3 grid");
+    assert(layout.columns && !layout.overflow && layout.mediaWider, "three columns allocate more width to media");
     await p.evaluate(() => window.studioTestNode.setSize([860, window.studioTestNode.size[1]]));
     await p.waitForFunction(() => document.querySelector(".yton-h3-studio").clientWidth < 880);
     const grids = await panel.evaluate(panel => [
-      [".yton-h3-tiers", 4, 3], [".yton-h3-ratios", 3, 3],
-      [".yton-h3-durations", 3, 2], [".yton-h3-ref-size", 3, 1],
+      [".yton-h3-tiers", 3, 3], [".yton-h3-ratios", 4, 2],
+      [".yton-h3-durations", 4, 1], [".yton-h3-ref-size", 3, 1],
     ].map(([selector, columns, rows]) => {
       const group = panel.querySelector(selector), style = getComputedStyle(group);
       return style.gridTemplateColumns.split(" ").length === columns &&
@@ -140,6 +146,6 @@ export async function checkH3Studio(page, definition, imageBase64) {
     const fitModes = await p.locator("img.yton-media-thumb").evaluateAll(images => images.map(image => getComputedStyle(image).objectFit));
     assert(fitModes.length >= 2 && fitModes.every(mode => mode === "contain"), "both loaders contain their image previews");
     if (errors.length) throw Error(errors.join("\n"));
-    return { title: "H3 参考视频工作台", checks: "layout, resolution/MP, reference modes, fractional/custom duration, uploads, drag/drop, disable, model links, save/reload, output wire, shared contain", size: before.size };
+    return { title: "H3 参考视频工作台", checks: "compact controls, wider media, H3 multipliers, ratio icons, placeholder inputs, fractional duration, uploads, drag/drop, disable, model links, save/reload, output wire, shared contain", size: before.size };
   } finally { await context.close(); }
 }

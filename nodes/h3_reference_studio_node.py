@@ -7,10 +7,10 @@ from comfy_api.latest import io
 from comfy_extras.nodes_minimax_h3 import MiniMaxH3ReferenceToVideo, align_frame_count
 
 from .media_loader_node import MEDIA_SLOTS, YtonEasyMediaLoader, YtonVideoParser, media_fingerprint
-from .resolution_node import H3_RATIO_PRESETS, YtonResolutionSelector
+from .resolution_node import H3_MP_VALUES, H3_RATIO_PRESETS, YtonResolutionSelector
 
-ASPECT_RATIOS = list(dict.fromkeys(ratio for ratio, _ in H3_RATIO_PRESETS))
-RESOLUTIONS = list(dict.fromkeys(preset for _, preset in H3_RATIO_PRESETS))
+ASPECT_RATIOS = ["16:9", "9:16", "1:1", "4:3", "3:4", "2:3", "3:2", "21:9"]
+RESOLUTIONS = ["320p", "480p", "540p", "640p", "720p", "768p", "944p", "1024p", "1080p"]
 
 
 class YtonH3ReferenceStudio(io.ComfyNode):
@@ -35,11 +35,10 @@ class YtonH3ReferenceStudio(io.ComfyNode):
                 io.Vae.Input("audio_vae", display_name="音频 VAE", optional=True),
                 io.String.Input("prompt", default="", multiline=True, dynamic_prompts=True),
                 io.Combo.Input("aspect_ratio", options=["auto", *ASPECT_RATIOS], default="16:9"),
-                io.Combo.Input("resolution", options=[*RESOLUTIONS, "自定义"], default="768p",
+                io.Combo.Input("resolution", options=RESOLUTIONS, default="768p",
                     extra_dict={"yton_presets": {f"{ratio}|{preset}": list(size)
-                                for (ratio, preset), size in H3_RATIO_PRESETS.items()}}),
-                io.Int.Input("custom_width", default=1344, min=32, max=16384, step=32),
-                io.Int.Input("custom_height", default=768, min=32, max=16384, step=32),
+                                for (ratio, preset), size in H3_RATIO_PRESETS.items() if preset in RESOLUTIONS},
+                                "yton_h3_multipliers": {preset: H3_MP_VALUES[preset] for preset in RESOLUTIONS}}),
                 io.Combo.Input("ref_image_size", options=["max", "match", "自定义"], default="match"),
                 io.Float.Input("ref_scale", default=0.5, min=0.05, max=4, step=0.05,
                     tooltip="以 match 尺寸为基准的宽高倍率；不会放大超过原图，仍遵循 H3 原生参考图尺寸上限。"),
@@ -56,7 +55,7 @@ class YtonH3ReferenceStudio(io.ComfyNode):
         return media_fingerprint(**inputs)
 
     @classmethod
-    def execute(cls, clip, prompt, aspect_ratio, resolution, custom_width, custom_height,
+    def execute(cls, clip, prompt, aspect_ratio, resolution,
                 ref_image_size, ref_scale, duration, vae=None, audio_vae=None, **slots):
         images, videos, audios = YtonEasyMediaLoader().load_media(**slots)
         first_image = next((image for image in images if image is not None), None)
@@ -68,8 +67,6 @@ class YtonH3ReferenceStudio(io.ComfyNode):
             aspect_ratio = min(ASPECT_RATIOS, key=distance)
         width, height, *_ = YtonResolutionSelector().get_resolution(
             "MiniMax H3 (Video)", aspect_ratio, resolution,
-            custom_width if resolution == "自定义" else 0,
-            custom_height if resolution == "自定义" else 0,
         )
         if not math.isfinite(duration) or duration <= 0:
             raise ValueError("时长需要大于 0 秒。")
