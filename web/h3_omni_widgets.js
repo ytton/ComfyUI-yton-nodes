@@ -7,6 +7,7 @@ const sections = [
   ["小脸修复", ["face_model", "face_refine", "face_count", "face_sigmas", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
   ["分段上下文", ["enable_context", "clip_index", "h3_context_length"]],
+  ["视频解码", ["vae_decode_mode", "x2_vae_name", "vae_tile_size", "vae_tile_overlap"]],
 ];
 const labels = {
   prompt: "提示词", width: "最终宽度", height: "最终高度", duration: "成片目标时长 / 秒",
@@ -26,6 +27,8 @@ const labels = {
   film_method: "放大方式 / method", film_audio_denoise: "音频降噪 / audio_denoise",
   film_noise_resample: "噪声重采样 / noise_resample", film_match_stats: "统计匹配 / match_stats",
   face_refine: "启用小脸修复", face_count: "修脸人数", face_reverse: "倒序修脸",
+  vae_decode_mode: "VAE 解码模式", x2_vae_name: "X2 解码 VAE",
+  vae_tile_size: "解码分块大小", vae_tile_overlap: "解码分块重叠",
 };
 
 function setupSections(node) {
@@ -107,11 +110,12 @@ function setupSections(node) {
   node.widgets = ordered;
   const secondPassWidgets = node.widgets.filter(widget =>
     widget.name === "h3_section_二采方案" || sections[2][1].includes(widget.name));
-  const visibleLayout = new Map(secondPassWidgets.map(widget => [widget, {
+  const decodeWidgets = ["x2_vae_name", "vae_tile_size", "vae_tile_overlap"].map(name => widgets.get(name));
+  const visibleLayout = new Map([...secondPassWidgets, ...decodeWidgets].map(widget => [widget, {
     type: widget.type, computeSize: widget.computeSize, computeLayoutSize: widget.computeLayoutSize,
   }]));
   let secondPassVisible = true;
-  const hiddenInput = input => !secondPassVisible && secondPassWidgets.some(widget => widget.name === input?.widget?.name);
+  const hiddenInput = input => widgets.get(input?.widget?.name)?.hidden === true;
   const updateDisabled = node.updateComputedDisabled;
   node.updateComputedDisabled = function () {
     updateDisabled.apply(this, arguments);
@@ -150,7 +154,11 @@ function setupSections(node) {
   function showSecondPass(visible) {
     if (secondPassVisible === visible) return;
     secondPassVisible = visible;
-    for (const widget of secondPassWidgets) {
+    showControls(secondPassWidgets, visible);
+  }
+  function showControls(controls, visible) {
+    if (controls.every(widget => Boolean(widget.hidden) === !visible)) return;
+    for (const widget of controls) {
       const layout = visibleLayout.get(widget);
       widget.hidden = !visible;
       if (widget.options) widget.options.hidden = !visible;
@@ -183,6 +191,12 @@ function setupSections(node) {
     widgets.get("duration").disabled = widgets.get("mode").value === "复刻模式";
     const twoPass = widgets.get("sampling_mode").value === "二采";
     showSecondPass(twoPass);
+    const decodeMode = widgets.get("vae_decode_mode").value;
+    const x2Decode = decodeMode === "X2 VAE 解码";
+    showControls([widgets.get("x2_vae_name")], x2Decode);
+    showControls(decodeWidgets.slice(1), decodeMode !== "标准解码");
+    widgets.get("width").label = x2Decode ? "采样画布宽度（成片 ×2）" : labels.width;
+    widgets.get("height").label = x2Decode ? "采样画布高度（成片 ×2）" : labels.height;
     const scale = widgets.get("first_pass_scale");
     if (film) scale.value = 0.5;
     scale.disabled = !twoPass || film;
@@ -216,7 +230,7 @@ function setupSections(node) {
     widgets.get("face_sigmas").disabled = !widgets.get("face_refine").value;
     node.setDirtyCanvas(true, true);
   }
-  for (const name of ["mode", "sampling_mode", "face_refine", "first_pass_scale", "face_sigmas", "film_method", "second_sigma_values"]) {
+  for (const name of ["mode", "sampling_mode", "face_refine", "first_pass_scale", "face_sigmas", "film_method", "second_sigma_values", "vae_decode_mode"]) {
     const widget = widgets.get(name);
     if (!widget) continue;
     const callback = widget.callback;

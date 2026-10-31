@@ -11,6 +11,7 @@ const common = {
   sampling_mode: '二采', steps: 4, sampler_name: 'euler', scheduler: 'simple', denoise: 1,
   seed: 1, control_after_generate: 'fixed', clip_index: 1, enable_context: false,
   face_refine: false, face_count: 1, face_sigmas: '', face_reverse: false, second_ff_chunks: '8',
+  vae_decode_mode: '标准解码', x2_vae_name: 'MiniMax-H3-X2-Detail-v1.safetensors', vae_tile_size: 256, vae_tile_overlap: 64,
 }
 const second = { second_sampler: 'euler', second_sigma_values: '', second_steps: 4, second_sigma_start: 0.4, second_rho: 7 }
 const plans = {
@@ -44,6 +45,20 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   assert.equal(node.inputs.find(i => i.name === 'sigmas').label, '自定义 Sigma')
   assert.equal(widgets.get('h3_context_length').value, 22)
   assert.equal(widgets.get('h3_context_length').serialize, false)
+  assert.ok(widgets.get('x2_vae_name').hidden)
+  assert.ok(widgets.get('vae_tile_size').hidden)
+  change('vae_decode_mode', 'H3 快速解码')
+  assert.ok(widgets.get('x2_vae_name').hidden)
+  assert.equal(widgets.get('vae_tile_size').hidden, false)
+  change('vae_decode_mode', 'X2 VAE 解码')
+  assert.equal(widgets.get('x2_vae_name').hidden, false)
+  assert.equal(widgets.get('width').label, '采样画布宽度（成片 ×2）')
+  assert.equal(widgets.get('width').value, 1344)
+  assert.equal(widgets.get('height').value, 768)
+  assert.equal(widgets.get('sampling_mode').value, '二采')
+  change('vae_decode_mode', '标准解码')
+  assert.equal(widgets.get('width').label, '最终宽度')
+  assert.ok(widgets.get('vae_tile_size').hidden)
   assert.equal(node.widgets.filter(w => w.name.startsWith('face_') && w.type !== 'h3_input').map(w => w.name).join(','),
     'face_refine,face_count,face_sigmas,face_reverse')
   change('face_refine', true)

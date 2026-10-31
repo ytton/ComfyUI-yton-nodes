@@ -5,6 +5,7 @@ import math
 from comfy_execution.graph_utils import GraphBuilder
 
 from .omni_face import add_face_refinement
+from .omni_decode import X2_VAE, add_video_decode
 from .omni_sampling import FILM_MODEL, UPSCALE_MODEL, sampling_dimensions
 
 CONTEXT_FRAMES = 22
@@ -54,7 +55,9 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                               sampling_plan="tr", first_pass_scale=0.5, upscale_model=UPSCALE_MODEL,
                               second_sampler="euler", second_sigma_values="",
                               selflift_transition_step=2, selflift_rho=0.0, selflift_w_min=0.5, selflift_w_max=1.0,
-                              selflift_highres_tiling=False, selflift_highres_tiles="auto"):
+                              selflift_highres_tiling=False, selflift_highres_tiles="auto",
+                              vae_decode_mode="标准解码", x2_vae_name=X2_VAE,
+                              vae_tile_size=256, vae_tile_overlap=64):
     width, height, main_width, main_height = sampling_dimensions(
         width, height, sampling_mode, sampling_plan, first_pass_scale)
     if not enable_context:
@@ -212,7 +215,8 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                            guider=high_guider.out(0), sampler=high_sampler.out(0), sigmas=high_schedule,
                            latent_image=latent).out(0)
 
-    frames = graph.node("VAEDecode", id="frames", samples=final, vae=models.out(2)).out(0)
+    frames = add_video_decode(graph, final, models.out(2), vae_decode_mode, x2_vae_name,
+                              vae_tile_size, vae_tile_overlap)
     sound = graph.node("VAEDecodeAudio", id="sound", samples=final, vae=models.out(3)).out(0)
     if face_refine:
         if isinstance(face_sigmas, str):
