@@ -1,0 +1,1725 @@
+{
+  "id": "75611e0c-b285-43e8-8421-7c2d450df0d5",
+  "revision": 1,
+  "last_node_id": 31,
+  "last_link_id": 55,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "fast h3Loader",
+      "pos": [
+        2074.0524311842005,
+        1625.8503527454664
+      ],
+      "size": [
+        662.8333333333335,
+        302.6889709472655
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "开始加载",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "模型加载器",
+          "type": "FAST_MODEL_LOADER",
+          "links": [
+            19
+          ]
+        }
+      ],
+      "title": "H3 主模型与编码器",
+      "properties": {
+        "ue_properties": {
+          "version": "7.0.1",
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "fast h3Loader"
+      },
+      "widgets_values": [
+        "H3\\minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+        "None",
+        "使用主模型",
+        "qwen3vl_32b_heretic_minimax_h3_nvfp4.safetensors",
+        "minimax_h3_video_vae_int8_convrot.safetensors",
+        "minimax_h3_audio_vae_fp32.safetensors",
+        "None",
+        "comfy kitchen attention",
+        true
+      ],
+      "widgets_values_named": {
+        "主模型": "H3\\minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+        "副模型": "None",
+        "加载模式": "使用主模型",
+        "文本编码器": "qwen3vl_32b_heretic_minimax_h3_nvfp4.safetensors",
+        "VAE": "minimax_h3_video_vae_int8_convrot.safetensors",
+        "音频VAE": "minimax_h3_audio_vae_fp32.safetensors",
+        "预览VAE": "None",
+        "注意力机制": "comfy kitchen attention",
+        "启用fp16累加": true
+      }
+    },
+    {
+      "id": 2,
+      "type": "YtonEasyMediaLoader",
+      "pos": [
+        2142.519787086265,
+        2052.159240610633
+      ],
+      "size": [
+        1065.8473762026217,
+        1108
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "image",
+          "shape": 6,
+          "type": "IMAGE",
+          "links": [
+            33
+          ]
+        },
+        {
+          "name": "video",
+          "shape": 6,
+          "type": "VIDEO",
+          "links": [
+            34
+          ]
+        },
+        {
+          "name": "audio",
+          "shape": 6,
+          "type": "AUDIO",
+          "links": [
+            35
+          ]
+        }
+      ],
+      "title": "全能参考素材 · 图片 / 视频 / 音频",
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ver": "5891488cfdc100d7cb31263ddae524144d307ad7",
+        "ytonMediaCollapsed": {
+          "image": false,
+          "video": false,
+          "audio": true
+        },
+        "Node name for S&R": "YtonEasyMediaLoader",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "yton-media/9a920e7c-1d98-4f0e-bd43-db1b0884344f-comfy-generated-1.png",
+        "yton-media/0d0b47ed-ccd3-47a9-b676-4168911aa880-image.png",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "yton-media/10月29日-1.mp4",
+        "",
+        "",
+        "",
+        "",
+        "",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "widgets_values_named": {
+        "image_1": "yton-media/9a920e7c-1d98-4f0e-bd43-db1b0884344f-comfy-generated-1.png",
+        "image_2": "yton-media/0d0b47ed-ccd3-47a9-b676-4168911aa880-image.png",
+        "image_3": "",
+        "image_4": "",
+        "image_5": "",
+        "image_6": "",
+        "image_7": "",
+        "image_8": "",
+        "image_9": "",
+        "video_1": "yton-media/10月29日-1.mp4",
+        "video_2": "",
+        "video_3": "",
+        "audio_1": "",
+        "audio_2": "",
+        "audio_3": "",
+        "disable_image_1": false,
+        "disable_image_2": false,
+        "disable_image_3": false,
+        "disable_image_4": false,
+        "disable_image_5": false,
+        "disable_image_6": false,
+        "disable_image_7": false,
+        "disable_image_8": false,
+        "disable_image_9": false,
+        "disable_video_1": false,
+        "disable_video_2": false,
+        "disable_video_3": false,
+        "disable_audio_1": false,
+        "disable_audio_2": false,
+        "disable_audio_3": false
+      }
+    },
+    {
+      "id": 3,
+      "type": "fast h3VRAMOptimization",
+      "pos": [
+        3076.2778547625394,
+        1628.8336860788
+      ],
+      "size": [
+        369.7443623860677,
+        208.23333333333335
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "模型加载器",
+          "type": "FAST_MODEL_LOADER",
+          "link": 20
+        }
+      ],
+      "outputs": [
+        {
+          "name": "模型加载器",
+          "type": "FAST_MODEL_LOADER",
+          "links": [
+            2,
+            4
+          ]
+        }
+      ],
+      "title": "显存优化",
+      "properties": {
+        "Node name for S&R": "fast h3VRAMOptimization",
+        "ue_properties": {
+          "version": "7.0.1",
+          "widget_ue_connectable": {
+            "启用UniBlockSwap": true,
+            "启用低显存注意力": true,
+            "启用前馈分块": true,
+            "Comfy编译器控制": true
+          },
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "禁用",
+        "禁用",
+        "禁用",
+        "禁用Comfy编译器"
+      ],
+      "widgets_values_named": {
+        "启用UniBlockSwap": "禁用",
+        "启用低显存注意力": "禁用",
+        "启用前馈分块": "禁用",
+        "Comfy编译器控制": "禁用Comfy编译器"
+      }
+    },
+    {
+      "id": 4,
+      "type": "fast modelFromLoader",
+      "pos": [
+        3126.022217148607,
+        1884.0322264137906
+      ],
+      "size": [
+        320,
+        100
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "模型加载器",
+          "type": "FAST_MODEL_LOADER",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            41
+          ]
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "links": []
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "links": []
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "title": "注意力输入模型",
+      "properties": {
+        "Node name for S&R": "fast modelFromLoader",
+        "ue_properties": {
+          "version": "7.0.1",
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "BlockSparseAttention",
+      "pos": [
+        3461.9497872920906,
+        1646.0123938803133
+      ],
+      "size": [
+        320,
+        300
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 42
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "title": "稀疏注意力 · Sol-attn",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.35.0",
+        "Node name for S&R": "BlockSparseAttention",
+        "ue_properties": {
+          "version": "7.0.1",
+          "widget_ue_connectable": {
+            "selection": true,
+            "selection.tau": true,
+            "start_percent": true,
+            "end_percent": true,
+            "dense_blocks": true,
+            "min_tokens": true,
+            "extra_tokens": true,
+            "sink_conditioning": true,
+            "verbose": true
+          },
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "sol-attn",
+        1.4000000000000001,
+        0.2,
+        1,
+        "",
+        12288,
+        256,
+        "exact_kv_and_rows",
+        false
+      ],
+      "widgets_values_named": {
+        "selection": "sol-attn",
+        "selection.tau": 1.4000000000000001,
+        "start_percent": 0.2,
+        "end_percent": 1,
+        "dense_blocks": "",
+        "min_tokens": 12288,
+        "extra_tokens": 256,
+        "sink_conditioning": "exact_kv_and_rows",
+        "verbose": false
+      }
+    },
+    {
+      "id": 6,
+      "type": "fast modelsBridge",
+      "pos": [
+        3911.872727979278,
+        1584.7155025326579
+      ],
+      "size": [
+        320,
+        140
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "模型加载器",
+          "shape": 7,
+          "type": "FAST_MODEL_LOADER",
+          "link": 4
+        },
+        {
+          "name": "model",
+          "shape": 7,
+          "type": "MODEL",
+          "link": 44
+        },
+        {
+          "name": "clip",
+          "shape": 7,
+          "type": "CLIP",
+          "link": null
+        },
+        {
+          "name": "vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": null
+        },
+        {
+          "name": "clip_vision",
+          "shape": 7,
+          "type": "CLIP_VISION",
+          "link": null
+        },
+        {
+          "name": "style_model",
+          "shape": 7,
+          "type": "STYLE_MODEL",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "模型加载器",
+          "type": "FAST_MODEL_LOADER",
+          "links": [
+            6
+          ]
+        },
+        {
+          "name": "模型",
+          "type": "MODEL",
+          "links": [
+            50
+          ]
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": []
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": []
+        },
+        {
+          "name": "CLIP视觉模型",
+          "type": "CLIP_VISION",
+          "links": []
+        },
+        {
+          "name": "风格模型",
+          "type": "STYLE_MODEL",
+          "links": []
+        }
+      ],
+      "title": "二采基础模型 · 无加速 LoRA",
+      "properties": {
+        "Node name for S&R": "fast modelsBridge",
+        "ue_properties": {
+          "version": "7.0.1",
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "fast lorasLoader",
+      "pos": [
+        4280.586270723554,
+        1568.633695234073
+      ],
+      "size": [
+        750.222304280599,
+        224.0333333333333
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "模型加载器",
+          "type": "FAST_MODEL_LOADER",
+          "link": 6
+        },
+        {
+          "name": "Lora堆",
+          "type": "LORA_STACK",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "模型加载器",
+          "shape": 3,
+          "type": "FAST_MODEL_LOADER",
+          "links": [
+            32
+          ]
+        },
+        {
+          "name": "model",
+          "shape": 3,
+          "type": "MODEL",
+          "links": []
+        }
+      ],
+      "title": "首采 · DMAD + 人物替换 LoRA",
+      "properties": {
+        "强度显示类型": "仅显示模型强度",
+        "显示层类型": "隐藏层类型",
+        "ue_properties": {
+          "version": "7.0.1",
+          "widget_ue_connectable": {}
+        }
+      },
+      "widgets_values": [
+        null,
+        {
+          "type": "LoraLoaderHeaderWidget"
+        },
+        {
+          "enabled": true,
+          "lora": "H3\\minimax_h3_dmad_full_dareties_v4_step600_comfy_fro.safetensors",
+          "strength": 1,
+          "strengthTwo": null,
+          "blocksType": "所有层"
+        },
+        {
+          "enabled": true,
+          "lora": "H3\\minimax_h3_character_swap_v1.1_ref2va_fro.safetensors",
+          "strength": 1,
+          "strengthTwo": null,
+          "blocksType": "所有层"
+        },
+        null,
+        ""
+      ],
+      "widgets_values_named": {
+        "divider": null,
+        "LoraLoaderHeaderWidget": {
+          "type": "LoraLoaderHeaderWidget"
+        },
+        "lora_1": {
+          "enabled": true,
+          "lora": "H3\\minimax_h3_dmad_full_dareties_v4_step600_comfy_fro.safetensors",
+          "strength": 1,
+          "strengthTwo": null,
+          "blocksType": "所有层"
+        },
+        "lora_2": {
+          "enabled": true,
+          "lora": "H3\\minimax_h3_character_swap_v1.1_ref2va_fro.safetensors",
+          "strength": 1,
+          "strengthTwo": null,
+          "blocksType": "所有层"
+        },
+        "divider#2": null,
+        "➕ 添加 Lora": ""
+      }
+    },
+    {
+      "id": 8,
+      "type": "easy saveVideo",
+      "pos": [
+        4914.703614113432,
+        2023.8562288031044
+      ],
+      "size": [
+        320,
+        324.8571428571429
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "input_mode.video",
+          "type": "VIDEO",
+          "link": 40
+        },
+        {
+          "name": "input_mode.audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": []
+        },
+        {
+          "name": "file_path",
+          "type": "STRING",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "title": "保存全能参考成片",
+      "properties": {
+        "cnr_id": "comfyui-easy-media",
+        "ver": "f91dcda4b584a471454bc7fdc04f1380e833e029",
+        "Node name for S&R": "easy saveVideo",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "video",
+        "save",
+        false,
+        "MiniMax/1031/"
+      ],
+      "widgets_values_named": {
+        "input_mode": "video",
+        "output_mode": "save",
+        "output_mode.save_metadata": false,
+        "filename_prefix": "MiniMax/1031/"
+      }
+    },
+    {
+      "id": 9,
+      "type": "easy cleanGpuUsed",
+      "pos": [
+        4914.703614113432,
+        2413.0930922379152
+      ],
+      "size": [
+        320,
+        26
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "输入任何",
+          "name": "anything",
+          "type": "*",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "label": "输出",
+          "name": "output",
+          "type": "*",
+          "links": []
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-easy-use",
+        "ver": "67afdc8204683e32549e63b7b02dc006d20441fa",
+        "Node name for S&R": "easy cleanGpuUsed",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "ModelPreviewOverrideKJ",
+      "pos": [
+        4377.6671721524945,
+        2052.159240610633
+      ],
+      "size": [
+        518.6732060145187,
+        669.5351375985788
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 9
+        },
+        {
+          "name": "vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": null
+        },
+        {
+          "name": "audio_vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            44
+          ]
+        }
+      ],
+      "title": "H3 采样动态预览",
+      "properties": {
+        "cnr_id": "comfyui-kjnodes",
+        "ver": "d3cfe21625e5170126ce06fbfcfe1d88108688c3",
+        "Node name for S&R": "ModelPreviewOverrideKJ",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        1024,
+        80,
+        true,
+        16,
+        24,
+        "taeh3.safetensors",
+        ""
+      ],
+      "widgets_values_named": {
+        "max_resolution": 1024,
+        "jpeg_quality": 80,
+        "suppress_default_preview": true,
+        "preview_frames": 16,
+        "preview_fps": 24,
+        "tiny_vae": "taeh3.safetensors",
+        "preview": ""
+      }
+    },
+    {
+      "id": 12,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        3242.8207496469677,
+        1999.7724047963488
+      ],
+      "size": [
+        540.3040653069884,
+        357.8870623476985
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "value",
+          "name": "value",
+          "type": "STRING",
+          "widget": {
+            "name": "value"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "label": "STRING",
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            37
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.30.0",
+        "Node name for S&R": "PrimitiveStringMultiline",
+        "ue_properties": {
+          "input_ue_unconnectable": {},
+          "version": "7.5.2",
+          "widget_ue_connectable": {}
+        },
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "将<Video 1>⁣​​​​​​​​​‌​​‌‌‌​​​​​​​​​​‌​‌​‌​‌​​​​​​​​​‌‌‌​‌‌​​​​​​​​​​​‌​‌‌​‌​​​​​​​​​‌‌‌​‌​‌​​​​​​​​​‌​‌‌​​​​​​​​​​​​‌​‌​​‌​​​​​​​​​​‌‌‌​‌‌‌​​​​​​​​​‌​‌​​‌‌​​​​​​​​​‌​​​‌‌‌​​​​​​​​​‌‌​‌‌‌‌​​​​​​​​​​‌‌​‌​​⁤主体替换为 <Picture 1>⁣​​​​​​​​​‌‌​‌‌‌​​​​​​​​​​‌​‌‌‌‌‌​​​​​​​​​‌​​‌‌​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌​​‌​‌‌​​​​​​​​​‌​‌‌​​‌​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​​​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​‌​​​​​​​​​​​​‌‌‌​​​‌​​​​​​​​​‌‌​​​​‌⁤ 中显示的角色，人物的面部特征参考 <Picture 1>⁣​​​​​​​​​‌‌​‌‌‌​​​​​​​​​​‌​‌‌‌‌‌​​​​​​​​​‌​​‌‌​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌​​‌​‌‌​​​​​​​​​‌​‌‌​​‌​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​​​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​‌​​​​​​​​​​​​‌‌‌​​​‌​​​​​​​​​‌‌​​​​‌⁤：一位皮肤白皙的二次元少女，身形修长，腰身纤细，留着银白偏淡紫的长发（齐刘海与两侧长鬓发、发尾微卷外翘），头戴白色毛绒猫耳针织帽（帽侧有柠檬黄三角贴片与黑色描边），左脸颊贴有一小块浅色创可贴，冰蓝色眼睛，身穿白色短款机能风外套（泡泡袖、灰色拼接、荧光黄滚边与黑色束带），内搭黑色高领紧身衣，颈间系荧光黄绿三角巾（印深色字母与圆形徽章），下配黑色高腰紧身短裤（灰色与荧光黄拼接面板、绑带护具）、右腿绑带式装置与大腿白色菱形贴纸，黑色露指手套，白色罗纹中筒袜配白灰荧光黄厚底机能运动鞋，身后一条灰白色毛绒猫尾，背部背挂黄黑配色机能背包单元。\n\n背景：参考<Picture 2>⁣​​​​​​​​​‌‌​‌‌​​​​​​​​​​​‌‌‌​‌‌‌​​​​​​​​​‌​​‌‌‌​​​​​​​​​​‌‌‌​​‌​​​​​​​​​​‌‌​​‌​‌​​​​​​​​​‌​‌‌​​‌​​​​​​​​​‌‌​​​‌‌​​​​​​​​​‌‌​​​​‌​​​​​​​​​‌​‌​​‌‌​​​​​​​​​‌‌‌​​‌‌​​​​​​​​​‌​​​​‌​​​​​​​​​​‌​​‌​‌‌⁤未来感纯白科幻空间，白色弧形墙面与圆角天花，天花板中央悬垂巨大的圆形舱体吊灯（外圈标有 ENDFIELD字样，内部为古铜色金属结构与环形灯带），正前方圆形基座上悬浮一块黑色陨石状石碑，两侧各立一对弧形金属机械拱架，地面为浅灰与深蓝条带拼接，前景中央深色地砖印有白色徽标，左墙挂绿色三角几何拼接装饰画，右墙为大幅白色科技信息屏，左侧有悬浮的绿色球形盆景树（下方射出蓝色光柱）与两盆松树盆景，左下角一小片草地与黄色小花，整体冷白柔光、干净极简；\n\n强制要求：被替换后的角色站立于中央黑色区域上，且角色的脚始终在画面中，身高比例与动作符合该空间的真实透视和尺度关系，双脚踩实地面、带接地阴影，全程不得悬空。新角色必须与原视频的身体动作、手势、面部表情、眼神和唇形完全同步，并在每一帧中保持来自 <Picture 1>⁣​​​​​​​​​‌‌​‌‌‌​​​​​​​​​​‌​‌‌‌‌‌​​​​​​​​​‌​​‌‌​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌​​‌​‌‌​​​​​​​​​‌​‌‌​​‌​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​​​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​‌​​​​​​​​​​​​‌‌‌​​​‌​​​​​​​​​‌‌​​​​‌⁤ 的身份和服装稳定\n"
+      ],
+      "widgets_values_named": {
+        "value": "将<Video 1>⁣​​​​​​​​​‌​​‌‌‌​​​​​​​​​​‌​‌​‌​‌​​​​​​​​​‌‌‌​‌‌​​​​​​​​​​​‌​‌‌​‌​​​​​​​​​‌‌‌​‌​‌​​​​​​​​​‌​‌‌​​​​​​​​​​​​‌​‌​​‌​​​​​​​​​​‌‌‌​‌‌‌​​​​​​​​​‌​‌​​‌‌​​​​​​​​​‌​​​‌‌‌​​​​​​​​​‌‌​‌‌‌‌​​​​​​​​​​‌‌​‌​​⁤主体替换为 <Picture 1>⁣​​​​​​​​​‌‌​‌‌‌​​​​​​​​​​‌​‌‌‌‌‌​​​​​​​​​‌​​‌‌​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌​​‌​‌‌​​​​​​​​​‌​‌‌​​‌​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​​​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​‌​​​​​​​​​​​​‌‌‌​​​‌​​​​​​​​​‌‌​​​​‌⁤ 中显示的角色，人物的面部特征参考 <Picture 1>⁣​​​​​​​​​‌‌​‌‌‌​​​​​​​​​​‌​‌‌‌‌‌​​​​​​​​​‌​​‌‌​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌​​‌​‌‌​​​​​​​​​‌​‌‌​​‌​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​​​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​‌​​​​​​​​​​​​‌‌‌​​​‌​​​​​​​​​‌‌​​​​‌⁤：一位皮肤白皙的二次元少女，身形修长，腰身纤细，留着银白偏淡紫的长发（齐刘海与两侧长鬓发、发尾微卷外翘），头戴白色毛绒猫耳针织帽（帽侧有柠檬黄三角贴片与黑色描边），左脸颊贴有一小块浅色创可贴，冰蓝色眼睛，身穿白色短款机能风外套（泡泡袖、灰色拼接、荧光黄滚边与黑色束带），内搭黑色高领紧身衣，颈间系荧光黄绿三角巾（印深色字母与圆形徽章），下配黑色高腰紧身短裤（灰色与荧光黄拼接面板、绑带护具）、右腿绑带式装置与大腿白色菱形贴纸，黑色露指手套，白色罗纹中筒袜配白灰荧光黄厚底机能运动鞋，身后一条灰白色毛绒猫尾，背部背挂黄黑配色机能背包单元。\n\n背景：参考<Picture 2>⁣​​​​​​​​​‌‌​‌‌​​​​​​​​​​​‌‌‌​‌‌‌​​​​​​​​​‌​​‌‌‌​​​​​​​​​​‌‌‌​​‌​​​​​​​​​​‌‌​​‌​‌​​​​​​​​​‌​‌‌​​‌​​​​​​​​​‌‌​​​‌‌​​​​​​​​​‌‌​​​​‌​​​​​​​​​‌​‌​​‌‌​​​​​​​​​‌‌‌​​‌‌​​​​​​​​​‌​​​​‌​​​​​​​​​​‌​​‌​‌‌⁤未来感纯白科幻空间，白色弧形墙面与圆角天花，天花板中央悬垂巨大的圆形舱体吊灯（外圈标有 ENDFIELD字样，内部为古铜色金属结构与环形灯带），正前方圆形基座上悬浮一块黑色陨石状石碑，两侧各立一对弧形金属机械拱架，地面为浅灰与深蓝条带拼接，前景中央深色地砖印有白色徽标，左墙挂绿色三角几何拼接装饰画，右墙为大幅白色科技信息屏，左侧有悬浮的绿色球形盆景树（下方射出蓝色光柱）与两盆松树盆景，左下角一小片草地与黄色小花，整体冷白柔光、干净极简；\n\n强制要求：被替换后的角色站立于中央黑色区域上，且角色的脚始终在画面中，身高比例与动作符合该空间的真实透视和尺度关系，双脚踩实地面、带接地阴影，全程不得悬空。新角色必须与原视频的身体动作、手势、面部表情、眼神和唇形完全同步，并在每一帧中保持来自 <Picture 1>⁣​​​​​​​​​‌‌​‌‌‌​​​​​​​​​​‌​‌‌‌‌‌​​​​​​​​​‌​​‌‌​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌​​‌​‌‌​​​​​​​​​‌​‌‌​​‌​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​​​​​​​​​​​​​‌‌​‌​‌​​​​​​​​​​‌‌​‌​​​​​​​​​​​​‌‌‌​​​‌​​​​​​​​​‌‌​​​​‌⁤ 的身份和服装稳定\n"
+      },
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 13,
+      "type": "YtonResolutionSelectorSimple",
+      "pos": [
+        3243.6535895622324,
+        2402.9766931922977
+      ],
+      "size": [
+        535.9340443115229,
+        482
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            38
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            39
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ver": "3ed8de3a6a19b921651bbe2c4bf94d683ab25611",
+        "Node name for S&R": "YtonResolutionSelectorSimple",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        }
+      },
+      "widgets_values": [
+        "MiniMax H3 (Video)",
+        "16:9",
+        "768p",
+        0,
+        0,
+        "{\"MiniMax H3 (Video)\":{\"ratios\":[\"auto\"]}}"
+      ],
+      "widgets_values_named": {
+        "mode": "MiniMax H3 (Video)",
+        "aspect_ratio": "16:9",
+        "resolution": "768p",
+        "custom_width": 0,
+        "custom_height": 0,
+        "option_visibility": "{\"MiniMax H3 (Video)\":{\"ratios\":[\"auto\"]}}"
+      }
+    },
+    {
+      "id": 15,
+      "type": "ReservedVRAMSetter",
+      "pos": [
+        2754.7183900691807,
+        1627.675145840644
+      ],
+      "size": [
+        285.7896484375,
+        218
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "anything",
+          "shape": 7,
+          "type": "*",
+          "link": 19
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "*",
+          "links": [
+            20
+          ]
+        },
+        {
+          "name": "SEED",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "Reserved(GB)",
+          "type": "FLOAT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "reservedvram",
+        "ver": "cd9f1911d960e3d31b3908867c638a19e5d42af3",
+        "Node name for S&R": "ReservedVRAMSetter",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        }
+      },
+      "widgets_values": [
+        0.6,
+        "auto",
+        450728543926172,
+        "randomize",
+        0,
+        true
+      ],
+      "widgets_values_named": {
+        "reserved": 0.6,
+        "mode": "auto",
+        "seed": 450728543926172,
+        "control_after_generate": "randomize",
+        "auto_max_reserved": 0,
+        "clean_gpu_before": true
+      }
+    },
+    {
+      "id": 22,
+      "type": "YtonH3TraditionalOmniGenerate",
+      "pos": [
+        3846.9052484191097,
+        2023.8562288031044
+      ],
+      "size": [
+        449.9349591203363,
+        1336
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "主模型",
+          "name": "model_loader",
+          "type": "FAST_MODEL_LOADER",
+          "link": 32
+        },
+        {
+          "label": "图片",
+          "name": "image",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 33
+        },
+        {
+          "label": "视频",
+          "name": "video",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": 34
+        },
+        {
+          "label": "音频",
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 35
+        },
+        {
+          "label": "自定义 Sigma",
+          "name": "sigmas",
+          "shape": 7,
+          "type": "SIGMAS",
+          "link": null
+        },
+        {
+          "label": "二采模型（可选）",
+          "name": "second_model",
+          "shape": 7,
+          "type": "MODEL",
+          "widget": {
+            "name": "second_model"
+          },
+          "link": 50
+        },
+        {
+          "label": "修脸模型（可选）",
+          "name": "face_model",
+          "shape": 7,
+          "type": "MODEL",
+          "widget": {
+            "name": "face_model"
+          },
+          "link": null
+        },
+        {
+          "label": "上一段视频（可选）",
+          "name": "previous_video",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": 45
+        },
+        {
+          "label": "提示词",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": 37
+        },
+        {
+          "label": "最终宽度",
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": 38
+        },
+        {
+          "label": "最终高度",
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 39
+        },
+        {
+          "label": "生成模式",
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null
+        },
+        {
+          "label": "成片目标时长 / 秒",
+          "name": "duration",
+          "type": "FLOAT",
+          "widget": {
+            "name": "duration"
+          },
+          "link": null
+        },
+        {
+          "label": "参考图尺寸",
+          "name": "ref_image_size",
+          "type": "COMBO",
+          "widget": {
+            "name": "ref_image_size"
+          },
+          "link": null
+        },
+        {
+          "label": "采样模式",
+          "name": "sampling_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "sampling_mode"
+          },
+          "link": null
+        },
+        {
+          "label": "调度步数",
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": null
+        },
+        {
+          "label": "采样器",
+          "name": "sampler_name",
+          "type": "COMBO",
+          "widget": {
+            "name": "sampler_name"
+          },
+          "link": null
+        },
+        {
+          "label": "调度器",
+          "name": "scheduler",
+          "type": "COMBO",
+          "widget": {
+            "name": "scheduler"
+          },
+          "link": null
+        },
+        {
+          "label": "调度降噪",
+          "name": "denoise",
+          "type": "FLOAT",
+          "widget": {
+            "name": "denoise"
+          },
+          "link": null
+        },
+        {
+          "label": "随机种子",
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": null
+        },
+        {
+          "label": "当前片段序号",
+          "name": "clip_index",
+          "type": "INT",
+          "widget": {
+            "name": "clip_index"
+          },
+          "link": null
+        },
+        {
+          "label": "启用小脸修复",
+          "name": "face_refine",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "face_refine"
+          },
+          "link": null
+        },
+        {
+          "label": "修脸人数",
+          "name": "face_count",
+          "type": "INT",
+          "widget": {
+            "name": "face_count"
+          },
+          "link": null
+        },
+        {
+          "label": "倒序修脸",
+          "name": "face_reverse",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "face_reverse"
+          },
+          "link": null
+        },
+        {
+          "label": "二采采样器",
+          "name": "second_sampler",
+          "type": "COMBO",
+          "widget": {
+            "name": "second_sampler"
+          },
+          "link": null
+        },
+        {
+          "label": "二采 Sigma",
+          "name": "second_sigma_values",
+          "type": "STRING,SIGMAS",
+          "widget": {
+            "name": "second_sigma_values"
+          },
+          "link": null
+        },
+        {
+          "label": "二采步数",
+          "name": "second_steps",
+          "type": "INT",
+          "widget": {
+            "name": "second_steps"
+          },
+          "link": null
+        },
+        {
+          "label": "二采起始 Sigma / 重绘力度",
+          "name": "second_sigma_start",
+          "type": "FLOAT",
+          "widget": {
+            "name": "second_sigma_start"
+          },
+          "link": null
+        },
+        {
+          "label": "去网格曲线 / rho",
+          "name": "second_rho",
+          "type": "FLOAT",
+          "widget": {
+            "name": "second_rho"
+          },
+          "link": null
+        },
+        {
+          "label": "二采前馈分块",
+          "name": "second_ff_chunks",
+          "type": "COMBO",
+          "widget": {
+            "name": "second_ff_chunks"
+          },
+          "link": null
+        },
+        {
+          "label": "启用上下文",
+          "name": "enable_context",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enable_context"
+          },
+          "link": null
+        },
+        {
+          "label": "首采宽高比例",
+          "name": "first_pass_scale",
+          "type": "FLOAT",
+          "widget": {
+            "name": "first_pass_scale"
+          },
+          "link": null
+        },
+        {
+          "label": "潜空间放大模型",
+          "name": "upscale_model",
+          "type": "COMBO",
+          "widget": {
+            "name": "upscale_model"
+          },
+          "link": null
+        },
+        {
+          "label": "修脸 Sigma",
+          "name": "face_sigmas",
+          "shape": 7,
+          "type": "STRING,SIGMAS",
+          "widget": {
+            "name": "face_sigmas"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "label": "本段视频",
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            40
+          ]
+        },
+        {
+          "label": "最终 AV latent",
+          "name": "av_latent",
+          "type": "LATENT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ver": "84ba449feb5f2a19290f803a35cdd3b712ac3b70",
+        "Node name for S&R": "YtonH3TraditionalOmniGenerate",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        }
+      },
+      "widgets_values": [
+        "",
+        1344,
+        768,
+        "复刻模式",
+        5,
+        "match",
+        "二采",
+        6,
+        "lcm",
+        "simple",
+        1,
+        0.7,
+        "h3_upscaler_lms_v0.1.safetensors",
+        "euler",
+        6,
+        0.4,
+        7,
+        "0.4, 0.3, 0.2, 0.12, 0.06, 0.02, 0",
+        "8",
+        false,
+        1,
+        "0.631578922, 0.3158, 0",
+        false,
+        214629749431031,
+        "fixed",
+        false,
+        1
+      ],
+      "widgets_values_named": {
+        "prompt": "",
+        "width": 1344,
+        "height": 768,
+        "mode": "复刻模式",
+        "duration": 5,
+        "ref_image_size": "match",
+        "sampling_mode": "二采",
+        "steps": 4,
+        "sampler_name": "euler",
+        "scheduler": "simple",
+        "denoise": 1,
+        "first_pass_scale": 0.7,
+        "upscale_model": "h3_upscaler_lms_v0.1.safetensors",
+        "second_sampler": "sa_solver",
+        "second_steps": 2,
+        "second_sigma_start": 0.4,
+        "second_rho": 7,
+        "second_sigma_values": "0.631578922, 0.3158, 0.0000",
+        "second_ff_chunks": "8",
+        "face_refine": true,
+        "face_count": 1,
+        "face_sigmas": "0.631578922, 0.3158, 0",
+        "face_reverse": false,
+        "seed": 214629749431031,
+        "control_after_generate": "randomize",
+        "enable_context": false,
+        "clip_index": 1
+      },
+      "title": "H3 全模态生成"
+    },
+    {
+      "id": 23,
+      "type": "LegacyWidgetWidthFix",
+      "pos": [
+        5430.536833810672,
+        3346.7057304291548
+      ],
+      "size": [
+        287.511328125,
+        58
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "aux_id": "pekkAi-dev/ComfyUI-LegacyWidgetWidthFix",
+        "ver": "0eef569a67667111ceb87a00c246740ca7902ff3",
+        "Node name for S&R": "LegacyWidgetWidthFix",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        }
+      },
+      "widgets_values": [
+        null
+      ],
+      "widgets_values_named": {
+        "Repair widget widths now": null
+      }
+    },
+    {
+      "id": 24,
+      "type": "MiniMaxH3SigmaShift",
+      "pos": [
+        3827.1689431600776,
+        1822.169786413791
+      ],
+      "size": [
+        277.2857421875,
+        82
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 41
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            42
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.31.0",
+        "Node name for S&R": "MiniMaxH3SigmaShift",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.1"
+        }
+      },
+      "widgets_values": [
+        12,
+        3
+      ],
+      "widgets_values_named": {
+        "shift_video": 12,
+        "shift_audio": 3
+      }
+    },
+    {
+      "id": 25,
+      "type": "LoadVideo",
+      "pos": [
+        3242.8207496469677,
+        2921.159240610633
+      ],
+      "size": [
+        542.8888874183349,
+        452.7685048366702
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            45
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.43.1",
+        "Node name for S&R": "LoadVideo",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        }
+      },
+      "widgets_values": [
+        "MiniMax/全能参考_00025_.mp4 [output]",
+        "image"
+      ],
+      "widgets_values_named": {
+        "file": "MiniMax/全能参考_00025_.mp4 [output]",
+        "upload": "image"
+      }
+    }
+  ],
+  "links": [
+    [
+      2,
+      3,
+      0,
+      4,
+      0,
+      "FAST_MODEL_LOADER"
+    ],
+    [
+      4,
+      3,
+      0,
+      6,
+      0,
+      "FAST_MODEL_LOADER"
+    ],
+    [
+      6,
+      6,
+      0,
+      7,
+      0,
+      "FAST_MODEL_LOADER"
+    ],
+    [
+      8,
+      8,
+      1,
+      9,
+      0,
+      "STRING"
+    ],
+    [
+      9,
+      5,
+      0,
+      10,
+      0,
+      "MODEL"
+    ],
+    [
+      10,
+      4,
+      3,
+      10,
+      2,
+      "VAE"
+    ],
+    [
+      19,
+      1,
+      0,
+      15,
+      0,
+      "FAST_MODEL_LOADER"
+    ],
+    [
+      32,
+      7,
+      0,
+      22,
+      0,
+      "FAST_MODEL_LOADER"
+    ],
+    [
+      33,
+      2,
+      0,
+      22,
+      1,
+      "IMAGE"
+    ],
+    [
+      34,
+      2,
+      1,
+      22,
+      2,
+      "VIDEO"
+    ],
+    [
+      35,
+      2,
+      2,
+      22,
+      3,
+      "AUDIO"
+    ],
+    [
+      37,
+      12,
+      0,
+      22,
+      8,
+      "STRING"
+    ],
+    [
+      38,
+      13,
+      0,
+      22,
+      9,
+      "INT"
+    ],
+    [
+      39,
+      13,
+      1,
+      22,
+      10,
+      "INT"
+    ],
+    [
+      41,
+      4,
+      0,
+      24,
+      0,
+      "MODEL"
+    ],
+    [
+      44,
+      10,
+      0,
+      6,
+      1,
+      "MODEL"
+    ],
+    [
+      45,
+      25,
+      0,
+      22,
+      7,
+      "VIDEO"
+    ],
+    [
+      50,
+      6,
+      1,
+      22,
+      5,
+      "MODEL"
+    ],
+    [
+      20,
+      15,
+      0,
+      3,
+      0,
+      "FAST_MODEL_LOADER"
+    ],
+    [
+      42,
+      24,
+      0,
+      5,
+      0,
+      "MODEL"
+    ],
+    [
+      40,
+      22,
+      0,
+      8,
+      0,
+      "VIDEO"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "模型、注意力与采样预览",
+      "bounding": [
+        2033.1308792847512,
+        1555.4714812562092,
+        3022.6889709472653,
+        387.83333333333337
+      ],
+      "color": "#3f789e",
+      "flags": {},
+      "font_size": 20
+    },
+    {
+      "id": 2,
+      "title": "参考素材",
+      "bounding": [
+        2082.519787086265,
+        1961.8562288031044,
+        1147.2329404049412,
+        1214.1327423310404
+      ],
+      "color": "#3f789e",
+      "flags": {},
+      "font_size": 20
+    },
+    {
+      "id": 3,
+      "title": "全模态输入与上下文",
+      "bounding": [
+        3793.0404127911697,
+        1961.8562288031044,
+        589.7720455932836,
+        1199.7896318557478
+      ],
+      "color": "#3f789e",
+      "flags": {},
+      "font_size": 20
+    },
+    {
+      "id": 4,
+      "title": "输出与清理",
+      "bounding": [
+        4382.812458384453,
+        1961.8562288031044,
+        720.0737260164883,
+        1207.7174855357666
+      ],
+      "color": "#3f789e",
+      "flags": {},
+      "font_size": 20
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "ds": {
+      "scale": 0.6830134553650706,
+      "offset": [
+        -3003.407041881386,
+        -1273.637908435671
+      ]
+    },
+    "frontendVersion": "1.57.4",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4,
+  "seed_widgets": {
+    "15": 2,
+    "22": 31
+  },
+  "widget_idx_map": {
+    "15": {
+      "seed": 2
+    },
+    "22": {
+      "sampler_name": 10,
+      "scheduler": 11,
+      "seed": 31
+    }
+  }
+}
