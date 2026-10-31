@@ -20,20 +20,23 @@
 
 ## 视频解码
 
-三个节点均可在「视频解码」区选择原流程或作者的模式一：
+三个节点均可在「视频解码」区选择原流程或作者的两种模式：
 
 | 模式 | 视频 VAE | 解码器 | 尺寸 |
 | --- | --- | --- | --- |
 | 标准解码（默认） | 主加载器中的视频 VAE | ComfyUI VAEDecode | 原版 VAE 输出填写宽高 |
 | X2 VAE 解码 | 下方单独选择的 X2 权重 | MiniMax H3 VAE Decode (fast) | 选用 X2 权重时，宽高各 ×2 |
+| X2 VAE 解码 + 参考图增强 | 同一份 X2 Detail 权重供参考图增强及最终解码使用 | 每张参考图先 Detailed Upscale，再生成，最后 fast 解码 | 参考图先 ×2；生成视频宽高各 ×2 |
 
 切换解码模式不改变采样尺寸、步数、单采／二采方案或输出 AV latent。X2 是空间 2× 解码，不代表同尺寸解码必然更快。例如填写 1344×768，X2 成片为 2688×1536；TR 的 Film 二采仍先由 672×384 升到 1344×768，再解码为 2688×1536。若想在相同成片尺寸下比较整段流程的速度，需要手动降低 X2 的采样画布；节点不会自动修改宽高。
 
-「X2 解码 VAE」从 `models/vae` 选择；优先选中已安装的 `MiniMax-H3-X2-Detail` 权重，包括本机的 `MiniMax-H3-X2-Detail-v1_int8_convrot.safetensors`。主加载器继续使用普通 H3 视频 VAE，负责参考编码、上下文引导、SelfLift 校正和局部修脸；独立 X2 VAE 只用于最终视频解码。音频走原音频 VAE。
+「X2 VAE 权重」从 `models/vae` 选择；优先选中已安装的 `MiniMax-H3-X2-Detail` 权重，包括本机的 `MiniMax-H3-X2-Detail-v1_int8_convrot.safetensors`。主加载器继续使用普通 H3 视频 VAE，负责参考编码、上下文引导、SelfLift 校正和局部修脸。音频走原音频 VAE。
+
+模式二使用现有图片入口：每张参考图先经作者的 `MiniMaxH3X2DetailedUpscale`，再按原顺序参与参考生成。增强结果由首采、二采和修脸复用，不重复增强；视频参考和上一段视频保持原处理。仅模式二显示「参考图细节增强强度」，默认 1.0，可调 0–1.5。增强和最终解码只需选择一次 X2 权重，模式二要求该文件含 `detail_b32.*` 参数。图片为空时跳过增强，继续 X2 解码。
 
 X2 解码可调空间分块大小及重叠。初始值遵循[作者模型页](https://huggingface.co/speach1sdef178/MiniMax-H3-X2-Detail-VAE)：空间分块开启，256 / 64，输出在 CPU，时间分块关闭。调大空间分块可能加快解码，但增加显存占用；专用解码器自动保证至少四分之一的空间重叠。标准模式收起这些设置。
 
-依赖 `ComfyUI-MiniMaxH3_LatentUpscaler` 中的 `MiniMaxH3VAEDecodeFast`，权重通过原生 VAELoader 加载。本次接入的是模型页的 Mode 1；RGB 参考图的 B32 细节增强是该模型另一条独立处理路径。
+最终解码依赖 `ComfyUI-MiniMaxH3_LatentUpscaler` 中的 `MiniMaxH3VAEDecodeFast`，权重通过原生 VAELoader 加载。模式二另外依赖模型页提供的 `ComfyUI-H3-X2-Detailed` 插件。新增插件后需在空闲时重启 ComfyUI 后端并刷新页面。
 
 ## TR
 

@@ -7,7 +7,7 @@ const sections = [
   ["小脸修复", ["face_model", "face_refine", "face_count", "face_sigmas", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
   ["分段上下文", ["enable_context", "clip_index", "h3_context_length"]],
-  ["视频解码", ["vae_decode_mode", "x2_vae_name", "vae_tile_size", "vae_tile_overlap"]],
+  ["视频解码", ["vae_decode_mode", "x2_vae_name", "vae_tile_size", "vae_tile_overlap", "reference_detail_strength"]],
 ];
 const labels = {
   prompt: "提示词", width: "最终宽度", height: "最终高度", duration: "成片目标时长 / 秒",
@@ -27,8 +27,9 @@ const labels = {
   film_method: "放大方式 / method", film_audio_denoise: "音频降噪 / audio_denoise",
   film_noise_resample: "噪声重采样 / noise_resample", film_match_stats: "统计匹配 / match_stats",
   face_refine: "启用小脸修复", face_count: "修脸人数", face_reverse: "倒序修脸",
-  vae_decode_mode: "VAE 解码模式", x2_vae_name: "X2 解码 VAE",
+  vae_decode_mode: "VAE 解码模式", x2_vae_name: "X2 VAE 权重",
   vae_tile_size: "解码分块大小", vae_tile_overlap: "解码分块重叠",
+  reference_detail_strength: "参考图细节增强强度",
 };
 
 function setupSections(node) {
@@ -111,7 +112,7 @@ function setupSections(node) {
   const secondPassWidgets = node.widgets.filter(widget =>
     widget.name === "h3_section_二采方案" || sections[2][1].includes(widget.name));
   const decodeWidgets = ["x2_vae_name", "vae_tile_size", "vae_tile_overlap"].map(name => widgets.get(name));
-  const visibleLayout = new Map([...secondPassWidgets, ...decodeWidgets].map(widget => [widget, {
+  const visibleLayout = new Map([...secondPassWidgets, ...decodeWidgets, widgets.get("reference_detail_strength")].map(widget => [widget, {
     type: widget.type, computeSize: widget.computeSize, computeLayoutSize: widget.computeLayoutSize,
   }]));
   let secondPassVisible = true;
@@ -192,8 +193,9 @@ function setupSections(node) {
     const twoPass = widgets.get("sampling_mode").value === "二采";
     showSecondPass(twoPass);
     const decodeMode = widgets.get("vae_decode_mode").value;
-    const x2Decode = decodeMode === "X2 VAE 解码";
+    const x2Decode = decodeMode !== "标准解码";
     showControls(decodeWidgets, x2Decode);
+    showControls([widgets.get("reference_detail_strength")], decodeMode === "X2 VAE 解码 + 参考图增强");
     widgets.get("width").label = x2Decode ? "采样画布宽度（成片 ×2）" : labels.width;
     widgets.get("height").label = x2Decode ? "采样画布高度（成片 ×2）" : labels.height;
     const scale = widgets.get("first_pass_scale");

@@ -175,14 +175,16 @@ class H3OmniGenerate:
         vae_names = folder_paths.get_filename_list("vae")
         x2_default = next((name for name in vae_names if "minimax-h3-x2-detail" in name.lower()), X2_VAE)
         required["vae_decode_mode"] = (DECODE_MODES, {"default": "标准解码",
-            "tooltip": "标准解码沿用原流程；X2 VAE 解码对应作者的模式一，使用独立 X2 权重和专用解码器，输出宽高各为采样画布的 2 倍。不改变采样尺寸、步数或二采方案。"})
+            "tooltip": "标准解码沿用原流程；X2 VAE 解码是作者模式一；X2 VAE 解码 + 参考图增强是模式二，逐张增强图片参考后生成，最后 X2 fast 解码。两种 X2 模式均输出宽高各 2 倍，不改变采样宽高。未提供图片时跳过参考图增强。"})
         required["x2_vae_name"] = ([x2_default, *[name for name in vae_names if name != x2_default]], {
             "default": x2_default,
-            "tooltip": "X2 模式独立加载的解码 VAE，位于 models/vae。参考图编码、上下文、SelfLift 校正和修脸继续使用主加载器的视频 VAE。请选择 X2 权重，普通 VAE 不会产生 2× 输出。"})
+            "tooltip": "位于 models/vae 的 X2 权重，供最终解码使用。模式二同时用这份权重做参考图 B32 细节增强，需含 detail_b32 参数；无需分别选择两次。其他内部处理沿用主加载器的视频 VAE。"})
         required["vae_tile_size"] = ("INT", {"default": 256, "min": 256, "max": 4096, "step": 16,
             "tooltip": "专用解码器的空间分块大小。作者基线 256；调大可能更快，但增加显存占用。"})
         required["vae_tile_overlap"] = ("INT", {"default": 64, "min": 16, "max": 1024, "step": 16,
             "tooltip": "作者基线 64；专用解码器自动保证至少 tile_size/4 的重叠，减少空间接缝。输出放在 CPU，时间分块关闭。"})
+        required["reference_detail_strength"] = ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.5, "step": 0.05,
+            "tooltip": "模式二的参考图细节增强强度，作者基线 1.0。每张图片先通过 Detailed Upscale，再按原顺序作为参考；不是对生成视频追加锐化。"})
         schema["hidden"] = {"dynprompt": "DYNPROMPT", "unique_id": "UNIQUE_ID"}
         return schema
 

@@ -6,9 +6,9 @@ import types
 import unittest
 from unittest.mock import Mock, patch
 
-from test_h3_video_context import PLUGIN, torch
+from test_h3_video_context import PLUGIN, torch, execution, asyncio
 from test_h3_omni_variants import VARIANTS, expanded
-from video_context_test.omni_decode import DECODE_MODES
+from video_context_test.omni_decode import DECODE_MODES, REFERENCE_DETAIL_MODE
 
 
 def sampling_graph(graph):
@@ -33,11 +33,14 @@ class VaeDecodeTests(unittest.TestCase):
                                                       package.__path__[0] + "/vae_decode.py")
         cls.native = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.native)
+        spec = importlib.util.spec_from_file_location("h3_detail_contract", PLUGIN.parent / "ComfyUI-H3-X2-Detailed" / "nodes.py")
+        cls.detail = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.detail)
 
     def test_all_three_nodes_expose_decode_modes_with_standard_default(self):
         for cls in VARIANTS.values():
             required = cls.INPUT_TYPES()["required"]
-            self.assertEqual(required["vae_decode_mode"][0], ["标准解码", "X2 VAE 解码"])
+            self.assertEqual(required["vae_decode_mode"][0], ["标准解码", "X2 VAE 解码", REFERENCE_DETAIL_MODE])
             self.assertEqual(required["vae_decode_mode"][1]["default"], "标准解码")
             self.assertIn(required["x2_vae_name"][1]["default"], required["x2_vae_name"][0])
 
@@ -48,10 +51,54 @@ class VaeDecodeTests(unittest.TestCase):
                                 enable_context=True, previous_video=["previous", 0], image=["ref", 0],
                                 face_refine=True, face_count=2, duration=7.5)
                 standard = expanded(cls, **settings)
-                for mode in DECODE_MODES[1:]:
-                    with self.subTest(plan=cls.SAMPLING_PLAN, sampling=sampling_mode, decode=mode):
-                        actual = expanded(cls, **settings, vae_decode_mode=mode)
-                        self.assertEqual(sampling_graph(standard), sampling_graph(actual))
+                with self.subTest(plan=cls.SAMPLING_PLAN, sampling=sampling_mode):
+                    actual = expanded(cls, **settings, vae_decode_mode="X2 VAE 解码")
+                    self.assertEqual(sampling_graph(standard), sampling_graph(actual))
+
+    def test_detail_mode_enhances_once_and_reuses_images_without_changing_sampling(self):
+        for cls in VARIANTS.values():
+            for sampling_mode in ("单采", "二采"):
+                with self.subTest(plan=cls.SAMPLING_PLAN, sampling=sampling_mode):
+                    settings = dict(sampling_mode=sampling_mode, image=["ref", 0], face_refine=True,
+                                    face_count=2, enable_context=True, previous_video=["previous", 0])
+                    standard = expanded(cls, **settings)
+                    actual = expanded(cls, **settings, vae_decode_mode=REFERENCE_DETAIL_MODE,
+                                      x2_vae_name="detail.safetensors", reference_detail_strength=0.75)
+                    detail = actual.pop("reference_detail")
+                    self.assertEqual(detail["class_type"], "MiniMaxH3X2DetailedUpscale")
+                    self.assertEqual(detail["inputs"], dict(images=["ref", 0], detail_vae="detail.safetensors", detail_strength=0.75))
+                    self.assertEqual(set(detail["inputs"]), set(self.detail.MiniMaxH3X2DetailedUpscale.INPUT_TYPES()["required"]))
+                    self.assertEqual(actual["decode_vae"]["inputs"]["vae_name"], "detail.safetensors")
+                    self.assertEqual(actual["frames"]["class_type"], "MiniMaxH3VAEDecodeFast")
+                    refs = [node for node in actual.values() if node["class_type"] == "YtonMiniMaxH3ReferenceToVideo"]
+                    self.assertGreaterEqual(len(refs), 2)
+                    for node in refs:
+                        link = node["inputs"]["image"]
+                        self.assertTrue(link[0].endswith("reference_detail"))
+                        self.assertEqual(link[1], 0)
+                        node["inputs"]["image"] = ["ref", 0]
+                    self.assertEqual(sampling_graph(standard), sampling_graph(actual))
+
+    def test_no_images_skips_detail_and_keeps_optional_media_path(self):
+        for cls in VARIANTS.values():
+            for mode in DECODE_MODES:
+                graph = expanded(cls, vae_decode_mode=mode)
+                self.assertNotIn("reference_detail", graph)
+                self.assertNotIn("image", graph["reference"]["inputs"])
+
+    def test_comfy_maps_different_sized_reference_images_in_order(self):
+        node = self.detail.MiniMaxH3X2DetailedUpscale()
+        refs = [torch.full((1, 32, 64, 3), 0.25), torch.full((1, 64, 32, 3), 0.75)]
+        node.upscale = Mock(side_effect=lambda images, detail_vae, detail_strength: (images, images))
+        outputs = asyncio.run(execution._async_map_node_over_list("test", "detail", node,
+            dict(images=refs, detail_vae=["detail.safetensors"], detail_strength=[1.0]), node.FUNCTION))
+        self.assertEqual(node.upscale.call_count, 2)
+        for index, call in enumerate(node.upscale.call_args_list):
+            self.assertIs(call.kwargs["images"], refs[index])
+            self.assertEqual(call.kwargs["detail_strength"], 1.0)
+        merged = execution.merge_result_data(outputs, node)
+        for index in range(2):
+            self.assertIs(merged[0][index], refs[index])
 
     def test_standard_mode_uses_loader_vae_without_loading_x2_weights(self):
         for cls in VARIANTS.values():

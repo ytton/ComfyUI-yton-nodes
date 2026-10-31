@@ -12,6 +12,7 @@ const common = {
   seed: 1, control_after_generate: 'fixed', clip_index: 1, enable_context: false,
   face_refine: false, face_count: 1, face_sigmas: '', face_reverse: false, second_ff_chunks: '8',
   vae_decode_mode: '标准解码', x2_vae_name: 'MiniMax-H3-X2-Detail-v1.safetensors', vae_tile_size: 256, vae_tile_overlap: 64,
+  reference_detail_strength: 1,
 }
 const second = { second_sampler: 'euler', second_sigma_values: '', second_steps: 4, second_sigma_start: 0.4, second_rho: 7 }
 const plans = {
@@ -47,6 +48,7 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   assert.equal(widgets.get('h3_context_length').serialize, false)
   assert.ok(widgets.get('x2_vae_name').hidden)
   assert.ok(widgets.get('vae_tile_size').hidden)
+  assert.ok(widgets.get('reference_detail_strength').hidden)
   change('vae_decode_mode', 'X2 VAE 解码')
   assert.equal(widgets.get('x2_vae_name').hidden, false)
   assert.equal(widgets.get('vae_tile_size').hidden, false)
@@ -54,9 +56,18 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   assert.equal(widgets.get('width').value, 1344)
   assert.equal(widgets.get('height').value, 768)
   assert.equal(widgets.get('sampling_mode').value, '二采')
+  assert.ok(widgets.get('reference_detail_strength').hidden)
+  change('vae_decode_mode', 'X2 VAE 解码 + 参考图增强')
+  assert.equal(widgets.get('reference_detail_strength').hidden, false)
+  assert.equal(widgets.get('x2_vae_name').hidden, false)
+  assert.equal(widgets.get('reference_detail_strength').value, 1)
+  assert.equal(widgets.get('width').value, 1344)
+  assert.equal(widgets.get('height').value, 768)
+  assert.equal(widgets.get('sampling_mode').value, '二采')
   change('vae_decode_mode', '标准解码')
   assert.equal(widgets.get('width').label, '最终宽度')
   assert.ok(widgets.get('vae_tile_size').hidden)
+  assert.ok(widgets.get('reference_detail_strength').hidden)
   assert.equal(node.widgets.filter(w => w.name.startsWith('face_') && w.type !== 'h3_input').map(w => w.name).join(','),
     'face_refine,face_count,face_sigmas,face_reverse')
   change('face_refine', true)

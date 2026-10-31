@@ -30,8 +30,8 @@ export async function runH3VaeDecode(browser, definitions, baseURL = 'http://127
         const change = (name, value) => { const w = widget(name); w.value = value; w.callback?.(value) }
         const payload = async () => (await app.graphToPrompt()).output[id].inputs
         assert(widget('vae_decode_mode').value === '标准解码', type + ': standard default')
-        assert(widget('vae_decode_mode').options.values.join(',') === '标准解码,X2 VAE 解码', type + ': decode choices')
-        assert(widget('x2_vae_name').hidden && widget('vae_tile_size').hidden, type + ': inactive controls hidden')
+        assert(widget('vae_decode_mode').options.values.join(',') === '标准解码,X2 VAE 解码,X2 VAE 解码 + 参考图增强', type + ': decode choices')
+        assert(widget('x2_vae_name').hidden && widget('vae_tile_size').hidden && widget('reference_detail_strength').hidden, type + ': inactive controls hidden')
         const originalSize = [...node.size]
         change('width', 1344)
         change('height', 768)
@@ -42,6 +42,14 @@ export async function runH3VaeDecode(browser, definitions, baseURL = 'http://127
         assert(widget('width').label === '采样画布宽度（成片 ×2）', type + ': explicit output scale')
         assert(widget('width').value === 1344 && widget('height').value === 768, type + ': canvas unchanged')
         assert(widget('sampling_mode').value === '二采', type + ': sampling plan unchanged')
+        assert(widget('reference_detail_strength').hidden, type + ': mode one hides reference enhancement')
+        change('vae_decode_mode', 'X2 VAE 解码 + 参考图增强')
+        assert(!widget('reference_detail_strength').hidden, type + ': mode two exposes strength')
+        assert(widget('reference_detail_strength').value === 1, type + ': author strength default')
+        change('reference_detail_strength', 0.75)
+        const image = LiteGraph.createNode('LoadImage')
+        app.graph.add(image)
+        image.connect(0, node, node.findInputSlot('image'))
         const sigma = LiteGraph.createNode('ManualSigmas')
         app.graph.add(sigma)
         sigma.connect(0, node, node.findInputSlot('sigmas'))
@@ -54,20 +62,23 @@ export async function runH3VaeDecode(browser, definitions, baseURL = 'http://127
         node = app.graph.getNodeById(id)
         const reloaded = await payload()
         for (const value of [first, reloaded]) {
-          assert(value.vae_decode_mode === 'X2 VAE 解码', type + ': decode mode serialized')
+          assert(value.vae_decode_mode === 'X2 VAE 解码 + 参考图增强', type + ': decode mode serialized')
           assert(value.x2_vae_name.toLowerCase().includes('minimax-h3-x2-detail'), type + ': local X2 default')
           assert(value.vae_tile_size === 512 && value.vae_tile_overlap === 128, type + ': tile settings serialized')
           assert(value.width === 1344 && value.height === 768, type + ': no canvas rewrite')
           assert(Array.isArray(value.sigmas), type + ': sigma connection preserved')
+          assert(Array.isArray(value.image), type + ': image connection preserved')
+          assert(value.reference_detail_strength === 0.75, type + ': reference strength serialized')
           assert(value.sampling_mode === '单采', type + ': pass count serialized')
         }
         assert(!widget('x2_vae_name').hidden, type + ': X2 controls survive reload')
+        assert(!widget('reference_detail_strength').hidden, type + ': reference controls survive reload')
         change('vae_decode_mode', '标准解码')
-        assert(widget('x2_vae_name').hidden && widget('vae_tile_size').hidden, type + ': hide controls on return')
+        assert(widget('x2_vae_name').hidden && widget('vae_tile_size').hidden && widget('reference_detail_strength').hidden, type + ': hide controls on return')
         assert(widget('width').label === '最终宽度', type + ': normal label restored')
         change('sampling_mode', '二采')
         assert(!widget('second_model').hidden, type + ': second pass independent')
-        change('vae_decode_mode', 'X2 VAE 解码')
+        change('vae_decode_mode', 'X2 VAE 解码 + 参考图增强')
         node.setSize([620, node.computeSize()[1]])
         app.canvas.ds.scale = 0.9
         app.canvas.ds.offset = [50, 520 - node.pos[1] - widget('h3_section_视频解码').y]

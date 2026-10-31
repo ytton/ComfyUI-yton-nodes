@@ -5,7 +5,7 @@ import math
 from comfy_execution.graph_utils import GraphBuilder
 
 from .omni_face import add_face_refinement
-from .omni_decode import X2_VAE, add_video_decode
+from .omni_decode import X2_VAE, add_reference_detail, add_video_decode
 from .omni_sampling import FILM_MODEL, UPSCALE_MODEL, sampling_dimensions
 
 CONTEXT_FRAMES = 22
@@ -57,12 +57,13 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                               selflift_transition_step=2, selflift_rho=0.0, selflift_w_min=0.5, selflift_w_max=1.0,
                               selflift_highres_tiling=False, selflift_highres_tiles="auto",
                               vae_decode_mode="标准解码", x2_vae_name=X2_VAE,
-                              vae_tile_size=256, vae_tile_overlap=64):
+                              vae_tile_size=256, vae_tile_overlap=64, reference_detail_strength=1.0):
     width, height, main_width, main_height = sampling_dimensions(
         width, height, sampling_mode, sampling_plan, first_pass_scale)
     if not enable_context:
         previous_video = None
     graph = GraphBuilder()
+    image = add_reference_detail(graph, image, vae_decode_mode, x2_vae_name, reference_detail_strength)
     models = graph.node("fast modelFromLoader", id="models", **{"模型加载器": model_loader})
     two_pass = sampling_mode == "二采"
     overlap = CONTEXT_FRAMES if previous_video is not None else 0
