@@ -30,15 +30,14 @@ export async function runH3VaeDecode(browser, definitions, baseURL = 'http://127
         const change = (name, value) => { const w = widget(name); w.value = value; w.callback?.(value) }
         const payload = async () => (await app.graphToPrompt()).output[id].inputs
         assert(widget('vae_decode_mode').value === '标准解码', type + ': standard default')
+        assert(widget('vae_decode_mode').options.values.join(',') === '标准解码,X2 VAE 解码', type + ': decode choices')
         assert(widget('x2_vae_name').hidden && widget('vae_tile_size').hidden, type + ': inactive controls hidden')
         const originalSize = [...node.size]
         change('width', 1344)
         change('height', 768)
-        change('vae_decode_mode', 'H3 快速解码')
-        assert(widget('x2_vae_name').hidden && !widget('vae_tile_size').hidden, type + ': fast controls')
+        change('vae_decode_mode', 'X2 VAE 解码')
         change('vae_tile_size', 512)
         change('vae_tile_overlap', 128)
-        change('vae_decode_mode', 'X2 VAE 解码')
         assert(!widget('x2_vae_name').hidden, type + ': X2 weights visible')
         assert(widget('width').label === '采样画布宽度（成片 ×2）', type + ': explicit output scale')
         assert(widget('width').value === 1344 && widget('height').value === 768, type + ': canvas unchanged')

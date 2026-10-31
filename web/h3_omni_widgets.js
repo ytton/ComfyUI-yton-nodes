@@ -193,8 +193,7 @@ function setupSections(node) {
     showSecondPass(twoPass);
     const decodeMode = widgets.get("vae_decode_mode").value;
     const x2Decode = decodeMode === "X2 VAE 解码";
-    showControls([widgets.get("x2_vae_name")], x2Decode);
-    showControls(decodeWidgets.slice(1), decodeMode !== "标准解码");
+    showControls(decodeWidgets, x2Decode);
     widgets.get("width").label = x2Decode ? "采样画布宽度（成片 ×2）" : labels.width;
     widgets.get("height").label = x2Decode ? "采样画布高度（成片 ×2）" : labels.height;
     const scale = widgets.get("first_pass_scale");

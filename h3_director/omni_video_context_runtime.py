@@ -175,7 +175,7 @@ class H3OmniGenerate:
         vae_names = folder_paths.get_filename_list("vae")
         x2_default = next((name for name in vae_names if "minimax-h3-x2-detail" in name.lower()), X2_VAE)
         required["vae_decode_mode"] = (DECODE_MODES, {"default": "标准解码",
-            "tooltip": "仅切换最终视频解码。标准解码使用原 VAE；H3 快速解码使用原 VAE 和专用解码器；X2 使用独立权重，输出宽高各为采样画布的 2 倍。不改变采样尺寸、步数或二采方案。"})
+            "tooltip": "标准解码沿用原流程；X2 VAE 解码对应作者的模式一，使用独立 X2 权重和专用解码器，输出宽高各为采样画布的 2 倍。不改变采样尺寸、步数或二采方案。"})
         required["x2_vae_name"] = ([x2_default, *[name for name in vae_names if name != x2_default]], {
             "default": x2_default,
             "tooltip": "X2 模式独立加载的解码 VAE，位于 models/vae。参考图编码、上下文、SelfLift 校正和修脸继续使用主加载器的视频 VAE。请选择 X2 权重，普通 VAE 不会产生 2× 输出。"})

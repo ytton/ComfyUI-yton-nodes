@@ -37,7 +37,7 @@ class VaeDecodeTests(unittest.TestCase):
     def test_all_three_nodes_expose_decode_modes_with_standard_default(self):
         for cls in VARIANTS.values():
             required = cls.INPUT_TYPES()["required"]
-            self.assertEqual(required["vae_decode_mode"][0], DECODE_MODES)
+            self.assertEqual(required["vae_decode_mode"][0], ["标准解码", "X2 VAE 解码"])
             self.assertEqual(required["vae_decode_mode"][1]["default"], "标准解码")
             self.assertIn(required["x2_vae_name"][1]["default"], required["x2_vae_name"][0])
 
@@ -53,14 +53,13 @@ class VaeDecodeTests(unittest.TestCase):
                         actual = expanded(cls, **settings, vae_decode_mode=mode)
                         self.assertEqual(sampling_graph(standard), sampling_graph(actual))
 
-    def test_standard_and_fast_modes_use_loader_vae_without_loading_x2_weights(self):
+    def test_standard_mode_uses_loader_vae_without_loading_x2_weights(self):
         for cls in VARIANTS.values():
-            for mode, expected in (("标准解码", "VAEDecode"), ("H3 快速解码", "MiniMaxH3VAEDecodeFast")):
-                graph = expanded(cls, vae_decode_mode=mode, x2_vae_name="unused.safetensors")
-                self.assertNotIn("decode_vae", graph)
-                self.assertEqual(graph["frames"]["class_type"], expected)
-                self.assertTrue(graph["frames"]["inputs"]["vae"][0].endswith("models"))
-                self.assertEqual(graph["frames"]["inputs"]["vae"][1], 2)
+            graph = expanded(cls, vae_decode_mode="标准解码", x2_vae_name="unused.safetensors")
+            self.assertNotIn("decode_vae", graph)
+            self.assertEqual(graph["frames"]["class_type"], "VAEDecode")
+            self.assertTrue(graph["frames"]["inputs"]["vae"][0].endswith("models"))
+            self.assertEqual(graph["frames"]["inputs"]["vae"][1], 2)
 
     def test_x2_only_replaces_final_video_vae_and_keeps_author_settings(self):
         for cls in VARIANTS.values():
@@ -79,7 +78,7 @@ class VaeDecodeTests(unittest.TestCase):
     def test_tile_controls_match_installed_decoder_interface(self):
         schema = self.native.MiniMaxH3VAEDecodeFast.INPUT_TYPES()
         for cls in VARIANTS.values():
-            graph = expanded(cls, vae_decode_mode="H3 快速解码", vae_tile_size=512, vae_tile_overlap=128)
+            graph = expanded(cls, vae_decode_mode="X2 VAE 解码", vae_tile_size=512, vae_tile_overlap=128)
             inputs = graph["frames"]["inputs"]
             self.assertEqual(set(inputs), set(schema["required"]))
             self.assertEqual((inputs["tile_size"], inputs["tile_overlap"]), (512, 128))
