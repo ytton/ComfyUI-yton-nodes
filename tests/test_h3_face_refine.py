@@ -6,6 +6,8 @@ from unittest.mock import Mock, patch
 from test_h3_video_context import torch, execution, asyncio, DynamicPrompt
 import nodes
 from comfy_api.latest import io
+from comfy_api.latest._io import build_nested_inputs, get_finalized_class_inputs
+from comfy_extras.nodes_minimax_h3 import MiniMaxH3ReferenceToVideo
 from video_context_test.face_runtime import YtonH3FaceRefine
 from video_context_test.omni_video_context_graph import build_video_context_graph
 from test_h3_omni_variants import variant_defaults, VARIANTS
@@ -29,7 +31,10 @@ class FaceRefineTests(unittest.TestCase):
         self.assertEqual(set(required), {"images", "prompt", "enabled", "face_count", "sigmas", "reverse"})
         self.assertEqual(required["sigmas"][0], "STRING,SIGMAS")
         self.assertEqual(required["sigmas"][1]["default"], "")
-        self.assertEqual(inputs["optional"]["image"][0], "IMAGE")
+        references = inputs["optional"]["references"]
+        self.assertEqual(references[0], "COMFY_AUTOGROW_V3")
+        self.assertEqual(references[1]["template"]["min"], 0)
+        self.assertEqual(references[1]["template"]["names"], [f"参考图 {i}" for i in range(1, 10)])
         self.assertTrue(required["images"][1]["rawLink"])
         self.assertTrue(required["sigmas"][1]["lazy"])
         self.assertNotIn("rawLink", required["sigmas"][1])
@@ -52,9 +57,10 @@ class FaceRefineTests(unittest.TestCase):
         self.assertEqual(result.result, (["frames", 0],))
 
     def test_shared_crop_and_stitch_use_input_frames_without_audio_dependency(self):
-        graph, result = self.expand(prompt="保持面部身份", image=["reference_images", 0])
+        graph, result = self.expand(prompt="保持面部身份", references={"参考图 1": ["reference_images", 0]})
         self.assertEqual(graph["face_0_crop"]["inputs"]["images"], ["frames", 0])
-        self.assertEqual(graph["face_0_reference"]["inputs"]["image"], ["reference_images", 0])
+        self.assertEqual(graph["face_0_reference"]["class_type"], "MiniMaxH3ReferenceToVideo")
+        self.assertEqual(graph["face_0_reference"]["inputs"]["ref_images.ref_image_0"], ["reference_images", 0])
         self.assertEqual(graph["face_0_reference"]["inputs"]["prompt"], "保持面部身份")
         self.assertIsNone(graph["face_0_reference"]["inputs"]["audio_vae"])
         self.assertNotIn("face_audio", graph)
@@ -64,6 +70,31 @@ class FaceRefineTests(unittest.TestCase):
         self.assertEqual(stitch["base_images"], ["frames", 0])
         self.assertEqual(stitch["paste_region"], "face_only")
         self.assertEqual(result.result[0][0].split(".")[-1], "face_0_stitch")
+
+    def test_native_dynamic_inputs_keep_reference_order_and_feed_every_face(self):
+        live = {"images": ["frames", 0], "model": ["model", 0], "clip": ["clip", 0], "vae": ["vae", 0],
+                "references.参考图 3": ["person_c", 0], "references.参考图 1": ["person_a", 0],
+                "references.参考图 2": ["person_b", 0], "face_count": 2}
+        schema, _, data = get_finalized_class_inputs(YtonH3FaceRefine.INPUT_TYPES(), live)
+        for i in range(1, 4):
+            options = schema["optional"][f"references.参考图 {i}"][1]
+            self.assertTrue(options["rawLink"])
+            self.assertTrue(options["lazy"])
+        nested = build_nested_inputs(live, data)
+        graph, _ = self.expand(**nested)
+        for face in range(2):
+            reference = graph[f"face_{face}_reference"]["inputs"]
+            _, _, reference_data = get_finalized_class_inputs(MiniMaxH3ReferenceToVideo.INPUT_TYPES(), reference)
+            self.assertEqual(build_nested_inputs(reference, reference_data)["ref_images"], {
+                "ref_image_0": ["person_a", 0], "ref_image_1": ["person_b", 0], "ref_image_2": ["person_c", 0]})
+
+    def test_no_references_and_disconnected_slots_are_optional(self):
+        _, _, data = get_finalized_class_inputs(YtonH3FaceRefine.INPUT_TYPES(), {"images": ["frames", 0]})
+        self.assertEqual(build_nested_inputs({"images": ["frames", 0]}, data)["references"], {})
+        graph, _ = self.expand(references={"参考图 1": None, "参考图 2": ["person_b", 0]})
+        reference = graph["face_0_reference"]["inputs"]
+        self.assertEqual(reference["ref_images.ref_image_0"], ["person_b", 0])
+        self.assertNotIn("ref_images.ref_image_1", reference)
 
     def test_default_schedule_and_settings_match_existing_generator(self):
         graph, _ = self.expand()
@@ -148,7 +179,8 @@ class FaceRefineTests(unittest.TestCase):
             "unused": {"class_type": "TestFaceUnused", "inputs": {}},
             "face": {"class_type": "YtonH3FaceRefine", "inputs": {
                 "images": ["source", 0], "model": ["unused", 0], "clip": ["unused", 1], "vae": ["unused", 2],
-                "sigmas": ["unused", 3], "prompt": ["unused", 4], "image": ["unused", 5],
+                "sigmas": ["unused", 3], "prompt": ["unused", 4],
+                "references.参考图 1": ["unused", 5], "references.参考图 2": ["unused", 5],
                 "enabled": False, "face_count": 1, "reverse": False}},
             "output": {"class_type": "TestFaceOutput", "inputs": {"images": ["face", 0]}},
         }

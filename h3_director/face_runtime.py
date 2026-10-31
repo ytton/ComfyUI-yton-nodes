@@ -26,8 +26,11 @@ class YtonH3FaceRefine(io.ComfyNode):
                     tooltip="H3 ref2va MODEL，可连接主模型或单独叠加 LoRA 的修脸模型。"),
                 io.Clip.Input("clip", display_name="H3 CLIP", optional=True, raw_link=True, lazy=True),
                 io.Vae.Input("vae", display_name="H3 视频 VAE", optional=True, raw_link=True, lazy=True),
-                io.Image.Input("image", display_name="参考图（可选）", optional=True, raw_link=True, lazy=True,
-                    tooltip="人物参考图；支持媒体加载器的图片列表，对应提示词中的 <Picture N>。"),
+                io.Autogrow.Input("references", display_name="人物参考图", optional=True,
+                    template=io.Autogrow.TemplateNames(
+                        io.Image.Input("reference", raw_link=True, lazy=True,
+                            tooltip="人物参考图；连线后自动增加下一个入口，按连接顺序对应 <Picture N>。"),
+                        names=[f"参考图 {i}" for i in range(1, 10)], min=0)),
                 io.String.Input("prompt", display_name="提示词", default="", multiline=True, raw_link=True, lazy=True,
                     tooltip="可接原提示词，也可填写修脸描述；留空依靠原画面与参考图修复。"),
                 io.Boolean.Input("enabled", display_name="启用修脸", default=True),
@@ -46,7 +49,7 @@ class YtonH3FaceRefine(io.ComfyNode):
 
     @classmethod
     def execute(cls, images, model=None, clip=None, vae=None, prompt="", enabled=True, face_count=1,
-                sigmas="", reverse=False, image=None):
+                sigmas="", reverse=False, references=None):
         graph = GraphBuilder()
         if not enabled:
             return io.NodeOutput(images, expand=graph.finalize())
@@ -54,9 +57,12 @@ class YtonH3FaceRefine(io.ComfyNode):
             raise ValueError("启用修脸时，请连接修脸模型、H3 CLIP 和 H3 视频 VAE。")
         if isinstance(sigmas, str):
             sigmas = graph.node("ManualSigmas", id="face_sigmas", sigmas=sigmas).out(0) if sigmas.strip() else None
+        ref_images = {f"ref_image_{i}": link for i, link in enumerate(
+            value for value in (references or {}).values() if value is not None)}
         frames = add_face_refinement(
-            graph, images, None, model, clip, vae, None, image, prompt, "match",
+            graph, images, None, model, clip, vae, None, None, prompt, "match",
             face_count, 4, 0.4, "bbox\\face_yolov8m.pt", reverse, 42, sigmas, 0.35, "none",
+            ref_images=ref_images,
         )
         return io.NodeOutput(frames, expand=graph.finalize())
 

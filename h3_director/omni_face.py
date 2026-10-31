@@ -3,7 +3,7 @@
 
 def add_face_refinement(graph, frames, av_latent, model, clip, vae, audio_vae, image, prompt, ref_image_size,
                         count, steps, denoise, detector, reverse, seed, sigmas,
-                        large_strength, fallback_detector):
+                        large_strength, fallback_detector, ref_images=None):
     if reverse:
         frames = graph.node("ReverseImageBatch", id="face_reverse", images=frames).out(0)
     original_audio = (graph.node("LTXVSeparateAVLatent", id="face_audio", av_latent=av_latent).out(1)
@@ -17,11 +17,14 @@ def add_face_refinement(graph, frames, av_latent, model, clip, vae, audio_vae, i
             identity_track=True, identity_threshold=0.28, select="largest_face", select_index=index,
             identity_model="insightface", fallback_detector=fallback_detector, fallback_head_frac=0.5,
             cut_detection="none", absent_shots="off")
-        reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id=prefix + "reference",
+        reference_type = "YtonMiniMaxH3ReferenceToVideo" if ref_images is None else "MiniMaxH3ReferenceToVideo"
+        reference = graph.node(reference_type, id=prefix + "reference",
             clip=clip, vae=vae, audio_vae=audio_vae, prompt=prompt,
             width=crop.out(4), height=crop.out(5), length=crop.out(6), ref_image_size=ref_image_size)
         if image is not None:
             reference.set_input("image", image)
+        for name, link in (ref_images or {}).items():
+            reference.set_input(f"ref_images.{name}", link)
         injected = graph.node("H3InjectVideoLatent", id=prefix + "inject",
             av_latent=reference.out(1), images=crop.out(0), vae=vae)
         latent = injected.out(0)
