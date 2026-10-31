@@ -1,6 +1,6 @@
 {
   "id": "75611e0c-b285-43e8-8421-7c2d450df0d5",
-  "revision": 1,
+  "revision": 2,
   "last_node_id": 31,
   "last_link_id": 55,
   "nodes": [
@@ -443,9 +443,7 @@
         {
           "name": "模型",
           "type": "MODEL",
-          "links": [
-            50
-          ]
+          "links": []
         },
         {
           "name": "CLIP",
@@ -468,7 +466,7 @@
           "links": []
         }
       ],
-      "title": "二采基础模型 · 无加速 LoRA",
+      "title": "注意力模型回填",
       "properties": {
         "Node name for S&R": "fast modelsBridge",
         "ue_properties": {
@@ -517,10 +515,12 @@
           "name": "model",
           "shape": 3,
           "type": "MODEL",
-          "links": []
+          "links": [
+            50
+          ]
         }
       ],
-      "title": "首采 · DMAD + 人物替换 LoRA",
+      "title": "主采与二采 · DMAD + 人物替换 LoRA",
       "properties": {
         "强度显示类型": "仅显示模型强度",
         "显示层类型": "隐藏层类型",
@@ -1295,10 +1295,10 @@
         0.7,
         "h3_upscaler_lms_v0.1.safetensors",
         "euler",
-        6,
+        2,
         0.4,
         7,
-        "0.4, 0.3, 0.2, 0.12, 0.06, 0.02, 0",
+        "0.4, 0.2, 0",
         "8",
         false,
         1,
@@ -1605,7 +1605,7 @@
     ],
     [
       50,
-      6,
+      7,
       1,
       22,
       5,
