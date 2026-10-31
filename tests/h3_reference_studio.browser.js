@@ -88,12 +88,15 @@ export async function checkH3Studio(page, definition, imageBase64) {
     assert(await ref.locator(".yton-h3-custom-choice").evaluate(tile => tile.classList.contains("active")), "editing custom scale selects its mode");
     const duration = panel.locator(".yton-h3-section").filter({ has: p.getByText("视频时长", { exact: true }) });
     assert(await duration.getByRole("spinbutton").getAttribute("placeholder") === "自定义" && await duration.getByRole("spinbutton").inputValue() === "", "custom duration choice uses an empty placeholder");
-    await duration.getByRole("spinbutton").fill("7.5");
+    await duration.getByRole("spinbutton").fill("8.001");
+    await duration.getByRole("spinbutton").press("Tab");
+    assert((await duration.locator(".yton-h3-size-info").textContent()).includes("209 帧"), "duration retains precision beyond two decimal places");
+    await duration.getByRole("spinbutton").fill("7.91");
     await duration.getByRole("spinbutton").press("Tab");
     assert((await duration.locator(".yton-h3-size-info").textContent()).includes("192 帧"), "fractional seconds show aligned frames");
     await duration.getByRole("spinbutton").focus();
     assert(await duration.locator(".yton-h3-custom-choice").evaluate(tile => tile.classList.contains("active")), "editing custom duration selects its mode");
-    await duration.getByRole("spinbutton").fill("6.2");
+    await duration.getByRole("spinbutton").fill("7.91");
     await duration.getByRole("spinbutton").press("Tab");
     const chooserEvent = p.waitForEvent("filechooser");
     await panel.locator('[data-slot="image_1"]').click();
@@ -114,7 +117,7 @@ export async function checkH3Studio(page, definition, imageBase64) {
       const prompt = (await app.graphToPrompt()).output[node.id].inputs;
       return { inputs: prompt, saved: app.graph.serialize(), id: node.id, size: [...node.size] };
     });
-    assert(before.inputs.ref_scale === 0.75 && before.inputs.duration === 6.2, "UI writes actual node inputs");
+    assert(before.inputs.ref_scale === 0.75 && before.inputs.duration === 7.91, "UI exports the exact decimal duration");
     assert(before.inputs.disable_image_3 === true, "disabled media is serialized");
     assert(Array.isArray(before.inputs.clip) && Array.isArray(before.inputs.vae) && Array.isArray(before.inputs.audio_vae), "media editing preserves models");
     await p.evaluate(async ({ saved, id }) => {
@@ -125,7 +128,7 @@ export async function checkH3Studio(page, definition, imageBase64) {
       app.canvas.draw(true, true);
     }, before);
     await panel.getByRole("spinbutton", { name: "自定义秒数", exact: true }).waitFor();
-    assert(await panel.getByRole("spinbutton", { name: "自定义秒数", exact: true }).inputValue() === "6.2", "duration survives reload");
+    assert(await panel.getByRole("spinbutton", { name: "自定义秒数", exact: true }).inputValue() === "7.91", "decimal duration survives reload");
     assert(await ref.getByRole("spinbutton").inputValue() === "0.75", "reference scale survives reload");
     assert(await panel.evaluate(panel => panel.style.getPropertyValue("--yton-node-bg") === "#213b53" && panel.style.getPropertyValue("--yton-node-fg") === (window.studioTestNode.title_text_color || LiteGraph.NODE_TEXT_COLOR)), "node background survives reload and text follows native colour");
     const layout = await panel.evaluate(panel => {

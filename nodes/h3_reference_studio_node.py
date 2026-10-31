@@ -42,7 +42,7 @@ class YtonH3ReferenceStudio(io.ComfyNode):
                 io.Combo.Input("ref_image_size", options=["max", "match", "自定义"], default="match"),
                 io.Float.Input("ref_scale", default=0.5, min=0.05, max=4, step=0.05,
                     tooltip="以 match 尺寸为基准的宽高倍率；不会放大超过原图，仍遵循 H3 原生参考图尺寸上限。"),
-                io.Float.Input("duration", default=5, min=0.1, max=150, step=0.5),
+                io.Float.Input("duration", default=5, min=0.1, max=150, step=0.01, round=False),
                 *media,
             ],
             outputs=[io.Conditioning.Output(display_name="正向条件"), io.Latent.Output(display_name="AV latent"),

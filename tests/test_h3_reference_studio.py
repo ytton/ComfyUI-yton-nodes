@@ -61,9 +61,11 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(result.result[0][0][0].shape, (1, 2, 4))
 
     def test_preset_dimensions_and_fractional_duration(self):
-        result, native = self.mocked(([], [], []), resolution="1080p", aspect_ratio="9:16", duration=7.5)
-        self.assertEqual(result.result, ("positive", "latent", 1088, 1920))
-        self.assertEqual((native["width"], native["height"], native["length"]), (1088, 1920, 192))
+        for duration, frames in [(7.91, 192), (8.001, 209)]:
+            with self.subTest(duration=duration):
+                result, native = self.mocked(([], [], []), resolution="1080p", aspect_ratio="9:16", duration=duration)
+                self.assertEqual(result.result, ("positive", "latent", 1088, 1920))
+                self.assertEqual((native["width"], native["height"], native["length"]), (1088, 1920, frames))
 
     def test_auto_ratio_uses_first_enabled_image(self):
         image = torch.zeros(1, 128, 72, 3)

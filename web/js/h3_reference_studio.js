@@ -16,6 +16,8 @@ const element = (tag, className, text) => {
 
 function setupStudio(node) {
   const widgets = Object.fromEntries(node.widgets.map(w => [w.name, w]));
+  // ComfyUI infers rounding from the step; the custom duration accepts any decimal.
+  widgets.duration.options.round = false;
   const spec = node.constructor.nodeData.input.required;
   const presets = spec.resolution[1].yton_presets;
   const multipliers = spec.resolution[1].yton_h3_multipliers;
@@ -71,7 +73,8 @@ function setupStudio(node) {
     const tile = element("div", "yton-h3-custom-choice");
     button.replaceWith(tile);
     const input = element("input", "");
-    input.type = "number"; input.step = name === "duration" ? "0.1" : "0.05";
+    input.type = "number"; input.step = name === "duration" ? "any" : "0.05";
+    input.inputMode = "decimal";
     input.placeholder = "自定义";
     input.min = spec[name][1].min; input.max = spec[name][1].max;
     input.setAttribute("aria-label", label);
