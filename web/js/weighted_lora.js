@@ -43,6 +43,24 @@ function setupLoraLoader(node) {
     node.graph?.afterChange();
   }
 
+  function moveRow(row, index) {
+    const previous = rows.indexOf(row);
+    if (previous === index) return;
+    node.graph?.beforeChange();
+    rows.splice(previous, 1);
+    rows.splice(index, 0, row);
+    const widget = node.widgets.find(w => w.name === `lora_row_${row.slot}`);
+    node.widgets.splice(node.widgets.indexOf(widget), 1);
+    const next = rows[index + 1];
+    const before = next ? node.widgets.find(w => w.name === `lora_row_${next.slot}`) : addButton;
+    node.widgets.splice(node.widgets.indexOf(before), 0, widget);
+    rows.forEach((item, i) => {
+      node.inputs.find(input => input.name === strengthName(item.slot)).tooltip = `LoRA ${i + 1} 强度：${item.lora || "未选择"}`;
+    });
+    changed();
+    node.graph?.afterChange();
+  }
+
   function createRow(row, createSocket = true) {
     const name = `lora_row_${row.slot}`;
     if (createSocket) node.addInput(strengthName(row.slot), "FLOAT", {
@@ -69,7 +87,7 @@ function setupLoraLoader(node) {
         ctx.fill(); ctx.stroke();
         ctx.fillStyle = LiteGraph.WIDGET_BGCOLOR || "#222";
         ctx.strokeStyle = LiteGraph.WIDGET_OUTLINE_COLOR || "#555";
-        ctx.beginPath(); ctx.roundRect(12, y + 3, width - 24, ROW_HEIGHT - 6, 7);
+        ctx.beginPath(); ctx.rect(12, y + 3, width - 24, ROW_HEIGHT - 6);
         ctx.fill(); ctx.stroke();
         ctx.globalAlpha = row.enabled ? 1 : 0.45;
         ctx.fillStyle = row.enabled ? "#88a4cf" : "#666";
@@ -95,6 +113,7 @@ function setupLoraLoader(node) {
       },
       mouse(event, pos, current) {
         if (event.type !== "pointerdown" && event.type !== "mousedown") return false;
+        if (event.button !== 0) return false;
         const x = pos[0], width = current.size[0];
         if (x < 18 || x > width - 12) return false;
         if (x < 54) { row.enabled = !row.enabled; changed(); }
@@ -132,6 +151,23 @@ function setupLoraLoader(node) {
     return row;
   };
   node.ytonRemoveLora = slot => { const row = rows.find(row => row.slot === slot); if (row) removeRow(row); };
+
+  const extraMenu = node.getExtraMenuOptions;
+  node.getExtraMenuOptions = function (canvas, options) {
+    extraMenu?.apply(this, arguments);
+    const y = canvas.graph_mouse[1] - this.pos[1];
+    const widget = this.widgets.find(w => w.type === "yton_lora_row" && y >= w.y && y < w.y + ROW_HEIGHT);
+    if (!widget) return;
+    const row = rows.find(item => item.slot === widget.value.slot);
+    const index = rows.indexOf(row);
+    options.unshift(
+      { content: "上移", disabled: index === 0, callback: () => moveRow(row, index - 1) },
+      { content: "下移", disabled: index === rows.length - 1, callback: () => moveRow(row, index + 1) },
+      { content: "置顶", disabled: index === 0, callback: () => moveRow(row, 0) },
+      { content: "置底", disabled: index === rows.length - 1, callback: () => moveRow(row, rows.length - 1) },
+      null,
+    );
+  };
 
   const updateDisabled = node.updateComputedDisabled;
   node.updateComputedDisabled = function () {

@@ -73,7 +73,7 @@ export async function runWeightedLora(page, definition, baseURL = "http://127.0.
         const source = app.graph._nodes.find(n => n.comfyClass === "PrimitiveFloat");
         pos = source.getConnectionPos(false, 0, new Float32Array(2));
       } else if (kind === "input") pos = node.getInputPos(node.findInputSlot(`strengths.strength_${slot}`));
-      else pos = [node.pos[0] + (kind === "add" ? node.size[0] / 2 : kind === "toggle" ? 30 : node.size[0] - 46), node.pos[1] + widget.y + 15];
+      else pos = [node.pos[0] + (kind === "add" || kind === "menu" ? node.size[0] / 2 : kind === "toggle" ? 30 : node.size[0] - 46), node.pos[1] + widget.y + 15];
       const rect = app.canvas.canvas.getBoundingClientRect();
       return { x: (pos[0] + app.canvas.ds.offset[0]) * app.canvas.ds.scale + rect.x,
         y: (pos[1] + app.canvas.ds.offset[1]) * app.canvas.ds.scale + rect.y };
@@ -96,8 +96,42 @@ export async function runWeightedLora(page, definition, baseURL = "http://127.0.
       if (node.inputs.find(i => i.name === "strengths.strength_2").link == null) throw Error("cannot drag a real wire to the row strength socket");
       return "mouse: add menu, strength arrow, toggle, drag strength wire";
     });
+    const originalLink = await p.evaluate(() => {
+      const node = window.comfyAPI.app.app.graph._nodes.find(n => n.comfyClass === "YtonWeightedLoraLoader");
+      return node.inputs.find(i => i.name === "strengths.strength_2").link;
+    });
+    for (const [command, expected] of [["置顶", "2,0,3,1,4"], ["下移", "0,2,3,1,4"], ["置底", "0,3,1,4,2"], ["上移", "0,3,1,2,4"]]) {
+      const position = await point("menu", 2);
+      await p.mouse.click(position.x, position.y, { button: "right" });
+      await p.getByText(command, { exact: true }).last().click();
+      await p.evaluate(async ({ expected, originalLink }) => {
+        const app = window.comfyAPI.app.app;
+        const node = app.graph._nodes.find(n => n.comfyClass === "YtonWeightedLoraLoader");
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        app.canvas.draw(true, true);
+        const rows = JSON.parse(node.widgets.find(w => w.name === "loras").value);
+        if (rows.map(row => row.slot).join() !== expected) throw Error(`context menu order: expected ${expected}, got ${rows.map(row => row.slot).join()}`);
+        const widgets = node.widgets.filter(w => w.type === "yton_lora_row");
+        if (widgets.map(w => w.value.slot).join() !== expected) throw Error("visible row order differs from loading order");
+        if (node.inputs.find(i => i.name === "strengths.strength_2").link !== originalLink) throw Error("reordering changed the strength wire");
+        const moved = widgets.find(w => w.value.slot === 2);
+        const inputY = node.getInputPos(node.findInputSlot("strengths.strength_2"))[1] - node.pos[1];
+        if (Math.abs(inputY - (moved.y + 15)) >= 20) throw Error("strength socket did not follow the moved row");
+        if (rows.find(row => row.slot === 2).strength !== 1 || !rows.find(row => row.slot === 2).enabled) throw Error("right click changed the LoRA settings");
+      }, { expected, originalLink });
+    }
+    await p.evaluate(async originalLink => {
+      const app = window.comfyAPI.app.app;
+      const before = app.graph._nodes.find(n => n.comfyClass === "YtonWeightedLoraLoader");
+      const saved = app.graph.serialize();
+      await app.loadGraphData(saved);
+      const node = app.graph.getNodeById(before.id);
+      const inputs = (await app.graphToPrompt()).output[node.id].inputs;
+      if (JSON.parse(inputs.loras).map(row => row.slot).join() !== "0,3,1,2,4") throw Error("reordered stack changed after reload");
+      if (node.inputs.find(i => i.name === "strengths.strength_2").link !== originalLink || !Array.isArray(inputs["strengths.strength_2"])) throw Error("reordered strength wire was not preserved in workflow and API export");
+    }, originalLink);
     if (errors.length) throw Error(errors.join("\n"));
-    return { ...result, ui };
+    return { ...result, ui, reorder: "right click: top/down/bottom/up, aligned sockets, stable strength wire, save/reload" };
   } finally {
     await context.close();
   }
