@@ -52,4 +52,7 @@ NODE_CLASS_MAPPINGS.update(_h3_classes)
 NODE_DISPLAY_NAME_MAPPINGS.update(_h3_names)
 
 from .node_catalog import configure_node_catalog as _configure_node_catalog
+from .nodes.weighted_lora_node import YtonWeightedLoraLoader
+NODE_CLASS_MAPPINGS["YtonWeightedLoraLoader"] = YtonWeightedLoraLoader
+NODE_DISPLAY_NAME_MAPPINGS["YtonWeightedLoraLoader"] = "权重 LoRA 加载器"
 _configure_node_catalog(NODE_CLASS_MAPPINGS)
