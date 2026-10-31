@@ -87,7 +87,7 @@ function setupLoraLoader(node) {
         ctx.fill(); ctx.stroke();
         ctx.fillStyle = LiteGraph.WIDGET_BGCOLOR || "#222";
         ctx.strokeStyle = LiteGraph.WIDGET_OUTLINE_COLOR || "#555";
-        ctx.beginPath(); ctx.rect(12, y + 3, width - 24, ROW_HEIGHT - 6);
+        ctx.beginPath(); ctx.rect(15, y + 3, width - 30, ROW_HEIGHT - 6);
         ctx.fill(); ctx.stroke();
         ctx.globalAlpha = row.enabled ? 1 : 0.45;
         ctx.fillStyle = row.enabled ? "#88a4cf" : "#666";
@@ -154,18 +154,16 @@ function setupLoraLoader(node) {
 
   const extraMenu = node.getExtraMenuOptions;
   node.getExtraMenuOptions = function (canvas, options) {
-    extraMenu?.apply(this, arguments);
     const y = canvas.graph_mouse[1] - this.pos[1];
     const widget = this.widgets.find(w => w.type === "yton_lora_row" && y >= w.y && y < w.y + ROW_HEIGHT);
-    if (!widget) return;
+    if (!widget) return extraMenu?.apply(this, arguments);
     const row = rows.find(item => item.slot === widget.value.slot);
     const index = rows.indexOf(row);
-    options.unshift(
+    options.splice(0, options.length,
       { content: "上移", disabled: index === 0, callback: () => moveRow(row, index - 1) },
       { content: "下移", disabled: index === rows.length - 1, callback: () => moveRow(row, index + 1) },
       { content: "置顶", disabled: index === 0, callback: () => moveRow(row, 0) },
       { content: "置底", disabled: index === rows.length - 1, callback: () => moveRow(row, rows.length - 1) },
-      null,
     );
   };
 

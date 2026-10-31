@@ -103,6 +103,8 @@ export async function runWeightedLora(page, definition, baseURL = "http://127.0.
     for (const [command, expected] of [["置顶", "2,0,3,1,4"], ["下移", "0,2,3,1,4"], ["置底", "0,3,1,4,2"], ["上移", "0,3,1,2,4"]]) {
       const position = await point("menu", 2);
       await p.mouse.click(position.x, position.y, { button: "right" });
+      const menu = await p.locator(".litecontextmenu .litemenu-entry").allTextContents();
+      if (menu.map(text => text.trim()).join() !== "上移,下移,置顶,置底") throw Error("row context menu should only contain the four reorder commands: " + JSON.stringify(menu));
       await p.getByText(command, { exact: true }).last().click();
       await p.evaluate(async ({ expected, originalLink }) => {
         const app = window.comfyAPI.app.app;
