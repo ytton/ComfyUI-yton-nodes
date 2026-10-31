@@ -1,0 +1,63 @@
+.yton-panel.yton-h3-studio {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(380px, 1.25fr) minmax(270px, 1fr) 78px;
+  align-items: stretch;
+  gap: 18px;
+  padding: 18px 12px 18px 18px;
+  background: var(--yton-node-bg, #1e1f22);
+  color: var(--yton-node-fg, #e3e5e8);
+  min-height: 560px;
+}
+.yton-h3-controls { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.yton-h3-section { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.yton-h3-heading { font-size: 12px; font-weight: 600; opacity: .85; line-height: 20px; }
+.yton-h3-prompt {
+  width: 100%; min-height: 168px; resize: vertical; padding: 10px;
+  border: 1px solid #ffffff25; border-radius: 7px;
+  background: #00000020; color: inherit; font: inherit; line-height: 1.6;
+  user-select: text;
+}
+.yton-h3-prompt:focus { outline: 1px solid #829be0; }
+.yton-h3-segments { display: flex; flex-wrap: wrap; gap: 5px; }
+.yton-h3-choice {
+  flex: 1; min-width: 46px; min-height: 34px; padding: 7px 6px; border: 1px solid #ffffff18;
+  border-radius: 7px; background: #ffffff05; color: inherit; font: inherit;
+  font-size: 11px; cursor: pointer; white-space: nowrap;
+}
+.yton-h3-choice:hover { background: #ffffff15; }
+.yton-h3-choice.active { background: #5865f240; border-color: #829be0; }
+.yton-h3-tiers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.yton-h3-ratios { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.yton-h3-durations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.yton-h3-ref-size { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.yton-h3-custom-choice {
+  display: flex; align-items: center; min-width: 0; gap: 3px;
+  border: 1px solid #ffffff18; border-radius: 7px; padding: 0 5px 0 0;
+  background: #ffffff05;
+}
+.yton-h3-custom-choice.active { background: #5865f240; border-color: #829be0; }
+.yton-h3-custom-choice .yton-h3-choice {
+  flex: 0 1 auto; min-width: 0; border: 0; background: transparent; padding: 7px 5px;
+}
+.yton-h3-custom-choice input {
+  min-width: 0; width: 44px; flex: 1; padding: 3px 1px; font: inherit; font-size: 12px;
+  color: inherit; background: #00000018; border: 0; border-radius: 3px; text-align: center;
+  appearance: textfield;
+}
+.yton-h3-custom-choice input::-webkit-inner-spin-button { appearance: none; }
+.yton-h3-unit { font-size: 10px; opacity: .55; }
+.yton-h3-custom-canvas { display: flex; gap: 8px; }
+.yton-h3-number { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.yton-h3-number input {
+  width: 98px; min-width: 0; padding: 6px 8px; border: 1px solid #ffffff25;
+  border-radius: 5px; background: #00000020; color: inherit; font: inherit;
+}
+.yton-h3-size-info { font-size: 11px; opacity: .65; min-height: 15px; }
+.yton-h3-media { min-width: 0; padding-left: 14px; border-left: 1px solid #ffffff15; }
+.yton-h3-media .yton-media-panel { background: transparent; padding: 0; gap: 12px; margin-top: 8px; }
+.yton-h3-media .yton-media-item { min-width: 0; }
+.yton-h3-media .yton-media-thumb { object-fit: contain; }
+.yton-h3-outputs { border-left: 1px solid #ffffff15; padding-left: 10px; min-width: 0; }
+.yton-h3-output-row { min-height: 38px; display: flex; align-items: center; font-size: 11px; white-space: nowrap; }
+.yton-h3-studio [hidden] { display: none !important; }

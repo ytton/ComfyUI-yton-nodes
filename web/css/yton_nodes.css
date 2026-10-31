@@ -217,8 +217,7 @@
   content: "上传中…"; position: absolute; inset: 0; display: grid; place-items: center;
   background: #141517dd; color: #ddd; font-size: 12px; z-index: 4;
 }
-.yton-media-thumb { width: 100%; height: 100%; display: block; object-fit: cover; pointer-events: none; }
-img.yton-media-thumb { object-fit: contain; }
+.yton-media-thumb { width: 100%; height: 100%; display: block; object-fit: contain; pointer-events: none; }
 .yton-media-thumb[hidden] { display: none; }
 .yton-media-item.output-disabled .yton-media-thumb,
 .yton-media-item.output-disabled .yton-image-mask-preview,

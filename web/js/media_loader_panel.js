@@ -30,12 +30,12 @@ function fileURL(filename) {
   return api.apiURL(`/view?${new URLSearchParams({ filename: clean.slice(slash + 1), subfolder: clean.slice(0, Math.max(0, slash)), type })}`);
 }
 
-export function setupMediaLoaderNode(node) {
+export function setupMediaLoaderNode(node, { embedded = false, onChange = () => {} } = {}) {
   node.properties.ytonMediaCollapsed = { image: false, video: true, audio: true };
   // ComfyUI's Vue renderer adds sockets for primitive widgets automatically.
   // These file fields belong exclusively to the slot panel.
-  node.onConnectInput = () => false;
-  const widgets = new Map((node.widgets || []).map(widget => [widget.name, widget]));
+  if (!embedded) node.onConnectInput = () => false;
+  const widgets = new Map((node.widgets || []).filter(widget => !embedded || /^(disable_)?(image|video|audio)_\d+$/.test(widget.name)).map(widget => [widget.name, widget]));
   for (const widget of widgets.values()) {
     widget.type = "hidden";
     widget.hidden = true;
@@ -340,7 +340,7 @@ export function setupMediaLoaderNode(node) {
   }
 
   function render() {
-    while (node.inputs?.length) node.removeInput(node.inputs.length - 1);
+    if (!embedded) while (node.inputs?.length) node.removeInput(node.inputs.length - 1);
     for (const section of sections) {
       section.grid.querySelectorAll("audio, video").forEach(source => source.pause());
       section.grid.replaceChildren(...Array.from({ length: section.count }, (_, index) => renderCard(section, index)));
@@ -349,6 +349,7 @@ export function setupMediaLoaderNode(node) {
       section.header.setAttribute("aria-expanded", String(!collapsed));
     }
     node.setDirtyCanvas(true, true);
+    onChange();
   }
   for (const definition of CATEGORIES) sections.push(createSection(definition));
   for (const widget of widgets.values()) {
@@ -367,6 +368,9 @@ export function setupMediaLoaderNode(node) {
     return onRemoved?.apply(this, arguments);
   };
   render();
-  node.setSize([640, node.size[1]]);
-  mountNodePanel(node, "media_loader_ui", panel, 420, 520);
+  if (!embedded) {
+    node.setSize([640, node.size[1]]);
+    mountNodePanel(node, "media_loader_ui", panel, 420, 520);
+  }
+  return panel;
 }
