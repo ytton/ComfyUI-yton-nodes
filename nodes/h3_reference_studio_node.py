@@ -46,8 +46,7 @@ class YtonH3ReferenceStudio(io.ComfyNode):
                 *media,
             ],
             outputs=[io.Conditioning.Output(display_name="正向条件"), io.Latent.Output(display_name="AV latent"),
-                     io.Int.Output(display_name="宽度"), io.Int.Output(display_name="高度"),
-                     io.Int.Output(display_name="帧数")],
+                     io.Int.Output(display_name="宽度"), io.Int.Output(display_name="高度")],
         )
 
     @classmethod
@@ -98,4 +97,4 @@ class YtonH3ReferenceStudio(io.ComfyNode):
             ref_videos=ref_videos, ref_video_audios=ref_video_audios,
             ref_audios={f"ref_audio_{i}": audio for i, audio in enumerate(audios, 1)},
         )
-        return io.NodeOutput(*output.result, width, height, length)
+        return io.NodeOutput(*output.result, width, height)

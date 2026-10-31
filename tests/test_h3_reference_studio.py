@@ -56,13 +56,13 @@ class StudioTests(unittest.TestCase):
         clip = Clip()
         result = self.execute(clip=clip)
         self.assertEqual(len(clip.references), 0)
-        self.assertEqual(result.result[2:], (864, 480, 124))
+        self.assertEqual(result.result[2:], (864, 480))
         self.assertIn("samples", result.result[1])
         self.assertEqual(result.result[0][0][0].shape, (1, 2, 4))
 
     def test_preset_dimensions_and_fractional_duration(self):
         result, native = self.mocked(([], [], []), resolution="1080p", aspect_ratio="9:16", duration=7.5)
-        self.assertEqual(result.result, ("positive", "latent", 1088, 1920, 192))
+        self.assertEqual(result.result, ("positive", "latent", 1088, 1920))
         self.assertEqual((native["width"], native["height"], native["length"]), (1088, 1920, 192))
 
     def test_auto_ratio_uses_first_enabled_image(self):
@@ -108,9 +108,9 @@ class StudioTests(unittest.TestCase):
             fingerprint = Studio.fingerprint_inputs(image_1=filename, prompt="prompt")
             self.assertEqual(fingerprint[0][2], str(first))
 
-    def test_schema_has_model_inputs_media_controls_and_five_outputs(self):
+    def test_schema_has_model_inputs_media_controls_and_four_outputs(self):
         info = Studio.GET_NODE_INFO_V1()
-        self.assertEqual(info["output"], ["CONDITIONING", "LATENT", "INT", "INT", "INT"])
+        self.assertEqual(info["output"], ["CONDITIONING", "LATENT", "INT", "INT"])
         self.assertEqual(info["input"]["optional"]["vae"][0], "VAE")
         self.assertIn("disable_audio_3", info["input"]["required"])
         self.assertIn("16:9|1080p", info["input"]["required"]["resolution"][1]["yton_presets"])

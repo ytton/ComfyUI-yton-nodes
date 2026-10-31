@@ -13,7 +13,6 @@ const element = (tag, className, text) => {
   if (text) item.textContent = text;
   return item;
 };
-const TYPES = ["正向条件", "AV latent", "宽度", "高度", "帧数"];
 
 function setupStudio(node) {
   const widgets = Object.fromEntries(node.widgets.map(w => [w.name, w]));
@@ -35,13 +34,9 @@ function setupStudio(node) {
     if (widget.element) widget.element.style.display = "none";
   }
   const panel = element("div", "yton-panel yton-h3-studio");
-  // The output rail sits beside the panel and must not push that panel down
-  // when LiteGraph measures sockets to find the widget starting position.
-  node.widgets_start_y = 90;
   const controls = element("div", "yton-h3-controls");
   const mediaColumn = element("div", "yton-h3-media");
-  const outputs = element("div", "yton-h3-outputs");
-  panel.append(controls, mediaColumn, outputs);
+  panel.append(controls, mediaColumn);
   const groups = [];
   let refreshing = false;
 
@@ -167,13 +162,6 @@ function setupStudio(node) {
   mediaColumn.append(mediaPanel);
   mediaPanel.addEventListener("load", () => refresh(), true);
 
-  outputs.append(element("div", "yton-h3-heading", "输出"));
-  const outputRows = TYPES.map((name, index) => {
-    const row = element("div", "yton-h3-output-row", name);
-    node.outputs[index].label = " ";
-    row.dataset.output = index; outputs.append(row); return row;
-  });
-
   function dimensions(ratio = widgets.aspect_ratio.value, tier = widgets.resolution.value) {
     if (ratio === "auto") {
       const image = [...mediaColumn.querySelectorAll(".image-grid .has-media:not(.output-disabled) img")].find(img => img.naturalWidth);
@@ -216,39 +204,6 @@ function setupStudio(node) {
     node.setDirtyCanvas(true, true);
     refreshing = false;
   }
-  const originalOutputPos = node.getConnectionPos;
-  function outputY(index) {
-    const row = outputRows[index];
-    if (!row?.isConnected || !row.offsetHeight) return null;
-    return node.pos[1] + 100 + row.offsetTop + row.offsetHeight / 2;
-  }
-  node.getConnectionPos = function (isInput, index, out) {
-    const pos = originalOutputPos.call(this, isInput, index, out);
-    if (!isInput && !this.flags.collapsed) {
-      const y = outputY(index);
-      if (y != null) { pos[0] = this.pos[0] + this.size[0] - 4; pos[1] = y; }
-    }
-    return pos;
-  };
-  const getOutputPos = node.getOutputPos;
-  node.getOutputPos = function (index) {
-    const y = !this.flags.collapsed && outputY(index);
-    return y ? [this.pos[0] + this.size[0] - 4, y] : getOutputPos.call(this, index);
-  };
-  const measureSlot = node._measureSlot;
-  node._measureSlot = function (slot, index, isInput) {
-    const result = measureSlot.call(this, slot, index, isInput);
-    if (!isInput) {
-      const y = outputY(index);
-      if (y != null) {
-        const height = LiteGraph.NODE_SLOT_HEIGHT;
-        slot.boundingRect[0] = this.pos[0] + this.size[0] - 4 - height / 2;
-        slot.boundingRect[1] = y - height / 2;
-        slot.boundingRect[2] = slot.boundingRect[3] = height;
-      }
-    }
-    return result;
-  };
   const configure = node.onConfigure;
   node.onConfigure = function () { const result = configure?.apply(this, arguments); requestAnimationFrame(refresh); return result; };
   const connections = node.onConnectionsChange;

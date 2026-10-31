@@ -1,7 +1,7 @@
 .yton-panel.yton-h3-studio {
   position: relative;
   display: grid;
-  grid-template-columns: clamp(300px, 33%, 376px) minmax(320px, 1fr) 78px;
+  grid-template-columns: clamp(300px, 33%, 376px) minmax(320px, 1fr);
   align-items: stretch;
   gap: 14px;
   padding: 14px 12px 14px 14px;
@@ -64,6 +64,4 @@
 .yton-h3-media .yton-media-panel { background: transparent; padding: 0; gap: 12px; margin-top: 8px; }
 .yton-h3-media .yton-media-item { min-width: 0; }
 .yton-h3-media .yton-media-thumb { object-fit: contain; }
-.yton-h3-outputs { border-left: 1px solid #ffffff15; padding-left: 10px; min-width: 0; }
-.yton-h3-output-row { min-height: 38px; display: flex; align-items: center; font-size: 11px; white-space: nowrap; }
 .yton-h3-studio [hidden] { display: none !important; }

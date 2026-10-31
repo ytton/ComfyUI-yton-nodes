@@ -100,10 +100,20 @@ export async function checkH3Studio(page, definition, imageBase64) {
     const layout = await panel.evaluate(panel => {
       const controls = panel.querySelector(".yton-h3-controls").getBoundingClientRect();
       const media = panel.querySelector(".yton-h3-media").getBoundingClientRect();
-      const output = panel.querySelector(".yton-h3-outputs").getBoundingClientRect();
-      return { columns: controls.right < media.left && media.right < output.left, overflow: panel.scrollWidth > panel.clientWidth + 2, mediaWider: media.width > controls.width };
+      return { columns: controls.right < media.left && panel.children.length === 2, overflow: panel.scrollWidth > panel.clientWidth + 2, mediaWider: media.width > controls.width };
     });
-    assert(layout.columns && !layout.overflow && layout.mediaWider, "three columns allocate more width to media");
+    assert(layout.columns && !layout.overflow && layout.mediaWider, "two columns allocate more width to media");
+    const outputsAbovePanel = await p.evaluate(() => {
+      const app = window.comfyAPI.app.app, node = window.studioTestNode;
+      const canvasRect = app.canvas.canvas.getBoundingClientRect();
+      const panelTop = document.querySelector(".yton-h3-studio").getBoundingClientRect().top;
+      return node.outputs.length === 4 && node.outputs.every((_, index) => {
+        const point = node.getOutputPos(index);
+        const screenY = canvasRect.top + (point[1] + app.canvas.ds.offset[1]) * app.canvas.ds.scale;
+        return screenY < panelTop;
+      });
+    });
+    assert(outputsAbovePanel, "all four native outputs stay above the controls");
     await p.evaluate(() => window.studioTestNode.setSize([860, window.studioTestNode.size[1]]));
     await p.waitForFunction(() => document.querySelector(".yton-h3-studio").clientWidth < 880);
     const grids = await panel.evaluate(panel => [
@@ -131,10 +141,10 @@ export async function checkH3Studio(page, definition, imageBase64) {
       return { from: point(output), to: point(sink.getInputPos(0)),
         hit: node.getSlotInPosition(output[0], output[1])?.output?.type };
     });
-    assert(wire.hit === "INT", "output hit target matches its visual row");
+    assert(wire.hit === "INT", "native output hit target is connectable");
     await p.mouse.move(wire.from.x, wire.from.y); await p.mouse.down();
     await p.mouse.move(wire.to.x, wire.to.y, { steps: 12 }); await p.mouse.up();
-    assert(await p.evaluate(() => window.studioIntSink.inputs[0].link != null), "actual width wire can be dragged from output rail");
+    assert(await p.evaluate(() => window.studioIntSink.inputs[0].link != null), "actual width wire can be dragged from the top output");
     await p.evaluate(() => {
       const app = window.comfyAPI.app.app;
       const old = LiteGraph.createNode("YtonEasyMediaLoader");
