@@ -30,8 +30,17 @@ function setupLoraLoader(node) {
       app.canvas.prompt("models/loras 中暂无 LoRA", "", () => {}, event);
       return;
     }
-    new LiteGraph.ContextMenu(names, { event, title: "选择 LoRA（可搜索）",
-      callback: name => { select(name); changed(); } }, window);
+    const menu = new LiteGraph.ContextMenu(names, {
+      event, title: "选择 LoRA", className: "dark",
+      scale: Math.max(1, app.canvas.ds.scale),
+      extra: { rgthree_doNotNest: true },
+      callback: name => { select(name); changed(); },
+    }, window);
+    const filter = menu.root.querySelector(".comfy-context-menu-filter");
+    if (filter) {
+      filter.placeholder = "搜索 LoRA 文件名或目录";
+      filter.setAttribute("aria-label", "搜索 LoRA");
+    }
   }
 
   function removeRow(row) {

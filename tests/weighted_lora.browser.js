@@ -73,14 +73,32 @@ export async function runWeightedLora(page, definition, baseURL = "http://127.0.
         const source = app.graph._nodes.find(n => n.comfyClass === "PrimitiveFloat");
         pos = source.getConnectionPos(false, 0, new Float32Array(2));
       } else if (kind === "input") pos = node.getInputPos(node.findInputSlot(`strengths.strength_${slot}`));
-      else pos = [node.pos[0] + (kind === "add" || kind === "menu" ? node.size[0] / 2 : kind === "toggle" ? 30 : node.size[0] - 46), node.pos[1] + widget.y + 15];
+      else pos = [node.pos[0] + (kind === "add" || kind === "menu" ? node.size[0] / 2 : kind === "toggle" ? 30 : kind === "choose" ? 90 : node.size[0] - 46), node.pos[1] + widget.y + 15];
       const rect = app.canvas.canvas.getBoundingClientRect();
       return { x: (pos[0] + app.canvas.ds.offset[0]) * app.canvas.ds.scale + rect.x,
         y: (pos[1] + app.canvas.ds.offset[1]) * app.canvas.ds.scale + rect.y };
     }, { kind, slot });
     let pos = await point("add");
     await p.mouse.click(pos.x, pos.y);
-    await p.getByText(definition.input.required.loras[1].yton_loras[6], { exact: true }).last().click();
+    const names = definition.input.required.loras[1].yton_loras;
+    const filter = p.getByRole("textbox", { name: "搜索 LoRA", exact: true });
+    await filter.fill("yton-search-no-matching-lora");
+    if (await p.locator(".litecontextmenu .litemenu-entry:visible").count()) throw Error("unmatched search should hide all LoRAs");
+    await filter.fill("");
+    if (await p.locator(".litecontextmenu .litemenu-entry:visible").count() !== names.length) throw Error("clearing search should restore the complete list");
+    await filter.fill(names[6].toUpperCase());
+    const visible = await p.locator(".litecontextmenu .litemenu-entry:visible").allTextContents();
+    if (visible.length !== 1 || visible[0].trim() !== names[6]) throw Error("search should match the full path without case sensitivity");
+    await filter.press("Enter");
+    pos = await point("choose", 4);
+    await p.mouse.click(pos.x, pos.y);
+    await filter.fill(names[7]);
+    await p.getByText(names[7], { exact: true }).last().click();
+    await p.evaluate(name => {
+      const node = window.comfyAPI.app.app.graph._nodes.find(n => n.comfyClass === "YtonWeightedLoraLoader");
+      const row = JSON.parse(node.widgets.find(w => w.name === "loras").value).find(r => r.slot === 4);
+      if (row.lora !== name) throw Error("filtered selection should update the existing row");
+    }, names[7]);
     pos = await point("increase");
     await p.mouse.click(pos.x, pos.y);
     pos = await point("toggle", 3);
@@ -133,7 +151,7 @@ export async function runWeightedLora(page, definition, baseURL = "http://127.0.
       if (node.inputs.find(i => i.name === "strengths.strength_2").link !== originalLink || !Array.isArray(inputs["strengths.strength_2"])) throw Error("reordered strength wire was not preserved in workflow and API export");
     }, originalLink);
     if (errors.length) throw Error(errors.join("\n"));
-    return { ...result, ui, reorder: "right click: top/down/bottom/up, aligned sockets, stable strength wire, save/reload" };
+    return { ...result, ui, search: "case-insensitive paths, no matches, clear, Enter selection, replace existing row", reorder: "right click: top/down/bottom/up, aligned sockets, stable strength wire, save/reload" };
   } finally {
     await context.close();
   }
