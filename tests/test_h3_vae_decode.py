@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from test_h3_video_context import PLUGIN, torch, execution, asyncio
 from test_h3_omni_variants import VARIANTS, expanded
-from video_context_test.omni_decode import DECODE_MODES, REFERENCE_DETAIL_MODE
+from video_context_test.omni_decode import DECODE_MODES, REFERENCE_DETAIL_MODE, X2_VAE
 
 
 def sampling_graph(graph):
@@ -42,7 +42,7 @@ class VaeDecodeTests(unittest.TestCase):
             required = cls.INPUT_TYPES()["required"]
             self.assertEqual(required["vae_decode_mode"][0], ["标准解码", "X2 VAE 解码", REFERENCE_DETAIL_MODE])
             self.assertEqual(required["vae_decode_mode"][1]["default"], "标准解码")
-            self.assertIn(required["x2_vae_name"][1]["default"], required["x2_vae_name"][0])
+            self.assertNotIn("x2_vae_name", required)
 
     def test_switching_decoder_preserves_every_sampling_context_and_face_node(self):
         for cls in VARIANTS.values():
@@ -63,12 +63,12 @@ class VaeDecodeTests(unittest.TestCase):
                                     face_count=2, enable_context=True, previous_video=["previous", 0])
                     standard = expanded(cls, **settings)
                     actual = expanded(cls, **settings, vae_decode_mode=REFERENCE_DETAIL_MODE,
-                                      x2_vae_name="detail.safetensors", reference_detail_strength=0.75)
+                                      reference_detail_strength=0.75)
                     detail = actual.pop("reference_detail")
                     self.assertEqual(detail["class_type"], "MiniMaxH3X2DetailedUpscale")
-                    self.assertEqual(detail["inputs"], dict(images=["ref", 0], detail_vae="detail.safetensors", detail_strength=0.75))
+                    self.assertEqual(detail["inputs"], dict(images=["ref", 0], detail_vae=X2_VAE, detail_strength=0.75))
                     self.assertEqual(set(detail["inputs"]), set(self.detail.MiniMaxH3X2DetailedUpscale.INPUT_TYPES()["required"]))
-                    self.assertEqual(actual["decode_vae"]["inputs"]["vae_name"], "detail.safetensors")
+                    self.assertEqual(actual["decode_vae"]["inputs"]["vae_name"], X2_VAE)
                     self.assertEqual(actual["frames"]["class_type"], "MiniMaxH3VAEDecodeFast")
                     refs = [node for node in actual.values() if node["class_type"] == "YtonMiniMaxH3ReferenceToVideo"]
                     self.assertGreaterEqual(len(refs), 2)
@@ -102,7 +102,7 @@ class VaeDecodeTests(unittest.TestCase):
 
     def test_standard_mode_uses_loader_vae_without_loading_x2_weights(self):
         for cls in VARIANTS.values():
-            graph = expanded(cls, vae_decode_mode="标准解码", x2_vae_name="unused.safetensors")
+            graph = expanded(cls, vae_decode_mode="标准解码")
             self.assertNotIn("decode_vae", graph)
             self.assertEqual(graph["frames"]["class_type"], "VAEDecode")
             self.assertTrue(graph["frames"]["inputs"]["vae"][0].endswith("models"))
@@ -110,10 +110,10 @@ class VaeDecodeTests(unittest.TestCase):
 
     def test_x2_only_replaces_final_video_vae_and_keeps_author_settings(self):
         for cls in VARIANTS.values():
-            graph = expanded(cls, vae_decode_mode="X2 VAE 解码", x2_vae_name="test-x2.safetensors")
+            graph = expanded(cls, vae_decode_mode="X2 VAE 解码")
             decode = graph["frames"]["inputs"]
             self.assertEqual(graph["decode_vae"]["class_type"], "VAELoader")
-            self.assertEqual(graph["decode_vae"]["inputs"]["vae_name"], "test-x2.safetensors")
+            self.assertEqual(graph["decode_vae"]["inputs"]["vae_name"], X2_VAE)
             self.assertTrue(decode["vae"][0].endswith("decode_vae"))
             self.assertTrue(decode["tiling"])
             self.assertEqual((decode["tile_size"], decode["tile_overlap"]), (256, 64))

@@ -31,14 +31,14 @@ export async function runH3VaeDecode(browser, definitions, baseURL = 'http://127
         const payload = async () => (await app.graphToPrompt()).output[id].inputs
         assert(widget('vae_decode_mode').value === '标准解码', type + ': standard default')
         assert(widget('vae_decode_mode').options.values.join(',') === '标准解码,X2 VAE 解码,X2 VAE 解码 + 参考图增强', type + ': decode choices')
-        assert(widget('x2_vae_name').hidden && widget('vae_tile_size').hidden && widget('reference_detail_strength').hidden, type + ': inactive controls hidden')
+        assert(!widget('x2_vae_name'), type + ': dedicated weights handled internally')
+        assert(widget('vae_tile_size').hidden && widget('reference_detail_strength').hidden, type + ': inactive controls hidden')
         const originalSize = [...node.size]
         change('width', 1344)
         change('height', 768)
         change('vae_decode_mode', 'X2 VAE 解码')
         change('vae_tile_size', 512)
         change('vae_tile_overlap', 128)
-        assert(!widget('x2_vae_name').hidden, type + ': X2 weights visible')
         assert(widget('width').label === '采样画布宽度（成片 ×2）', type + ': explicit output scale')
         assert(widget('width').value === 1344 && widget('height').value === 768, type + ': canvas unchanged')
         assert(widget('sampling_mode').value === '二采', type + ': sampling plan unchanged')
@@ -63,7 +63,7 @@ export async function runH3VaeDecode(browser, definitions, baseURL = 'http://127
         const reloaded = await payload()
         for (const value of [first, reloaded]) {
           assert(value.vae_decode_mode === 'X2 VAE 解码 + 参考图增强', type + ': decode mode serialized')
-          assert(value.x2_vae_name.toLowerCase().includes('minimax-h3-x2-detail'), type + ': local X2 default')
+          assert(!('x2_vae_name' in value), type + ': weights handled internally')
           assert(value.vae_tile_size === 512 && value.vae_tile_overlap === 128, type + ': tile settings serialized')
           assert(value.width === 1344 && value.height === 768, type + ': no canvas rewrite')
           assert(Array.isArray(value.sigmas), type + ': sigma connection preserved')
@@ -71,10 +71,10 @@ export async function runH3VaeDecode(browser, definitions, baseURL = 'http://127
           assert(value.reference_detail_strength === 0.75, type + ': reference strength serialized')
           assert(value.sampling_mode === '单采', type + ': pass count serialized')
         }
-        assert(!widget('x2_vae_name').hidden, type + ': X2 controls survive reload')
+        assert(!widget('vae_tile_size').hidden, type + ': X2 controls survive reload')
         assert(!widget('reference_detail_strength').hidden, type + ': reference controls survive reload')
         change('vae_decode_mode', '标准解码')
-        assert(widget('x2_vae_name').hidden && widget('vae_tile_size').hidden && widget('reference_detail_strength').hidden, type + ': hide controls on return')
+        assert(widget('vae_tile_size').hidden && widget('reference_detail_strength').hidden, type + ': hide controls on return')
         assert(widget('width').label === '最终宽度', type + ': normal label restored')
         change('sampling_mode', '二采')
         assert(!widget('second_model').hidden, type + ': second pass independent')

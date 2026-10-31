@@ -7,7 +7,7 @@ import folder_paths
 
 from .omni_video_context_graph import build_video_context_graph
 from .omni_sampling import FILM_MODEL, UPSCALE_MODEL
-from .omni_decode import DECODE_MODES, X2_VAE
+from .omni_decode import DECODE_MODES
 
 if "h3_latent_upscalers" not in folder_paths.folder_names_and_paths:
     folder_paths.add_model_folder_path("h3_latent_upscalers", os.path.join(folder_paths.models_dir, "h3_latent_upscalers"))
@@ -172,13 +172,8 @@ class H3OmniGenerate:
             required["selflift_highres_tiles"] = (["auto", "2", "4", "8"], {"default": "auto"})
         for name in ("width", "height"):
             required[name][1]["tooltip"] += " X2 VAE 模式下，此值为解码前采样画布尺寸，成片对应边长为其 2 倍；切换模式不会改写此值。"
-        vae_names = folder_paths.get_filename_list("vae")
-        x2_default = next((name for name in vae_names if "minimax-h3-x2-detail" in name.lower()), X2_VAE)
         required["vae_decode_mode"] = (DECODE_MODES, {"default": "标准解码",
             "tooltip": "标准解码沿用原流程；X2 VAE 解码是作者模式一；X2 VAE 解码 + 参考图增强是模式二，逐张增强图片参考后生成，最后 X2 fast 解码。两种 X2 模式均输出宽高各 2 倍，不改变采样宽高。未提供图片时跳过参考图增强。"})
-        required["x2_vae_name"] = ([x2_default, *[name for name in vae_names if name != x2_default]], {
-            "default": x2_default,
-            "tooltip": "位于 models/vae 的 X2 权重，供最终解码使用。模式二同时用这份权重做参考图 B32 细节增强，需含 detail_b32 参数；无需分别选择两次。其他内部处理沿用主加载器的视频 VAE。"})
         required["vae_tile_size"] = ("INT", {"default": 256, "min": 256, "max": 4096, "step": 16,
             "tooltip": "专用解码器的空间分块大小。作者基线 256；调大可能更快，但增加显存占用。"})
         required["vae_tile_overlap"] = ("INT", {"default": 64, "min": 16, "max": 1024, "step": 16,
