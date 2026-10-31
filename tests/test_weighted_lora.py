@@ -21,9 +21,22 @@ def row(slot, strength=1, enabled=True):
 
 
 class WeightedLoraTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        Loader.GET_SCHEMA()
+
     def expand(self, rows, **kwargs):
         with patch.object(module.folder_paths, "get_full_path_or_raise", return_value="test.safetensors"):
-            return Loader.execute("model", json.dumps(rows), **kwargs)
+            return Loader.EXECUTE_NORMALIZED("model", json.dumps(rows), **kwargs)
+
+    def test_comfy_execution_clone_accepts_expansion(self):
+        clone = Loader.PREPARE_CLASS_CLONE(None)
+        with patch.object(module.folder_paths, "get_full_path_or_raise", return_value="test.safetensors"):
+            result = getattr(clone, clone.FUNCTION)(
+                model="model", loras=json.dumps([row(0)]), strengths={"strength_0": 0.6})
+        loader = next(iter(result.expand.values()))
+        self.assertEqual(loader["class_type"], "LoraLoaderModelOnly")
+        self.assertEqual(loader["inputs"]["strength_model"], 0.6)
 
     def test_empty_stack_and_optional_clip(self):
         result = self.expand([])

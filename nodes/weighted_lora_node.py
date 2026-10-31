@@ -15,6 +15,7 @@ class YtonWeightedLoraLoader(io.ComfyNode):
             node_id="YtonWeightedLoraLoader",
             display_name="权重 LoRA 加载器",
             category="yton-nodes/模型",
+            enable_expand=True,
             description="动态添加 LoRA，按列表顺序加载。每行左侧接口控制该行强度；未连线时使用行内数值。CLIP 可选，接入后使用相同强度。",
             search_aliases=["lora", "LoRA", "权重", "动态加载器"],
             inputs=[
