@@ -72,3 +72,40 @@ export function mountNodePanel(node, name, panel, minWidth, initialHeight, { fit
   fitContent();
   return widget;
 }
+
+export function followNodeColours(node, panel) {
+  function sync() {
+    panel.style.setProperty("--yton-node-bg", node.bgcolor || LiteGraph.NODE_DEFAULT_BGCOLOR);
+    panel.style.setProperty("--yton-node-fg", node.title_text_color || LiteGraph.NODE_TEXT_COLOR);
+  }
+  // Vue nodes do not run the canvas drawing hook. Colour edits must update
+  // the DOM panel when the native palette writes the node's colour fields.
+  for (const name of ["bgcolor", "title_text_color"]) {
+    let owner = node;
+    let descriptor;
+    while (owner && !descriptor) {
+      descriptor = Object.getOwnPropertyDescriptor(owner, name);
+      owner = Object.getPrototypeOf(owner);
+    }
+    let value = node[name];
+    Object.defineProperty(node, name, {
+      configurable: true,
+      enumerable: true,
+      get() { return descriptor?.get ? descriptor.get.call(this) : value; },
+      set(next) {
+        if (descriptor?.set) descriptor.set.call(this, next);
+        else value = next;
+        sync();
+      },
+    });
+  }
+  for (const hook of ["onConfigure", "onDrawBackground"]) {
+    const previous = node[hook];
+    node[hook] = function () {
+      const result = previous?.apply(this, arguments);
+      sync();
+      return result;
+    };
+  }
+  sync();
+}

@@ -47,6 +47,25 @@ export async function checkH3Studio(page, definition, imageBase64) {
         noScroll: shell.scrollHeight <= shell.clientHeight + 1 && shell.scrollWidth <= shell.clientWidth + 1 };
     });
     assert(defaultLayout.bottomGap < 2 && defaultLayout.noScroll, "initial columns align at the bottom without a scrollbar");
+    const palettes = await p.evaluate(async () => {
+      const node = window.studioTestNode;
+      const panel = document.querySelector(".yton-h3-studio");
+      const original = { bg: node.bgcolor, fg: node.title_text_color };
+      const samples = [];
+      for (const [bg, fg] of [["#213b53", "#edf4fc"], ["#583329", "#fff1eb"], ["#e7efe5", "#22321f"]]) {
+        node.bgcolor = bg; node.title_text_color = fg;
+        await new Promise(resolve => setTimeout(resolve, 200));
+        samples.push({ bg, fg, variables: [panel.style.getPropertyValue("--yton-node-bg"), panel.style.getPropertyValue("--yton-node-fg")],
+          backgrounds: [".yton-h3-prompt", ".yton-pill-btn.active", ".yton-media-item"].map(selector => getComputedStyle(panel.querySelector(selector)).backgroundColor),
+          text: [".yton-h3-prompt", ".yton-ratio-text", ".yton-media-row-header"].map(selector => getComputedStyle(panel.querySelector(selector)).color),
+          selectedBorder: getComputedStyle(panel.querySelector(".yton-pill-btn.active")).borderColor });
+      }
+      node.bgcolor = original.bg; node.title_text_color = original.fg;
+      return samples;
+    });
+    assert(palettes.every(sample => sample.variables[0] === sample.bg && sample.variables[1] === sample.fg), "native colour edits immediately reach the panel");
+    assert(palettes.every(sample => sample.text.every(color => color === sample.text[0]) && sample.selectedBorder === sample.text[0]), "control text and selection borders follow native foreground colour");
+    assert(palettes[0].backgrounds.every((color, index) => color !== palettes[2].backgrounds[index]), "fields, buttons and media slots adapt to dark and light palettes");
     await panel.getByRole("textbox", { name: "提示词", exact: true }).fill("用 <Picture 1> 生成视频");
     await panel.locator('[data-value="1080p"]').click();
     await panel.locator('[data-value="9:16"]').click();
@@ -89,6 +108,7 @@ export async function checkH3Studio(page, definition, imageBase64) {
     await panel.getByRole("button", { name: "禁用图片 3 输出", exact: true }).click();
     await panel.getByRole("button", { name: "参考视频 · 3", exact: true }).click();
     await panel.getByRole("button", { name: "参考音频 · 3", exact: true }).click();
+    await p.evaluate(() => { window.studioTestNode.bgcolor = "#213b53"; });
     const before = await p.evaluate(async () => {
       const app = window.comfyAPI.app.app, node = window.studioTestNode;
       const prompt = (await app.graphToPrompt()).output[node.id].inputs;
@@ -107,6 +127,7 @@ export async function checkH3Studio(page, definition, imageBase64) {
     await panel.getByRole("spinbutton", { name: "自定义秒数", exact: true }).waitFor();
     assert(await panel.getByRole("spinbutton", { name: "自定义秒数", exact: true }).inputValue() === "6.2", "duration survives reload");
     assert(await ref.getByRole("spinbutton").inputValue() === "0.75", "reference scale survives reload");
+    assert(await panel.evaluate(panel => panel.style.getPropertyValue("--yton-node-bg") === "#213b53" && panel.style.getPropertyValue("--yton-node-fg") === (window.studioTestNode.title_text_color || LiteGraph.NODE_TEXT_COLOR)), "node background survives reload and text follows native colour");
     const layout = await panel.evaluate(panel => {
       const controls = panel.querySelector(".yton-h3-controls").getBoundingClientRect();
       const media = panel.querySelector(".yton-h3-media").getBoundingClientRect();
@@ -167,6 +188,6 @@ export async function checkH3Studio(page, definition, imageBase64) {
     const fitModes = await p.locator("img.yton-media-thumb").evaluateAll(images => images.map(image => getComputedStyle(image).objectFit));
     assert(fitModes.length >= 2 && fitModes.every(mode => mode === "contain"), "both loaders contain their image previews");
     if (errors.length) throw Error(errors.join("\n"));
-    return { title: "H3 参考视频工作台", checks: "compact controls, wider media, H3 multipliers, ratio icons, placeholder inputs, fractional duration, uploads, drag/drop, disable, model links, save/reload, output wire, shared contain", size: before.size };
+    return { title: "H3 参考视频工作台", checks: "compact controls, wider media, native dark/light colours, H3 multipliers, ratio icons, placeholder inputs, fractional duration, uploads, drag/drop, disable, model links, save/reload, output wire, shared contain", size: before.size };
   } finally { await context.close(); }
 }

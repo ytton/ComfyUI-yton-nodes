@@ -1,5 +1,5 @@
 import { app } from "../../../scripts/app.js";
-import { mountNodePanel } from "./node_panel.js";
+import { mountNodePanel, followNodeColours } from "./node_panel.js";
 import { setupMediaLoaderNode } from "./media_loader_panel.js";
 
 const stylesheet = document.createElement("link");
@@ -212,6 +212,7 @@ function setupStudio(node) {
     const callback = widget.callback;
     widget.callback = function () { const result = callback?.apply(this, arguments); refresh(); return result; };
   }
+  followNodeColours(node, panel);
   node.setSize([1080, node.size[1]]);
   const domWidget = mountNodePanel(node, "h3_reference_studio_ui", panel, 860, 560, { fitHeight: true });
   domWidget.element.classList.add("yton-h3-studio-shell");
