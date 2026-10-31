@@ -6,7 +6,8 @@ def add_face_refinement(graph, frames, av_latent, model, clip, vae, audio_vae, i
                         large_strength, fallback_detector):
     if reverse:
         frames = graph.node("ReverseImageBatch", id="face_reverse", images=frames).out(0)
-    original_audio = graph.node("LTXVSeparateAVLatent", id="face_audio", av_latent=av_latent).out(1)
+    original_audio = (graph.node("LTXVSeparateAVLatent", id="face_audio", av_latent=av_latent).out(1)
+                      if av_latent is not None else None)
     for index in range(count):
         prefix = f"face_{index}_"
         crop = graph.node("H3FaceTrackCrop", id=prefix + "crop", images=frames,
@@ -23,11 +24,13 @@ def add_face_refinement(graph, frames, av_latent, model, clip, vae, audio_vae, i
             reference.set_input("image", image)
         injected = graph.node("H3InjectVideoLatent", id=prefix + "inject",
             av_latent=reference.out(1), images=crop.out(0), vae=vae)
-        split = graph.node("LTXVSeparateAVLatent", id=prefix + "split", av_latent=injected.out(0))
-        av = graph.node("LTXVConcatAVLatent", id=prefix + "av",
-            video_latent=split.out(0), audio_latent=original_audio)
+        latent = injected.out(0)
+        if original_audio is not None:
+            split = graph.node("LTXVSeparateAVLatent", id=prefix + "split", av_latent=latent)
+            latent = graph.node("LTXVConcatAVLatent", id=prefix + "av",
+                video_latent=split.out(0), audio_latent=original_audio).out(0)
         adaptive = graph.node("H3PerFrameDenoise", id=prefix + "denoise",
-            model=model, av_latent=av.out(0), transform=crop.out(1),
+            model=model, av_latent=latent, transform=crop.out(1),
             denoise_multiplier_small_face=1.0, denoise_multiplier_large_face=large_strength,
             scale_mode="absolute_px", face_px_small=30.0, face_px_large=120.0, gamma=1.0, smooth_frames=9)
         guider = graph.node("BasicGuider", id=prefix + "guider",
