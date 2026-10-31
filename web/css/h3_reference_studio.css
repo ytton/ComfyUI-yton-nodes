@@ -1,3 +1,4 @@
+.yton-widget-shell.yton-h3-studio-shell { height: auto; overflow: visible; }
 .yton-panel.yton-h3-studio {
   position: relative;
   display: grid;
@@ -11,6 +12,7 @@
 }
 .yton-h3-controls { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .yton-h3-section { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.yton-h3-controls > .yton-h3-section:first-child { flex: 1; }
 .yton-h3-heading { font-size: 12px; font-weight: 600; opacity: .85; line-height: 20px; }
 .yton-h3-heading-row { display: flex; align-items: center; justify-content: space-between; }
 .yton-h3-auto-ratio {
@@ -19,7 +21,7 @@
 }
 .yton-h3-auto-ratio.active { background: #ffffff25; border-color: #ffffff70; }
 .yton-h3-prompt {
-  width: 100%; min-height: 168px; resize: vertical; padding: 10px;
+  width: 100%; min-height: 168px; flex: 1; resize: vertical; padding: 10px;
   border: 1px solid #ffffff25; border-radius: 7px;
   background: #00000020; color: inherit; font: inherit; line-height: 1.6;
   user-select: text;

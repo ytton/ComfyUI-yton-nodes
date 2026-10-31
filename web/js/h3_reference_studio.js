@@ -214,6 +214,7 @@ function setupStudio(node) {
   }
   node.setSize([1080, node.size[1]]);
   const domWidget = mountNodePanel(node, "h3_reference_studio_ui", panel, 860, 560, { fitHeight: true });
+  domWidget.element.classList.add("yton-h3-studio-shell");
   domWidget.options.canvasOnly = true;
   requestAnimationFrame(refresh);
 }

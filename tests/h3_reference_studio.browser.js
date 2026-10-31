@@ -37,6 +37,16 @@ export async function checkH3Studio(page, definition, imageBase64) {
     const panel = p.locator(".yton-h3-studio");
     await panel.waitFor({ state: "visible" });
     await panel.locator(".yton-h3-size-info").first().getByText("1344 × 768", { exact: false }).waitFor();
+    assert(await panel.getByRole("button", { name: "参考视频 · 3", exact: true }).getAttribute("aria-expanded") === "true" &&
+      await panel.getByRole("button", { name: "参考音频 · 3", exact: true }).getAttribute("aria-expanded") === "true", "all reference sections start expanded");
+    const defaultLayout = await panel.evaluate(panel => {
+      const shell = panel.parentElement;
+      const left = panel.querySelector(".yton-h3-controls").lastElementChild.getBoundingClientRect();
+      const right = panel.querySelector(".yton-media-panel").getBoundingClientRect();
+      return { bottomGap: Math.abs(left.bottom - right.bottom),
+        noScroll: shell.scrollHeight <= shell.clientHeight + 1 && shell.scrollWidth <= shell.clientWidth + 1 };
+    });
+    assert(defaultLayout.bottomGap < 2 && defaultLayout.noScroll, "initial columns align at the bottom without a scrollbar");
     await panel.getByRole("textbox", { name: "提示词", exact: true }).fill("用 <Picture 1> 生成视频");
     await panel.locator('[data-value="1080p"]').click();
     await panel.locator('[data-value="9:16"]').click();
@@ -125,6 +135,7 @@ export async function checkH3Studio(page, definition, imageBase64) {
         style.gridTemplateRows.split(" ").length === rows && group.scrollWidth <= group.clientWidth + 2;
     }));
     assert(grids.every(Boolean), "all choice grids stay aligned at minimum node width");
+    assert(await panel.evaluate(panel => panel.parentElement.scrollHeight <= panel.parentElement.clientHeight + 1), "minimum node width still shows the complete panel without scrolling");
     await p.evaluate(() => window.studioTestNode.setSize([1080, window.studioTestNode.size[1]]));
     const wire = await p.evaluate(async () => {
       const app = window.comfyAPI.app.app, node = window.studioTestNode;

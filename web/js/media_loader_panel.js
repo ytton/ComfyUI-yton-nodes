@@ -31,7 +31,7 @@ function fileURL(filename) {
 }
 
 export function setupMediaLoaderNode(node, { embedded = false, onChange = () => {} } = {}) {
-  node.properties.ytonMediaCollapsed = { image: false, video: true, audio: true };
+  node.properties.ytonMediaCollapsed = { image: false, video: !embedded, audio: !embedded };
   // ComfyUI's Vue renderer adds sockets for primitive widgets automatically.
   // These file fields belong exclusively to the slot panel.
   if (!embedded) node.onConnectInput = () => false;
