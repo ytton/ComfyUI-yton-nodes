@@ -1,0 +1,67 @@
+{
+  "baseline": {
+    "scale_x": 1.0063003410341254,
+    "scale_y": 0.9969513749911829,
+    "dx": -6.91620180340802,
+    "dy": 1.2543798695492336,
+    "matches": 491,
+    "inliers": 437,
+    "mean_background_lab_difference": [
+      -1.471267318911032,
+      -0.12420317817209536,
+      0.3664301774428793
+    ]
+  },
+  "prefix": {
+    "scale_x": 1.0008577649578503,
+    "scale_y": 0.9993405868671779,
+    "dx": -1.1228588857742503,
+    "dy": 0.12277268387709725,
+    "matches": 711,
+    "inliers": 666,
+    "mean_background_lab_difference": [
+      -1.1345056514341252,
+      -0.056900978366542176,
+      -0.05526783543993474
+    ]
+  },
+  "metadata": [
+    {
+      "frames": 175,
+      "size": [
+        1920,
+        1088
+      ],
+      "fps": 24.0
+    },
+    {
+      "frames": 153,
+      "size": [
+        1920,
+        1088
+      ],
+      "fps": 24.0
+    },
+    {
+      "frames": 153,
+      "size": [
+        1920,
+        1088
+      ],
+      "fps": 24.0
+    }
+  ],
+  "paths": [
+    "F:\\ComfyUI\\ComfyUI\\output\\video\\H3测试流-传统二采极速-调度优化_00001_.mp4",
+    "F:\\ComfyUI\\ComfyUI\\output\\video\\H3测试流-传统二采极速-调度优化_00002_.mp4",
+    "F:\\ComfyUI\\ComfyUI\\output\\h3_stretch_prefix_test\\segment2_00001_.mp4"
+  ],
+  "date": "2026-11-01",
+  "reference_history_id": "926b9465-b037-415a-a205-73abf06bca78",
+  "prefix_low_prompt_id": "d3134e56-6d63-4e38-880c-49c2369af0df",
+  "prefix_high_prompt_id": "3522361b-5184-4ab9-8b33-de1d8c44b0a1",
+  "method": "SIFT background features outside x=720..1430, ratio test 0.7, RANSAC affine threshold 4 px; seam compares previous frame 174 with next delivered frame 0",
+  "scope": "Single second-segment comparison; previous first segment reused. Not a multi-segment guarantee.",
+  "low_request_seconds": 150.703,
+  "full_request_seconds": 177.394
+}
