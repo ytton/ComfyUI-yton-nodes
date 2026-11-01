@@ -36,8 +36,10 @@ def add_face_refinement(graph, frames, av_latent, model, clip, vae, audio_vae, i
             model=model, av_latent=latent, transform=crop.out(1),
             denoise_multiplier_small_face=1.0, denoise_multiplier_large_face=large_strength,
             scale_mode="absolute_px", face_px_small=30.0, face_px_large=120.0, gamma=1.0, smooth_frames=9)
+        sampling_model = graph.node("YtonH3PrepareSampling", id=prefix + "prepare_sampling",
+                                    model=adaptive.out(2), conditioning=reference.out(0), clip=clip).out(0)
         guider = graph.node("BasicGuider", id=prefix + "guider",
-            model=adaptive.out(2), conditioning=reference.out(0))
+            model=sampling_model, conditioning=reference.out(0))
         schedule = sigmas
         if schedule is None:
             schedule = graph.node("BasicScheduler", id=prefix + "schedule",

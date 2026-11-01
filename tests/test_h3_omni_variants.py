@@ -102,7 +102,8 @@ class OmniVariantTests(unittest.TestCase):
         self.assertEqual(sampler["inputs"]["cfg"], 1.0)
         self.assertEqual(graph["reference"]["inputs"]["width"], 1920)
         self.assertEqual(graph["high_ff_chunks"]["inputs"]["model"], ["hi_model", 0])
-        self.assertTrue(sampler["inputs"]["model_hires"][0].endswith("high_ff_chunks"))
+        self.assertTrue(sampler["inputs"]["model_hires"][0].endswith("high_prepare_sampling"))
+        self.assertTrue(graph["high_prepare_sampling"]["inputs"]["model"][0].endswith("high_ff_chunks"))
         for name in ("high_sample", "upscale", "high_sigmas", "schedule"):
             self.assertNotIn(name, graph)
 

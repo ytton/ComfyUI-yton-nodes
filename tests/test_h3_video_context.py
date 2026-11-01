@@ -163,7 +163,8 @@ class VideoContextGraphTests(unittest.TestCase):
         self.assertEqual(graph["main"]["inputs"]["sigmas"], ["sigma", 0])
         self.assertEqual(graph["high_sample"]["inputs"]["sigmas"], ["sigma2", 0])
         self.assertEqual(graph["high_ff_chunks"]["inputs"]["model"], ["model2", 0])
-        self.assertTrue(graph["high_guider"]["inputs"]["model"][0].endswith("high_ff_chunks"))
+        self.assertTrue(graph["high_guider"]["inputs"]["model"][0].endswith("high_prepare_sampling"))
+        self.assertTrue(graph["high_prepare_sampling"]["inputs"]["model"][0].endswith("high_ff_chunks"))
         self.assertEqual(graph["face_0_denoise"]["inputs"]["model"], ["face_model", 0])
         self.assertEqual(graph["face_0_sample"]["inputs"]["sigmas"], ["face_sigma", 0])
 
