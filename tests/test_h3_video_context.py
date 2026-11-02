@@ -242,6 +242,22 @@ class OptionalMediaRuntimeTests(unittest.TestCase):
 
 
 class NativeVideoOperationsTests(unittest.TestCase):
+    def test_debug_retains_the_sampled_context_and_audio_with_the_same_visible_colour_transform(self):
+        images = torch.rand(56, 8, 8, 3, generator=torch.Generator().manual_seed(19)) * 0.5 + 0.2
+        audio = {"waveform": torch.arange(56).view(1, 1, -1), "sample_rate": 24}
+        normal, normal_sound = YtonH3SegmentTrim().trim(images, 22, 2, audio)
+        debug, debug_sound = YtonH3SegmentTrim().trim(images, 0, 2, audio)
+        self.assertEqual(debug.shape[0], 54)
+        torch.testing.assert_close(debug[:22], images[:22])
+        torch.testing.assert_close(debug[22:], normal)
+        torch.testing.assert_close(debug_sound["waveform"][..., 22:], normal_sound["waveform"])
+        reference = images[21:22] * 0.95
+        normal = ColorTransfer.execute(normal, reference, "mkl_lab",
+                                       {"source_stats": "target_frame", "target_index": 0}, 0.75).result[0]
+        debug = ColorTransfer.execute(debug, reference, "mkl_lab",
+                                      {"source_stats": "target_frame", "target_index": 22}, 0.75).result[0]
+        torch.testing.assert_close(debug[22:], normal)
+
     def test_video_tail_and_audio_reach_native_h3_guide(self):
         frames = torch.linspace(0.2, 0.8, 60).view(60, 1, 1, 1).expand(60, 32, 32, 3)
         audio = {"waveform": torch.arange(80000).float().view(1, 1, -1).expand(1, 2, -1), "sample_rate": 32000}

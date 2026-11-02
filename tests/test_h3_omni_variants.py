@@ -5,6 +5,7 @@ import types
 import unittest
 
 from test_h3_video_context import PLUGIN, torch, DynamicPrompt, execution, asyncio
+from comfy_execution.graph_utils import is_link
 from video_context_test import omni_runtime
 from video_context_test.omni_video_context_graph import build_video_context_graph
 from video_context_test.omni_video_context_runtime import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
@@ -32,6 +33,40 @@ def expanded(cls, **overrides):
 
 
 class OmniVariantTests(unittest.TestCase):
+    def test_debug_keeps_context_without_changing_sampling_or_tail_trimming(self):
+        def comparable(cls, **options):
+            graph = expanded(cls, **options)
+            for node in graph.values():
+                for name, value in node["inputs"].items():
+                    if is_link(value):
+                        node["inputs"][name] = [value[0].split(".")[-1], value[1]]
+            return graph
+
+        for cls in VARIANTS.values():
+            self.assertFalse(cls.INPUT_TYPES()["required"]["debug_keep_context"][1]["default"])
+            for sampling in ("单采", "二采"):
+                for mode in ("普通模式", "复刻模式"):
+                    for extend in (True, False):
+                        with self.subTest(plan=cls.SAMPLING_PLAN, sampling=sampling, mode=mode, extend=extend):
+                            options = dict(sampling_mode=sampling, mode=mode, duration=141 / 24,
+                                           video=["source", 0], enable_context=True,
+                                           previous_video=["previous", 0], context_auto_extend=extend)
+                            normal = comparable(cls, **options)
+                            debug = comparable(cls, **options, debug_keep_context=True)
+                            self.assertEqual(set(debug), set(normal))
+                            for name in normal:
+                                if name not in ("trim", "seamless_color_match"):
+                                    self.assertEqual(debug[name], normal[name])
+                            self.assertEqual(debug["trim"]["inputs"]["head_trim_frames"], 0)
+                            for name in ("images", "audio", "fps", "tail_trim_frames"):
+                                self.assertEqual(debug["trim"]["inputs"][name], normal["trim"]["inputs"][name])
+                            self.assertEqual(normal["seamless_color_match"]["inputs"]["source_stats.target_index"], 0)
+                            self.assertEqual(debug["seamless_color_match"]["inputs"]["source_stats.target_index"], 22)
+            for enabled, previous in ((False, ["previous", 0]), (True, None)):
+                for mode in ("普通模式", "复刻模式"):
+                    options = dict(mode=mode, video=["source", 0], enable_context=enabled, previous_video=previous)
+                    self.assertEqual(comparable(cls, **options), comparable(cls, **options, debug_keep_context=True))
+
     def test_included_context_keeps_the_guide_without_extending_the_target_length(self):
         for cls in VARIANTS.values():
             self.assertTrue(cls.INPUT_TYPES()["required"]["context_auto_extend"][1]["default"])

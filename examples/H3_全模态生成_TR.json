@@ -1399,6 +1399,7 @@
         "fixed",
         false,
         true,
+        false,
         0.1,
         0.75
       ],
@@ -1434,7 +1435,8 @@
         "enable_context": false,
         "context_noise_strength": 0.1,
         "context_color_strength": 0.75,
-        "context_auto_extend": true
+        "context_auto_extend": true,
+        "debug_keep_context": false
       }
     },
     {

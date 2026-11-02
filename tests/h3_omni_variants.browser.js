@@ -68,6 +68,9 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         assert(w('enable_context').value === false, 'previous video does not enable context automatically')
         change('enable_context', true)
         change('context_auto_extend', false)
+        change('debug_keep_context', true)
+        assert(w('debug_keep_context').label === '不裁剪上下文（调试）' && !w('debug_keep_context').disabled,
+          'context frames can be kept for seam debugging')
         assert(w('context_auto_extend').label === '自动增加22帧时长' && !w('context_auto_extend').disabled,
           'context extension can be turned off while retaining the context guide')
         change('context_noise_strength', 0.23)
@@ -76,6 +79,7 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         assert(contextControls.includes(w('context_noise_strength')) && contextControls.includes(w('context_color_strength')),
           'both controls appear in the context section')
         assert(contextControls.includes(w('context_auto_extend')), 'extension switch appears in the context section')
+        assert(contextControls.includes(w('debug_keep_context')), 'debug switch appears in the context section')
         change('face_refine', true)
         app.graph.getNodeById(12).connect(0, node, node.findInputSlot('second_model'))
         const twoPassHeight = node.size[1]
@@ -117,6 +121,7 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         assert(prompt.inputs.context_noise_strength === 0.23 && prompt.inputs.context_color_strength === 0.42,
           'context noise and colour strengths survive reload and reach the API')
         assert(prompt.inputs.context_auto_extend === false, 'disabled extension survives reload and reaches the API')
+        assert(prompt.inputs.debug_keep_context === true, 'keep-context debug switch survives reload and reaches the API')
         assert(!('sampling_plan' in prompt.inputs) && !('h3_context_length' in prompt.inputs), 'display fields are not submitted')
         if (tr) assert(!('first_pass_scale' in prompt.inputs), 'TR fixed scale is not submitted')
         else assert(prompt.inputs.first_pass_scale === 0.5, 'editable scale is submitted')

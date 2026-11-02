@@ -10,6 +10,7 @@ const common = {
   prompt: '', width: 1344, height: 768, mode: '普通模式', duration: 5, ref_image_size: 'match',
   sampling_mode: '二采', steps: 4, sampler_name: 'euler', scheduler: 'simple', denoise: 1,
   seed: 1, control_after_generate: 'fixed', enable_context: false, context_auto_extend: true,
+  debug_keep_context: false,
   context_noise_strength: 0.1, context_color_strength: 0.75,
   face_refine: false, face_count: 1, face_sigmas: '', face_reverse: false, second_ff_chunks: '8',
 }
@@ -62,12 +63,19 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   assert.ok(node.widgets.slice(contextStart, contextEnd).includes(widgets.get('context_auto_extend')))
   assert.equal(widgets.get('context_auto_extend').label, '自动增加22帧时长')
   assert.equal(widgets.get('context_auto_extend').disabled, true)
+  assert.ok(node.widgets.slice(contextStart, contextEnd).includes(widgets.get('debug_keep_context')))
+  assert.equal(widgets.get('debug_keep_context').label, '不裁剪上下文（调试）')
+  assert.equal(widgets.get('debug_keep_context').disabled, true)
   change('enable_context', true)
   assert.equal(widgets.get('context_auto_extend').disabled, false)
+  assert.equal(widgets.get('debug_keep_context').disabled, false)
+  change('debug_keep_context', true)
+  assert.equal(widgets.get('debug_keep_context').value, true)
   change('context_auto_extend', false)
   assert.equal(widgets.get('duration').label, '片段总时长（含上下文） / 秒')
   change('enable_context', false)
   assert.equal(widgets.get('context_auto_extend').disabled, true)
+  assert.equal(widgets.get('debug_keep_context').disabled, true)
   node.inputs.push({ name: 'undeclared_model', label: '主模型', type: 'MODEL' },
     { name: 'model', label: '主模型', type: 'MODEL' })
   node.onConfigure()

@@ -33,8 +33,8 @@ def _add_guide(graph, positive, latent, vae, audio_vae, image, audio, prefix):
                       positive=guide.out(0), audio_feather_ticks=256).out(0)
 
 
-def _color_match(graph, frames, previous, prefix, strength):
-    """用上一段最后一帧匹配本段颜色，整段共用首帧的变换。"""
+def _color_match(graph, frames, previous, prefix, strength, target_index=0):
+    """用上一段末帧匹配本段颜色，整段共用首帧新增画面的变换。"""
     if strength == 0:
         return frames
     reference = graph.node("GetImageRangeFromBatch", id=prefix + "reference_frame",
@@ -42,7 +42,7 @@ def _color_match(graph, frames, previous, prefix, strength):
                            num_frames=1).out(0)
     return graph.node("ColorTransfer", id=prefix + "color_match", image_target=frames,
                       image_ref=reference, method="mkl_lab",
-                      source_stats="target_frame", **{"source_stats.target_index": 0},
+                      source_stats="target_frame", **{"source_stats.target_index": target_index},
                       strength=strength).out(0)
 
 
@@ -52,6 +52,7 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
                               sigmas=None, previous_video=None, second_model=None,
                               face_model=None, face_sigmas=None, enable_context=False,
                               context_auto_extend=True,
+                              debug_keep_context=False,
                               context_noise_strength=0.1, context_color_strength=0.75,
                               film_model=FILM_MODEL, film_method="learned model",
                               film_audio_denoise=0.0, film_noise_resample="independent", film_match_stats=0.0,
@@ -67,6 +68,7 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
     graph = GraphBuilder()
     two_pass = sampling_mode == "二采"
     overlap = CONTEXT_FRAMES if previous_video is not None else 0
+    keep_context = debug_keep_context and overlap > 0
 
     if mode == "复刻模式":
         if video is None:
@@ -206,9 +208,11 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
                                      "bbox\\face_yolov8m.pt", face_reverse, 42, face_sigmas, 0.35, "none")
 
     trimmed = graph.node("YtonH3SegmentTrim", id="trim", images=frames, audio=sound,
-                         head_trim_frames=head_trim_frames, tail_trim_frames=tail_trim_frames, fps=24.0)
+                         head_trim_frames=0 if keep_context else head_trim_frames,
+                         tail_trim_frames=tail_trim_frames, fps=24.0)
     frames = trimmed.out(0)
     if previous is not None:
-        frames = _color_match(graph, frames, previous, "seamless_", context_color_strength)
+        frames = _color_match(graph, frames, previous, "seamless_", context_color_strength,
+                              CONTEXT_FRAMES if keep_context else 0)
     video_result = graph.node("CreateVideo", id="video", images=frames, audio=trimmed.out(1), fps=24.0)
     return {"result": (video_result.out(0), final), "expand": graph.finalize()}
