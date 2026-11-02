@@ -2,10 +2,10 @@
 
 import json
 
-from comfy_api.latest import io
+from comfy_api.latest import io, ui
 
 from ..llm_connection import LLMConnection
-from .media import image_tensors, plan_for, reference_images, segment_video
+from .media import image_tensors, input_path, plan_for, reference_images, segment_video
 from .prompts import optimize, prompt_slot, resolve_references, signature, source_prompt
 from .save import execution_state, save_segment
 
@@ -59,7 +59,8 @@ class YtonCharacterReplacement(io.ComfyNode):
                      io.Int.Output(display_name="长度（帧数）", tooltip="当前输出视频的实际帧数，尾段按剩余长度计算。"),
                      io.Float.Output(display_name="时长（秒）", tooltip="实际帧数除以输出帧率，可连接全模态生成节点的时长。"),
                      io.Int.Output(display_name="片段序号", tooltip="当前索引 + 1，从 1 开始；连接保存器的片段序号。"),
-                     io.Int.Output(display_name="片段总数")],
+                     io.Int.Output(display_name="片段总数"),
+                     io.String.Output(display_name="项目目录", tooltip="按源视频文件名生成保存前缀，可连接视频保存节点的保存目录 / 前缀。")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
 
     @classmethod
@@ -89,8 +90,9 @@ class YtonCharacterReplacement(io.ComfyNode):
             result = config["optimized"].get(slot, {})
             text = result["text"] if result.get("signature") == source_signature else source_prompt(config, index)
         text = resolve_references(text, config)
+        project_directory = f"video/人物替换/%date:yyyy-MM-dd%/{input_path(config['video']).stem}/"
         return io.NodeOutput(image_tensors(images), [video], text, width, height, frames, duration,
-                             index + 1, len(plan["segments"]),
+                             index + 1, len(plan["segments"]), project_directory,
                              ui={"replacement_prompt": [{"index": index, "slot": slot, "text": text,
                                   "signature": source_signature, "frames": plan["segments"][index]["end"] - plan["segments"][index]["start"],
                                   "total": len(plan["segments"])}]})
@@ -159,7 +161,10 @@ class YtonReplacementVideoSave(io.ComfyNode):
         state = execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)
         result = save_segment(video, current, total, run=state["run"], prefix=filename_prefix,
                               container=container, fps=fps, crf=crf, save_full=save_full)
-        return io.NodeOutput(video, ui={"replacement_saved": [result]})
+        files = [result["saved_segment"]]
+        if save_full and result["merged"]:
+            files.append(result["merged"])
+        return io.NodeOutput(video, ui={**ui.PreviewVideo(files).as_dict(), "replacement_saved": [result]})
 
 
 CLASSES = [YtonLLMConnector, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementSegment, YtonReplacementVideoSave]

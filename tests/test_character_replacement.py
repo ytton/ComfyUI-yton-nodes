@@ -4,6 +4,7 @@ from copy import deepcopy
 import asyncio
 from dataclasses import dataclass, field
 from fractions import Fraction
+from datetime import date
 import json
 import importlib.util
 from pathlib import Path
@@ -29,7 +30,7 @@ package.__path__ = [str(PLUGIN)]
 sys.modules[package.__name__] = package
 from replacement_test_plugin.llm_connection import LLMConnection
 from replacement_test_plugin.replacement.media import contact_sheet, encode, inspect, reference_images, segment_video
-from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan
+from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementVideoSave
 from replacement_test_plugin.replacement.plan import make_plan
 from replacement_test_plugin.replacement.prompts import SYSTEM, load_skill, optimize, save_skill, signature
 from replacement_test_plugin.replacement.save import execution_state, save_segment
@@ -109,12 +110,13 @@ class ReplacementTests(unittest.TestCase):
         config=self.config()
         config["original"]="将 @视频 的人物替换成 @图片3。"
         output=self.node().execute(0,json.dumps(config))
-        self.assertEqual(len(output.result),9)
+        self.assertEqual(len(output.result),10)
         self.assertIn("<Picture 2>",output.result[2])
         self.assertEqual([tuple(i.shape) for i in output.result[0]],[(1,120,60,3),(1,45,120,3)])
         self.assertEqual(len(output.result[1]),1)
         self.assertEqual(output.result[7:9],(1,2))
         self.assertEqual(output.result[3:7],(160,96,39,39/24))
+        self.assertEqual(output.result[9], "video/人物替换/%date:yyyy-MM-dd%/source/")
         config["images"]=[""]*6
         self.assertEqual(self.node().execute(0,json.dumps(config)).result[0],[])
 
@@ -129,6 +131,17 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(output.result[3:7],(96,64,15,1.25))
         video=output.result[1][0].get_components()
         self.assertEqual(output.result[3:6],(video.images.shape[2],video.images.shape[1],video.images.shape[0]))
+
+    def test_project_directory_uses_source_video_name_for_every_segment(self):
+        source = self.root / "input/引用视频/舞蹈参考.v1.mp4"
+        source.parent.mkdir(exist_ok=True)
+        source.write_bytes((self.root / "input/source.mp4").read_bytes())
+        config = self.config()
+        config["video"] = "引用视频/舞蹈参考.v1.mp4 [input]"
+        node = self.node()
+        for index in (0, 1):
+            self.assertEqual(node.execute(index, json.dumps(config)).result[9],
+                             "video/人物替换/%date:yyyy-MM-dd%/舞蹈参考.v1/")
 
     def test_auto_shared_once_per_run_and_per_segment(self):
         config=self.config(); config.update(auto=True,shared=True)
@@ -241,7 +254,7 @@ class ReplacementTests(unittest.TestCase):
                     test.assertIsNone(previous)
                 else:
                     test.assertIs(previous, rendered[-1])
-                    manifests = list((test.root/"output/official-loop").rglob("segments.json"))
+                    manifests = list((test.root/"output/video/人物替换").rglob("segments.json"))
                     test.assertEqual(len(manifests), 1)
                     test.assertEqual(len(json.loads(manifests[0].read_text())["segments"]), index)
                 rendered.append(video)
@@ -256,7 +269,7 @@ class ReplacementTests(unittest.TestCase):
             "render": {"class_type": "ReplacementTestRender", "inputs": {"video": ["segment", 1],
                         "index": ["start", 0], "previous": ["start", 4]}},
             "save": {"class_type": "YtonReplacementVideoSave", "inputs": {"video": ["render", 0],
-                      "current": ["segment", 7], "total": ["plan", 1], "filename_prefix": "official-loop/video",
+                      "current": ["segment", 7], "total": ["plan", 1], "filename_prefix": ["segment", 9],
                       "container": "mp4", "fps": 24, "crf": 18, "save_full": True}},
             "end": {"class_type": "EndLoop", "inputs": {"output_value": ["save", 0],
                      "next_iteration_value": ["save", 0], "accumulate": False}},
@@ -275,7 +288,8 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(len(rendered), 2)
         self.assertEqual([video.get_frame_count() for video in rendered], [39, 33])
         self.assertEqual(len(llm.calls), 1)
-        manifest = next((self.root/"output/official-loop").rglob("segments.json"))
+        manifest = next((self.root/"output/video/人物替换").rglob("segments.json"))
+        self.assertEqual(manifest.parent.parent, self.root / "output/video/人物替换" / date.today().isoformat() / "source")
         self.assertEqual(sorted(json.loads(manifest.read_text())["segments"]), ["1", "2"])
         self.assertTrue((manifest.parent/"complete.mp4").is_file())
         self.assertEqual(InputImpl.VideoFromFile(str(manifest.parent/"complete.mp4")).get_frame_count(), 72)
@@ -310,6 +324,41 @@ class ReplacementTests(unittest.TestCase):
         manifest=json.loads(manifests[0].read_text())
         self.assertEqual(sorted(manifest["segments"]),["1","2"])
         self.assertTrue((manifests[0].parent/"complete.mp4").exists())
+        saved_outputs = [output for output in executor.history_result["outputs"].values()
+                         if "replacement_saved" in output]
+        self.assertEqual([item["filename"] for output in saved_outputs for item in output["images"]],
+                         ["segment_0001.mp4", "segment_0002.mp4", "complete.mp4"])
+        self.assertTrue(all(output["animated"] for output in saved_outputs))
+
+    def test_save_node_reports_current_segment_and_persistent_complete_video(self):
+        from comfy_execution.asset_enrichment import register_executed_outputs
+
+        video, _ = segment_video(self.config(), 0)
+        for save_full in (True, False):
+            with self.subTest(save_full=save_full):
+                node = type("ReplacementSaveTestNode", (YtonReplacementVideoSave,), {})
+                node.hidden = io.HiddenHolder.from_dict({io.Hidden.unique_id: "save", io.Hidden.dynprompt: DynamicPrompt({})})
+                options = dict(filename_prefix="reported/video", container="mp4", fps=24, crf=18, save_full=save_full)
+                second = node.execute(video, 2, 2, **options)
+                self.assertEqual([item["filename"] for item in second.ui["images"]], ["segment_0002.mp4"])
+                first = node.execute(video, 1, 2, **options)
+                names = [item["filename"] for item in first.ui["images"]]
+                self.assertEqual(names, ["segment_0001.mp4", "complete.mp4"] if save_full else ["segment_0001.mp4"])
+                self.assertTrue(all(item["type"] == "output" for item in first.ui["images"]))
+                self.assertEqual(first.ui["animated"], (True,))
+                self.assertTrue(first.ui["replacement_saved"][0]["complete"])
+                for item in first.ui["images"]:
+                    self.assertTrue((self.root / "output" / item["subfolder"] / item["filename"]).is_file())
+                registered = []
+
+                def register(path, job, preview_ref=None):
+                    registered.append(Path(path).name)
+                    return types.SimpleNamespace(id=uuid.uuid4().hex, preview_id=None)
+
+                assets = register_executed_outputs(first.ui, "replacement-test",
+                    types.SimpleNamespace(enabled=True, register_executed_output=register))
+                self.assertEqual(registered, names)
+                self.assertTrue(all(item["id"] for item in assets["images"]))
 
     def test_save_out_of_order_repeat_index_and_preview_only(self):
         video,_=segment_video(self.config(),0)

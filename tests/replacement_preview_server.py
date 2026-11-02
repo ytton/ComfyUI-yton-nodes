@@ -4,14 +4,12 @@ import asyncio
 import json
 from pathlib import Path
 import types
-import uuid
 
 from aiohttp import web
 
-from test_character_replacement import ReplacementTests, CLASSES, folder_paths
+from test_character_replacement import ReplacementTests, CLASSES, DynamicPrompt, YtonReplacementVideoSave, folder_paths, io
 from replacement_test_plugin.replacement import routes
 from replacement_test_plugin.replacement.media import segment_video
-from replacement_test_plugin.replacement.save import save_segment
 from replacement_test_plugin.prompt_optimizer import get_store
 import server
 
@@ -39,10 +37,12 @@ async def config(request):
 @route_table.get("/saved")
 async def saved(request):
     video,_=await asyncio.to_thread(segment_video,ReplacementTests().config(),0)
-    run=uuid.uuid4().hex
-    await asyncio.to_thread(save_segment,video,1,2,run=run,prefix="browser/video")
-    result=await asyncio.to_thread(save_segment,video,2,2,run=run,prefix="browser/video")
-    return web.json_response(result)
+    node=type("ReplacementPreviewSave",(YtonReplacementVideoSave,),{})
+    node.hidden=io.HiddenHolder.from_dict({io.Hidden.unique_id:"save",io.Hidden.dynprompt:DynamicPrompt({})})
+    options=dict(filename_prefix="browser/video",container="mp4",fps=24,crf=18,save_full=True)
+    await asyncio.to_thread(node.execute,video,1,2,**options)
+    result=await asyncio.to_thread(node.execute,video,2,2,**options)
+    return web.json_response(result.ui)
 
 
 @route_table.get("/view")

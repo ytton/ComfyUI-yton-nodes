@@ -101,10 +101,14 @@ async (basePage) => {
       return {original:config.prompts,optimized:config.optimized};
     });
     await page.getByLabel("全段共用提示词",{exact:true}).check();
-    check(await page.getByLabel("查看片段提示词",{exact:true}).isDisabled(),"shared prompts disable segment selection");
-    for(const name of ["上一段","下一段"])check(await page.getByRole("button",{name,exact:true}).isDisabled(),"shared prompts disable "+name);
+    check(await page.getByLabel("查看片段提示词",{exact:true}).isEnabled(),"shared prompts allow segment selection");
     await page.getByRole("button",{name:"原始要求",exact:true}).click();
     await page.locator(".yr-pgs-rich-editor").fill("将@图片3的人物替换视频中的主体。");
+    await page.getByRole("button",{name:"上一段",exact:true}).click();
+    check((await page.locator(".yr-duration").innerText()).includes("48 帧"),"shared navigation shows selected segment duration");
+    check((await page.locator(".yr-pgs-rich-editor").innerText()).includes("人物替换视频中的主体"),"shared original is unchanged when selecting another segment");
+    await page.getByRole("button",{name:"下一段",exact:true}).click();
+    check((await page.locator(".yr-duration").innerText()).includes("24 帧"),"shared navigation restores tail segment duration");
     await page.getByLabel("全段共用提示词",{exact:true}).uncheck();
     check(await page.getByLabel("查看片段提示词",{exact:true}).isEnabled(),"independent prompts restore segment selection");
     const restoredPrompts=await page.evaluate(()=>{
@@ -197,8 +201,10 @@ async (basePage) => {
     await page.waitForFunction(()=>JSON.parse(window.replacementTest.node.widgets.find(w=>w.name==="config").value).video.endsWith("video-drop.mp4"));
     check(await page.locator(".yr-video-slot.drag-over").count()===0,"drop clears video drag highlight");
     phase="merged playback";
-    const saved=await(await page.request.get("http://127.0.0.1:8190/saved")).json();
-    await page.evaluate(saved=>window.replacementTest.save.onExecuted({replacement_saved:[saved]}),saved);
+    const savedUI=await(await page.request.get("http://127.0.0.1:8190/saved")).json();
+    const saved=savedUI.replacement_saved[0];
+    check(savedUI.images.some(file=>file.filename==="complete.mp4"),"complete video is reported through standard media outputs");
+    await page.evaluate(savedUI=>window.replacementTest.save.onExecuted(savedUI),savedUI);
     await page.locator(".yr-save>video").evaluate(video=>new Promise((resolve,reject)=>{
       if(video.readyState>=1)return resolve();video.onloadedmetadata=()=>resolve();video.onerror=()=>reject(new Error("merged preview failed"));
     }));
@@ -212,12 +218,25 @@ async (basePage) => {
     check(await page.locator(".yr-save>video").evaluate(v=>new URL(v.src).searchParams.get("filename"))===saved.merged.filename,"heading return icon restores complete video");
     const serial=await page.evaluate(async()=>{
       const {app}=window.comfyAPI.app;
+      const {node,save}=window.replacementTest;
+      const directorySlot=save.findInputSlot("filename_prefix");
+      node.connect(9,save,directorySlot);
+      let prefix=(await app.graphToPrompt()).output[save.id].inputs.filename_prefix;
+      if(prefix[0]!==String(node.id)||prefix[1]!==9)throw new Error("media configurator project directory reaches save node");
+      const parser=LiteGraph.createNode("YtonReplacementSegment");
+      app.graph.add(parser);parser.pos=[1160,650];
+      parser.connect(9,save,directorySlot);
+      prefix=(await app.graphToPrompt()).output[save.id].inputs.filename_prefix;
+      if(prefix[0]!==String(parser.id)||prefix[1]!==9)throw new Error("parser project directory reaches save node");
       const graph=app.graph.serialize();
       await app.loadGraphData(graph);
+      if(app.graph.getNodeById(save.id).inputs[directorySlot].link==null)throw new Error("project directory link survives workflow reload");
       return graph;
     });
     await page.locator(".yr-image-slot img").nth(4).waitFor();
-    check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").outputs.length===9,"configuration outputs include width, height, frame count and duration");
+    check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").outputs.length===10,"configuration outputs include dimensions, duration and project directory");
+    check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").outputs[9].name==="项目目录","project directory is a labeled output");
+    check(serial.nodes.find(n=>n.type==="YtonReplacementSegment").outputs[9].type==="STRING","parser exposes project directory as STRING");
     check(!serial.nodes.find(n=>n.type==="YtonCharacterReplacement").widgets_values.includes(0),"index has no editable widget");
     check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").inputs.some(i=>i.name==="index" && i.type==="INT"),"index is a normal INT input");
     const geometry=await page.locator(".yton-replacement-panel:not(.yr-save):not(.yr-connector)").evaluate(panel=>({width:panel.clientWidth,scroll:panel.scrollWidth,overflow:getComputedStyle(panel.parentElement).overflow}));

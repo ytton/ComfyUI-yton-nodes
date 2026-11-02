@@ -37,9 +37,11 @@ def save_segment(video, index, total, *, run, prefix, container="mp4", fps=24, c
         raise ValueError("保存格式或运行标识无效。")
     if fps <= 0 or not 0 <= crf <= 51:
         raise ValueError("保存帧率或质量值无效。")
+    prefix = prefix.replace("%date:yyyy-MM-dd%", "%year%-%month%-%day%")
+    directory = prefix.endswith(("/", "\\"))
     # Resolve the user prefix through ComfyUI's output path containment check.
-    folder, filename, _, _, _ = folder_paths.get_save_image_path(prefix, folder_paths.get_output_directory())
-    root = Path(folder) / f"{filename}_{run}"
+    folder, filename, _, _, _ = folder_paths.get_save_image_path(prefix + run if directory else prefix, folder_paths.get_output_directory())
+    root = Path(folder) / (filename if directory else f"{filename}_{run}")
     root.mkdir(parents=True, exist_ok=True)
     temp = Path(folder_paths.get_temp_directory()) / "yton-replacement" / run
     temp.mkdir(parents=True, exist_ok=True)
@@ -94,6 +96,6 @@ def save_segment(video, index, total, *, run, prefix, container="mp4", fps=24, c
             finally:
                 merging.unlink(missing_ok=True)
                 concat.unlink(missing_ok=True)
-        return {"segments": [preview(path, "output") for path in clips],
+        return {"saved_segment": preview(target, "output"), "segments": [preview(path, "output") for path in clips],
                 "merged": preview(merged, "output" if save_full else "temp") if merged else None,
                 "complete": complete, "total": total, "current": index, "run": run}
