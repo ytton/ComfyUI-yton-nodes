@@ -70,6 +70,7 @@ class YtonCharacterReplacement(io.ComfyNode):
 
     @classmethod
     def execute(cls, index, config, llm=None):
+        state = execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)
         config = parse_config(config)
         video, plan = segment_video(config, index)
         width, height = output_size(config, inspect(config["video"]))
@@ -81,7 +82,7 @@ class YtonCharacterReplacement(io.ComfyNode):
         if config["auto"]:
             if llm is None:
                 raise ValueError("自动优化已开启，请连接【LLM 通用连接器】。")
-            cache = execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)["prompts"]
+            cache = state["prompts"]
             key = (slot, source_signature, llm)
             if key not in cache:
                 cache[key] = optimize(llm, config, index, video, images)
@@ -106,7 +107,8 @@ class YtonReplacementPlan(io.ComfyNode):
             inputs=[io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
                     io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
             outputs=[io.Custom("YTON_REPLACEMENT_PLAN").Output(display_name="分段配置"),
-                     io.Int.Output(display_name="片段总数", tooltip="根据视频长度、选取范围和分段设置计算的总段数。")])
+                     io.Int.Output(display_name="片段总数", tooltip="根据视频长度、选取范围和分段设置计算的总段数。")],
+            hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
 
     @classmethod
     def fingerprint_inputs(cls, **inputs):
@@ -114,6 +116,7 @@ class YtonReplacementPlan(io.ComfyNode):
 
     @classmethod
     def execute(cls, config, llm=None):
+        execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)
         _, plan = plan_for(parse_config(config))
         return io.NodeOutput({"config": config, "llm": llm}, len(plan["segments"]))
 
@@ -159,7 +162,7 @@ class YtonReplacementVideoSave(io.ComfyNode):
     @classmethod
     def execute(cls, video, current, total, filename_prefix, container, fps, crf, save_full):
         state = execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)
-        result = save_segment(video, current, total, run=state["run"], prefix=filename_prefix,
+        result = save_segment(video, current, total, run=state["run"], started_at=state["started_at"], prefix=filename_prefix,
                               container=container, fps=fps, crf=crf, save_full=save_full)
         files = [result["saved_segment"]]
         if save_full and result["merged"]:

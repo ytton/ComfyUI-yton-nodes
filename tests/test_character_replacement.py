@@ -4,7 +4,7 @@ from copy import deepcopy
 import asyncio
 from dataclasses import dataclass, field
 from fractions import Fraction
-from datetime import date
+from datetime import date, datetime
 import json
 import importlib.util
 from pathlib import Path
@@ -275,23 +275,30 @@ class ReplacementTests(unittest.TestCase):
         dyn.add_ephemeral_node("loop.1.config",{},"loop.end","config")
         dyn.add_ephemeral_node("loop.2.config",{},"loop.1.end","config")
         dyn.add_ephemeral_node("loop.1.save",{},"loop.end","save")
-        a=execution_state(dyn,"loop.1.config")
+        with patch("replacement_test_plugin.replacement.save.datetime") as clock:
+            clock.now.return_value = datetime(2026, 11, 3, 14, 0, 30).astimezone()
+            a=execution_state(dyn,"loop.1.config")
         self.assertIs(a,execution_state(dyn,"loop.2.config"))
-        self.assertIsNot(a,execution_state(dyn,"loop.1.save"))
+        save_state=execution_state(dyn,"loop.1.save")
+        self.assertIsNot(a,save_state)
+        self.assertEqual(save_state["started_at"],a["started_at"])
+        self.assertEqual(save_state["started_at"].strftime("%H-%M-%S"),"14-00-30")
         self.assertIsNot(a,execution_state(DynamicPrompt({}),"config"))
 
     def test_loop_plan_does_not_prepare_media_or_optimize(self):
         config = self.config()
         config.update(auto=True, shared=True)
         llm = FakeLLM()
+        planner = type("ReplacementPlanTestNode", (YtonReplacementPlan,), {})
+        planner.hidden = io.HiddenHolder.from_dict({io.Hidden.unique_id: "plan", io.Hidden.dynprompt: DynamicPrompt({})})
         with patch("replacement_test_plugin.replacement.nodes.segment_video") as prepare:
-            plan = YtonReplacementPlan.execute(json.dumps(config), llm)
+            plan = planner.execute(json.dumps(config), llm)
         prepare.assert_not_called()
         self.assertEqual(llm.calls, [])
         self.assertEqual(plan.result[1], 2)
         self.assertIs(plan.result[0]["llm"], llm)
         config["plan"]["frames"] = 22
-        self.assertEqual(YtonReplacementPlan.execute(json.dumps(config)).result[1], 4)
+        self.assertEqual(planner.execute(json.dumps(config)).result[1], 4)
 
     def test_official_loop_uses_plan_count_carries_video_and_finishes_saving(self):
         import execution
@@ -438,7 +445,8 @@ class ReplacementTests(unittest.TestCase):
     def test_save_out_of_order_repeat_index_and_preview_only(self):
         video,_=segment_video(self.config(),0)
         run=uuid.uuid4().hex
-        options=dict(run=run,prefix="replacement/test",save_full=False)
+        started_at=datetime(2026,11,3,14,0,30).astimezone()
+        options=dict(run=run,started_at=started_at,prefix="replacement/test",save_full=False)
         second=save_segment(video,2,2,**options)
         self.assertFalse(second["complete"])
         first=save_segment(video,1,2,**options)
@@ -450,14 +458,40 @@ class ReplacementTests(unittest.TestCase):
         merged=InputImpl.VideoFromFile(str(full))
         self.assertEqual(merged.get_frame_count(),78)
         self.assertIsNotNone(merged.get_components().audio)
-        self.assertEqual(len(list((self.root/"output/replacement"/f"test_{run}").glob("segment_*.mp4"))),2)
-        self.assertFalse((self.root/"output/replacement"/f"test_{run}"/"complete.mp4").exists())
-        new=save_segment(video,1,2,run=uuid.uuid4().hex,prefix="replacement/test")
+        self.assertEqual(len(list((self.root/"output/replacement/test_14-00-30").glob("segment_*.mp4"))),2)
+        self.assertFalse((self.root/"output/replacement/test_14-00-30/complete.mp4").exists())
+        new=save_segment(video,1,2,run=uuid.uuid4().hex,started_at=started_at,prefix="replacement/test")
         self.assertFalse(new["complete"])
+        self.assertEqual(Path(new["saved_segment"]["subfolder"]).name,"test_14-00-30-2")
+
+    def test_save_directory_uses_configuration_start_time_for_all_segments(self):
+        config = self.config()
+        dynprompt = DynamicPrompt({})
+        planner = type("TimedReplacementPlan", (YtonReplacementPlan,), {})
+        saver = type("TimedReplacementSave", (YtonReplacementVideoSave,), {})
+        for node, uid in ((planner, "plan"), (saver, "save")):
+            node.hidden = io.HiddenHolder.from_dict({io.Hidden.unique_id: uid, io.Hidden.dynprompt: dynprompt})
+        started_at = datetime(2026, 11, 3, 14, 0, 30).astimezone()
+        with patch("replacement_test_plugin.replacement.save.datetime") as clock:
+            clock.now.return_value = started_at
+            planner.execute(json.dumps(config))
+            clock.now.return_value = datetime(2026, 11, 3, 14, 36, 0).astimezone()
+            options = dict(filename_prefix="timestamp/project/", container="mp4", fps=24, crf=18, save_full=True)
+            for index in (1, 2):
+                video, _ = segment_video(config, index - 1)
+                result = saver.execute(video, index, 2, **options).ui["replacement_saved"][0]
+                self.assertEqual(result["saved_segment"]["subfolder"], "timestamp/project/14-00-30")
+        manifest = json.loads((self.root / "output/timestamp/project/14-00-30/segments.json").read_text())
+        self.assertEqual(manifest["started_at"], started_at.isoformat())
+        self.assertEqual(result["merged"]["subfolder"], "timestamp/project/14-00-30")
+        other_run = uuid.uuid4().hex
+        for index in (1, 2):
+            result = save_segment(video, index, 2, run=other_run, started_at=started_at, prefix="timestamp/project/")
+            self.assertEqual(result["saved_segment"]["subfolder"], "timestamp/project/14-00-30-2")
 
     def test_save_normalizes_silent_audio_and_preserves_order(self):
         run=uuid.uuid4().hex
-        options=dict(run=run,prefix="replacement/colors",container="mkv",save_full=True)
+        options=dict(run=run,started_at=datetime.now().astimezone(),prefix="replacement/colors",container="mkv",save_full=True)
         for index,color in enumerate((0.,1.),1):
             frames=torch.full((12,48,64,3),color)
             video=InputImpl.VideoFromComponents(Types.VideoComponents(images=frames,frame_rate=Fraction(24)))
@@ -477,7 +511,7 @@ class ReplacementTests(unittest.TestCase):
             for container in ("mp4", "mkv"):
                 for with_audio in (False, True):
                     with self.subTest(ffmpeg=executable, container=container, audio=with_audio):
-                        options = dict(run=uuid.uuid4().hex, prefix="replacement/frame-count", container=container)
+                        options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(), prefix="replacement/frame-count", container=container)
                         for index, count in enumerate((124, 79), 1):
                             frames = torch.zeros((count, 32, 48, 3))
                             frames[-1] = 1
@@ -514,7 +548,7 @@ class ReplacementTests(unittest.TestCase):
             segment_video(config,0)
         video,_=segment_video(self.config(),0)
         with self.assertRaises(Exception):
-            save_segment(video,1,1,run=uuid.uuid4().hex,prefix="../../escape")
+            save_segment(video,1,1,run=uuid.uuid4().hex,started_at=datetime.now().astimezone(),prefix="../../escape")
 
 
 if __name__=="__main__":

@@ -1,6 +1,7 @@
 """Save loop iterations to disk and concatenate only a complete ordered set."""
 
 from pathlib import Path
+from datetime import datetime
 import json
 import re
 import threading
@@ -20,7 +21,9 @@ def execution_state(dynprompt, unique_id):
     owner = dynprompt.get_display_node_id(unique_id)
     if not hasattr(dynprompt, "yton_replacement"):
         dynprompt.yton_replacement = {}
-    return dynprompt.yton_replacement.setdefault(owner, {"run": uuid.uuid4().hex, "prompts": {}})
+        dynprompt.yton_replacement_started_at = datetime.now().astimezone()
+    return dynprompt.yton_replacement.setdefault(owner, {
+        "run": uuid.uuid4().hex, "started_at": dynprompt.yton_replacement_started_at, "prompts": {}})
 
 
 def preview(path, kind):
@@ -30,7 +33,7 @@ def preview(path, kind):
             "format": "video/" + ("mp4" if path.suffix == ".mp4" else "x-matroska")}
 
 
-def save_segment(video, index, total, *, run, prefix, container="mp4", fps=24, crf=18, save_full=True):
+def save_segment(video, index, total, *, run, started_at, prefix, container="mp4", fps=24, crf=18, save_full=True):
     if not (1 <= index <= total):
         raise ValueError("当前段从 1 开始，且不能超过视频总段数。")
     if container not in ("mp4", "mkv") or not re.fullmatch(r"[a-f0-9]{32}", run):
@@ -39,16 +42,25 @@ def save_segment(video, index, total, *, run, prefix, container="mp4", fps=24, c
         raise ValueError("保存帧率或质量值无效。")
     prefix = prefix.replace("%date:yyyy-MM-dd%", "%year%-%month%-%day%")
     directory = prefix.endswith(("/", "\\"))
+    started_time = started_at.strftime("%H-%M-%S")
     # Resolve the user prefix through ComfyUI's output path containment check.
-    folder, filename, _, _, _ = folder_paths.get_save_image_path(prefix + run if directory else prefix, folder_paths.get_output_directory())
-    root = Path(folder) / (filename if directory else f"{filename}_{run}")
-    root.mkdir(parents=True, exist_ok=True)
+    folder, filename, _, _, _ = folder_paths.get_save_image_path(prefix + started_time if directory else prefix, folder_paths.get_output_directory())
+    root = Path(folder) / (filename if directory else f"{filename}_{started_time}")
     temp = Path(folder_paths.get_temp_directory()) / "yton-replacement" / run
     temp.mkdir(parents=True, exist_ok=True)
-    manifest_path = root / "segments.json"
     with _save_lock:
+        base = root
+        suffix = 1
+        while root.exists():
+            manifest_path = root / "segments.json"
+            if manifest_path.is_file() and json.loads(manifest_path.read_text(encoding="utf-8"))["run"] == run:
+                break
+            suffix += 1
+            root = base.with_name(f"{base.name}-{suffix}")
+        root.mkdir(parents=True, exist_ok=True)
+        manifest_path = root / "segments.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {
-            "total": total, "segments": {}, "size": list(video.get_dimensions()),
+            "run": run, "started_at": started_at.isoformat(), "total": total, "segments": {}, "size": list(video.get_dimensions()),
             "format": container, "fps": fps, "crf": crf}
         if (manifest["total"], manifest["format"], manifest["fps"], manifest["crf"]) != (total, container, fps, crf):
             raise ValueError("同一轮循环的总段数、格式、帧率和质量需要保持一致。")
