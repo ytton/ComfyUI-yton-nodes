@@ -39,7 +39,9 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         }
         assert(node.title === definition.display_name, type + ' has requested title')
         assert(w('sampling_mode').value === '二采', type + ' defaults to progressive or second pass')
-        assert(node.inputs.filter(i => !i.widget).map(i => i.name).join(',') === 'model,clip,vae,audio_vae,image,video,audio,sigmas,previous_video', 'primary inputs stay at the top')
+        assert(node.inputs.filter(i => !i.widget).map(i => i.name).join(',') === 'model,clip,vae,audio_vae,image,video,audio,sigmas', 'primary inputs stay at the top')
+        assert(!w('clip_index') && node.findInputSlot('clip_index') === -1, 'clip index is absent')
+        assert(node.inputs.filter(i => i.label === '主模型').length === 1, 'there is exactly one main model')
         for (const [name, kind] of [['image', 'IMAGE'], ['video', 'VIDEO'], ['audio', 'AUDIO']]) {
           const input = node.inputs[node.findInputSlot(name)]
           assert(input.type === kind && input.shape === LiteGraph.GRID_SHAPE, name + ' uses the native media type and list icon')
@@ -84,7 +86,7 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
           assert(connection[1] > node.pos[1] + w('h3_section_生成').y, name + ' connection stays in the generation section')
           assert(!w(name).hidden && !w(name).connectionSuppressed, name + ' connected control stays visible')
         }
-        for (const [name, heading] of [['second_model', '二采方案'], ['face_model', '小脸修复']]) {
+        for (const [name, heading] of [['second_model', '二采方案'], ['face_model', '小脸修复'], ['previous_video', '分段上下文']]) {
           const slot = node.findInputSlot(name)
           assert(node.getInputPos(slot)[1] > node.pos[1] + w('h3_section_' + heading).y, name + ' is in its section')
           assert(!w(name).connectionSuppressed, name + ' label is visible while connected')
@@ -94,9 +96,13 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         assert(node.size[1] < twoPassHeight - 100, 'single pass shrinks the node')
         assert(w('second_model').hidden && w('h3_section_二采方案').hidden, 'single pass hides the complete second-pass section')
         assert(Number.isNaN(node.getInputPos(node.findInputSlot('second_model'))[1]), 'hidden input has no hit target')
+        const extra = node.addInput('undeclared_model', 'MODEL', { label: '主模型' })
+        app.graph.getNodeById(12).connect(0, node, node.inputs.indexOf(extra))
         const saved = app.graph.serialize()
         await app.loadGraphData(saved)
         node = app.graph.getNodeById(id)
+        assert(node.findInputSlot('undeclared_model') === -1, 'undeclared sockets are removed on load')
+        assert(node.inputs.filter(i => i.label === '主模型').length === 1, 'only the current model input remains')
         assert(w('sampling_mode').value === '单采' && w('second_model').hidden, 'visibility survives reload')
         change('sampling_mode', '二采')
         await draw()

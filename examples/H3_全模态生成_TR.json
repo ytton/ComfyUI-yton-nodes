@@ -1040,7 +1040,10 @@
           "name": "previous_video",
           "shape": 7,
           "type": "VIDEO",
-          "link": null
+          "link": null,
+          "widget": {
+            "name": "previous_video"
+          }
         },
         {
           "label": "提示词",
@@ -1159,16 +1162,6 @@
           "type": "INT",
           "widget": {
             "name": "seed"
-          },
-          "link": null
-        },
-        {
-          "label": "当前片段序号",
-          "localized_name": "clip_index",
-          "name": "clip_index",
-          "type": "INT",
-          "widget": {
-            "name": "clip_index"
           },
           "link": null
         },
@@ -1405,7 +1398,6 @@
         873790131440316,
         "fixed",
         false,
-        1,
         0.1,
         0.75
       ],
@@ -1439,7 +1431,6 @@
         "seed": 873790131440316,
         "control_after_generate": "fixed",
         "enable_context": false,
-        "clip_index": 1,
         "context_noise_strength": 0.1,
         "context_color_strength": 0.75
       }
@@ -1574,10 +1565,10 @@
         }
       },
       "widgets_values": [
-        "首段：上一段视频留空，序号设为 1。\n\n续段：加载上段成片，连接到生成节点的「上一段视频」；或直接连接前一个生成节点的「本段视频」。\n\n视频仍接当前源素材。节点自动取上段尾部 22 帧与音频、添加引导并裁回本段目标时长。"
+        "首段：上一段视频留空。\n\n续段：加载上段成片，连接到生成节点的「上一段视频」；或直接连接前一个生成节点的「本段视频」。\n\n视频列表完整送入 H3 参考解析。节点自动取上段尾部 22 帧与音频、添加引导并裁回本段目标时长。"
       ],
       "widgets_values_named": {
-        "text": "首段：上一段视频留空，序号设为 1。\n\n续段：加载上段成片，连接到生成节点的「上一段视频」；或直接连接前一个生成节点的「本段视频」。\n\n视频仍接当前源素材。节点自动取上段尾部 22 帧与音频、添加引导并裁回本段目标时长。"
+        "text": "首段：上一段视频留空。\n\n续段：加载上段成片，连接到生成节点的「上一段视频」；或直接连接前一个生成节点的「本段视频」。\n\n视频列表完整送入 H3 参考解析。节点自动取上段尾部 22 帧与音频、添加引导并裁回本段目标时长。"
       },
       "color": "#432",
       "bgcolor": "#653"

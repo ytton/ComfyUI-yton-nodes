@@ -66,14 +66,13 @@ class H3OmniGenerate:
             "scheduler": (comfy.samplers.KSampler.SCHEDULERS, {"default": "simple"}),
             "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
             "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True}),
-            "clip_index": ("INT", {"default": 1, "min": 1, "max": 9999}),
             "face_refine": ("BOOLEAN", {"default": False}),
             "face_count": ("INT", {"default": 1, "min": 1, "max": 64}),
             "face_reverse": ("BOOLEAN", {"default": False}),
         }
         schema = {"required": required, "optional": {
             "image": ("IMAGE", {"lazy": True, "tooltip": "可选图片参考；空输出视为未提供。"}),
-            "video": ("VIDEO", {"lazy": True, "tooltip": "可选视频参考。普通模式按片段截取，复刻模式取第一个视频的时长。"}),
+            "video": ("VIDEO", {"lazy": True, "tooltip": "可选视频参考，完整送入 H3 参考解析。普通模式使用填写时长，复刻模式取第一个视频的时长。"}),
             "audio": ("AUDIO", {"lazy": True, "tooltip": "可选音频参考。"}),
             "sigmas": ("SIGMAS", {"tooltip": "自定义主采时间表；连接后替代主采步数、调度器与降噪。SelfLift 使用同一条完整时间表。"}),
             "second_model": ("MODEL", {"rawLink": True, "tooltip": "可选的高分辨率阶段模型；未接时使用主模型。"}),
@@ -141,9 +140,6 @@ class H3OmniGenerate:
             "default": 0.75, "min": 0.0, "max": 1.0, "step": 0.01, "round": False,
             "tooltip": "本段裁除上下文后，参照上一段末帧匹配整段颜色的强度；0 关闭调色，1 完全应用颜色匹配。仅在启用上下文且传入上一段视频时使用。",
         })
-        schema["required"]["clip_index"][1]["tooltip"] = (
-            "普通模式按序号从源视频截取当前片段；开启上下文并接入上一段视频后，自动增加并裁除 22 帧上下文。"
-        )
         schema["optional"]["previous_video"] = ("VIDEO", {
             "lazy": True,
             "tooltip": "可选。接上一段生成的视频，或用加载视频节点读取已有成片；仅在启用上下文时提取尾部画面与音频。独立生成时可留空。",

@@ -44,6 +44,7 @@ class OmniVariantTests(unittest.TestCase):
                 schema = cls.INPUT_TYPES()
                 required = schema["required"]
                 names = set(required) | set(schema["optional"])
+                self.assertNotIn("clip_index", names)
                 self.assertEqual({name for name in names if name.startswith("face_")},
                                  {"face_model", "face_refine", "face_count", "face_sigmas", "face_reverse"})
                 self.assertNotIn("latent_path", names)
@@ -71,6 +72,24 @@ class OmniVariantTests(unittest.TestCase):
             self.assertEqual(graph["prepare_sampling"]["inputs"]["model"],["model",0])
             self.assertEqual(graph["sound"]["inputs"]["vae"],["audio_vae",0])
             self.assertEqual(graph["face_0_denoise"]["inputs"]["model"],["model",0])
+
+    def test_normal_mode_passes_complete_video_and_audio_references_in_every_plan(self):
+        for cls in VARIANTS.values():
+            for sampling_mode in ("单采", "二采"):
+                for enabled in (False, True):
+                    with self.subTest(plan=cls.SAMPLING_PLAN, sampling_mode=sampling_mode, context=enabled):
+                        graph = expanded(cls, sampling_mode=sampling_mode, duration=7.5, video=["videos", 0],
+                                         audio=["audios", 0], previous_video=["previous", 0], enable_context=enabled)
+                        for name in ("reference", "high_reference"):
+                            if name not in graph:
+                                continue
+                            self.assertEqual(graph[name]["inputs"]["video"], ["videos", 0])
+                            self.assertEqual(graph[name]["inputs"]["audio"], ["audios", 0])
+                        for name in ("segment", "source_components", "source_images", "source_audio",
+                                     "source_video", "source_guide", "high_source_guide"):
+                            self.assertNotIn(name, graph)
+                        self.assertEqual(graph["reference"]["inputs"]["length"], 209 if enabled else 192)
+                        self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 22 if enabled else 0)
 
     def test_all_variants_single_pass_skips_both_upscale_engines_and_uses_target_size(self):
         for cls in VARIANTS.values():

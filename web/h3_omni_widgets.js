@@ -6,7 +6,7 @@ const sections = [
   ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "second_model", "film_method", "film_model", "second_sampler", "second_steps", "second_sigma_start", "second_rho", "second_sigma_values", "second_ff_chunks", "film_audio_denoise", "film_noise_resample", "film_match_stats", "selflift_transition_step", "selflift_rho", "selflift_w_min", "selflift_w_max", "selflift_highres_tiling", "selflift_highres_tiles"]],
   ["小脸修复", ["face_model", "face_refine", "face_count", "face_sigmas", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
-  ["分段上下文", ["enable_context", "clip_index", "h3_context_length", "context_noise_strength", "context_color_strength"]],
+  ["分段上下文", ["enable_context", "previous_video", "h3_context_length", "context_noise_strength", "context_color_strength"]],
   ["视频解码", ["vae_decode_mode", "vae_tile_size", "vae_tile_overlap", "reference_detail_strength"]],
 ];
 const labels = {
@@ -14,7 +14,6 @@ const labels = {
   mode: "生成模式", sampling_mode: "采样模式",
   ref_image_size: "参考图尺寸", steps: "调度步数", sampler_name: "采样器",
   scheduler: "调度器", denoise: "调度降噪", seed: "随机种子",
-  clip_index: "当前片段序号",
   enable_context: "启用上下文",
   context_noise_strength: "前 21 帧噪声强度",
   context_color_strength: "接续调色强度",
@@ -39,8 +38,10 @@ function setupSections(node) {
     YtonH3SelfLiftOmniGenerate: "SelfLift", YtonH3TraditionalOmniGenerate: "传统二采" }[node.comfyClass];
   const film = node.comfyClass === "YtonH3VideoContextOmniGenerate";
   const selflift = node.comfyClass === "YtonH3SelfLiftOmniGenerate";
+  const schema = node.constructor.nodeData.input;
+  const inputNames = new Set([...Object.keys(schema.required), ...Object.keys(schema.optional)]);
   const widgets = new Map(node.widgets.map(widget => [widget.name, widget]));
-  const socketLabels = { second_model: "二采模型（可选）", face_model: "修脸模型（可选）" };
+  const socketLabels = { second_model: "二采模型（可选）", face_model: "修脸模型（可选）", previous_video: "上一段视频（可选）" };
   for (const [name, label] of Object.entries(socketLabels)) {
     const widget = node.addCustomWidget({
       name, label, type: "h3_input", value: "", serialize: false, options: { serialize: false },
@@ -177,6 +178,10 @@ function setupSections(node) {
     if (node.graph) node.arrange();
   }
   function labelSockets() {
+    for (let i = node.inputs.length - 1; i >= 0; i--) {
+      const input = node.inputs[i];
+      if (!inputNames.has(input.name) || node.inputs.findIndex(slot => slot.name === input.name) !== i) node.removeInput(i);
+    }
     const inputLabels = { model: "主模型", clip: "CLIP", vae: "视频 VAE", audio_vae: "音频 VAE", image: "图片列表", video: "视频列表", audio: "音频列表", previous_video: "上一段视频（可选）", sigmas: "自定义 Sigma", face_sigmas: "修脸 Sigma",
       second_model: "二采模型（可选）", face_model: "修脸模型（可选）", ...labels };
     inputLabels.sigmas = "自定义 Sigma";

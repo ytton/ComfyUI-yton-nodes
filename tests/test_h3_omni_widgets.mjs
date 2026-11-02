@@ -9,7 +9,7 @@ vm.runInNewContext(source, { app, LiteGraph: { NODE_TEXT_COLOR: '#fff', GRID_SHA
 const common = {
   prompt: '', width: 1344, height: 768, mode: '普通模式', duration: 5, ref_image_size: 'match',
   sampling_mode: '二采', steps: 4, sampler_name: 'euler', scheduler: 'simple', denoise: 1,
-  seed: 1, control_after_generate: 'fixed', clip_index: 1, enable_context: false,
+  seed: 1, control_after_generate: 'fixed', enable_context: false,
   context_noise_strength: 0.1, context_color_strength: 0.75,
   face_refine: false, face_count: 1, face_sigmas: '', face_reverse: false, second_ff_chunks: '8',
   vae_decode_mode: '标准解码', vae_tile_size: 256, vae_tile_overlap: 64,
@@ -30,17 +30,23 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
     inputs: ['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'audio', 'sigmas', 'second_model', 'face_model', 'previous_video',
       'face_sigmas', ...('second_sigma_values' in specific ? ['second_sigma_values'] : [])].map(name => ({ name, link: null })),
     outputs: [{ name: 'video' }, { name: 'av_latent' }], size: [400, 500],
+    constructor: { nodeData: { input: {
+      required: Object.fromEntries(Object.keys({ ...common, ...specific }).map(name => [name, []])),
+      optional: Object.fromEntries(['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'audio', 'sigmas',
+        'second_model', 'face_model', 'previous_video', 'face_sigmas'].map(name => [name, []])),
+    } } },
+    removeInput(index) { this.inputs.splice(index, 1) },
     addCustomWidget(widget) { this.widgets.push(widget); return widget },
     computeSize() { return [460, 1000] }, setDirtyCanvas() {}, setSize(size) { this.size = size },
   }
   extension.nodeCreated(node)
   const widgets = new Map(node.widgets.map(w => [w.name, w]))
   const change = (name, value) => { const w = widgets.get(name); w.value = value; w.callback?.(value) }
-  for (const name of ['second_model', 'face_model']) {
+  for (const name of ['second_model', 'face_model', 'previous_video']) {
     assert.equal(node.inputs.find(i => i.name === name).widget.name, name)
     assert.equal(widgets.get(name).serialize, false)
   }
-  for (const name of ['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'audio', 'sigmas', 'previous_video']) {
+  for (const name of ['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'audio', 'sigmas']) {
     assert.equal(node.inputs.find(i => i.name === name).widget, undefined)
     assert.equal(widgets.has(name), false)
   }
@@ -53,6 +59,13 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   assert.equal(widgets.get('h3_context_length').serialize, false)
   const contextStart = node.widgets.findIndex(w => w.name === 'h3_section_分段上下文')
   const contextEnd = node.widgets.findIndex(w => w.name === 'h3_section_视频解码')
+  assert.ok(node.widgets.slice(contextStart, contextEnd).includes(widgets.get('previous_video')))
+  assert.equal(widgets.has('clip_index'), false)
+  node.inputs.push({ name: 'undeclared_model', label: '主模型', type: 'MODEL' },
+    { name: 'model', label: '主模型', type: 'MODEL' })
+  node.onConfigure()
+  assert.equal(node.inputs.some(i => i.name === 'undeclared_model'), false)
+  assert.equal(node.inputs.filter(i => i.name === 'model').length, 1)
   for (const [name, label] of [['context_noise_strength', '前 21 帧噪声强度'], ['context_color_strength', '接续调色强度']]) {
     assert.ok(node.widgets.slice(contextStart, contextEnd).includes(widgets.get(name)))
     assert.equal(widgets.get(name).label, label)

@@ -74,7 +74,7 @@ class VideoContextGraphTests(unittest.TestCase):
     def test_first_segment_needs_only_its_inputs_and_no_previous_file(self):
         for enabled in (False, True):
             with self.subTest(enable_context=enabled):
-                graph, result = expanded(clip_index=2, duration=10, enable_context=enabled)
+                graph, result = expanded(duration=10, enable_context=enabled)
                 self.assertNotIn("previous", graph)
                 self.assertNotIn("seamless_color_match", graph)
                 self.assertEqual(graph["reference"]["inputs"]["length"], 243)
@@ -102,15 +102,15 @@ class VideoContextGraphTests(unittest.TestCase):
                         self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 0)
                         self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 3)
                     else:
-                        plan = "segment" if source_mode == "普通模式" else "replica"
-                        self.assertEqual(graph[plan]["inputs"]["context_frames"], 0)
+                        self.assertEqual(graph["reference"]["inputs"]["video"], ["source", 0])
                         if source_mode == "普通模式":
-                            self.assertEqual(graph["source_components"]["inputs"]["video"], ["source", 0])
-                            self.assertIn("source_guide", graph)
+                            self.assertNotIn("source_components", graph)
+                            self.assertNotIn("source_guide", graph)
+                            self.assertEqual(graph["reference"]["inputs"]["length"], 243)
                             if sampling_mode == "二采":
                                 self.assertEqual(graph["upscale"]["inputs"]["positive"], graph["guider"]["inputs"]["conditioning"])
                         else:
-                            self.assertEqual(graph["reference"]["inputs"]["video"], ["source", 0])
+                            self.assertEqual(graph["replica"]["inputs"]["context_frames"], 0)
 
     def test_continuation_follows_video_tail_to_both_sampling_guiders(self):
         graph, _ = expanded(previous_video=["prior_clip", 0], enable_context=True, sampling_mode="二采", duration=10)
@@ -142,9 +142,10 @@ class VideoContextGraphTests(unittest.TestCase):
                              or "LatentHeadReplace" in node["class_type"] for node in graph.values()))
 
     def test_source_video_and_context_video_stay_separate(self):
-        graph, _ = expanded(clip_index=2, duration=10, video=["source", 0], previous_video=["prior_clip", 0], enable_context=True)
-        self.assertEqual(graph["segment"]["inputs"]["context_frames"], 22)
-        self.assertEqual(graph["source_components"]["inputs"]["video"], ["source", 0])
+        graph, _ = expanded(duration=10, video=["source", 0], previous_video=["prior_clip", 0], enable_context=True)
+        self.assertEqual(graph["reference"]["inputs"]["length"], 277)
+        self.assertEqual(graph["reference"]["inputs"]["video"], ["source", 0])
+        self.assertNotIn("source_components", graph)
         self.assertEqual(graph["previous"]["inputs"]["video"], ["prior_clip", 0])
         self.assertNotIn("source_guide", graph)
         graph, _ = expanded(mode="复刻模式", video=["cut_source", 0], previous_video=["prior_clip", 0], enable_context=True)
@@ -206,12 +207,14 @@ class OptionalMediaRuntimeTests(unittest.TestCase):
             self.assertNotIn(name, graph["reference"]["inputs"])
         self.assertNotIn("source_components", graph)
 
-    def test_valid_video_still_uses_source_segmentation(self):
+    def test_valid_video_reaches_reference_parser_without_segmentation(self):
         video = InputImpl.VideoFromComponents(Types.VideoComponents(
             images=torch.zeros(60, 32, 32, 3), frame_rate=Fraction(24)))
         graph = self.execute(([], [video], []), duration=1)
-        self.assertEqual(graph["source_components"]["inputs"]["video"], ["media", 1])
-        self.assertIn("source_guide", graph)
+        self.assertEqual(graph["reference"]["inputs"]["video"], ["media", 1])
+        self.assertNotIn("source_components", graph)
+        self.assertNotIn("source_guide", graph)
+        self.assertEqual(graph["reference"]["inputs"]["length"], 39)
 
     def test_audio_only_loader_preserves_audio_reference(self):
         audio = {"waveform": torch.zeros(1, 1, 3200), "sample_rate": 32000}

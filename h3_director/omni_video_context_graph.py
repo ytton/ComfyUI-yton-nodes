@@ -48,7 +48,7 @@ def _color_match(graph, frames, previous, prefix, strength):
 
 def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height, mode, duration, ref_image_size,
                               sampling_mode, steps, sampler_name, scheduler, denoise, seed,
-                              clip_index, face_refine, face_count, face_reverse, image=None, video=None, audio=None,
+                              face_refine, face_count, face_reverse, image=None, video=None, audio=None,
                               sigmas=None, previous_video=None, second_model=None,
                               face_model=None, face_sigmas=None, enable_context=False,
                               context_noise_strength=0.1, context_color_strength=0.75,
@@ -70,7 +70,6 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
     two_pass = sampling_mode == "二采"
     overlap = CONTEXT_FRAMES if previous_video is not None else 0
 
-    source_images = source_audio = source_video = None
     if mode == "复刻模式":
         if video is None:
             raise ValueError("复刻模式需要传入至少一个视频，时长取第一个视频。")
@@ -78,18 +77,10 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
         length = plan.out(0)
         head_trim_frames, tail_trim_frames = plan.out(1), plan.out(2)
     elif mode == "普通模式":
-        if video is not None:
-            plan = graph.node("YtonH3SegmentPlan", id="segment", duration=duration,
-                              clip_index=clip_index, context_frames=overlap)
-            length = plan.out(0)
-            head_trim_frames, tail_trim_frames = plan.out(1), plan.out(2)
-            source_start = plan.out(3)
-        else:
-            visible_frames = max(1, math.floor(float(duration) * 24 + 0.5))
-            length = 5 + 17 * max(0, math.ceil((visible_frames + overlap - 5) / 17))
-            length = max(39 if overlap else 5, length)
-            head_trim_frames, tail_trim_frames = overlap, length - visible_frames - overlap
-            source_start = None
+        visible_frames = max(1, math.floor(float(duration) * 24 + 0.5))
+        length = 5 + 17 * max(0, math.ceil((visible_frames + overlap - 5) / 17))
+        length = max(39 if overlap else 5, length)
+        head_trim_frames, tail_trim_frames = overlap, length - visible_frames - overlap
     else:
         raise ValueError("请选择普通模式或复刻模式。")
 
@@ -97,26 +88,11 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
     if previous_video is not None:
         previous = graph.node("YtonH3VideoTail", id="previous", video=previous_video)
 
-    if video is not None and mode == "普通模式":
-        components = graph.node("GetVideoComponents", id="source_components", video=video)
-        source_images = graph.node("GetImageRangeFromBatch", id="source_images",
-                                   images=components.out(0), start_index=source_start,
-                                   num_frames=length).out(0)
-        start_seconds = graph.node("ComfyMathExpression", id="source_start_seconds",
-                                   expression="a / 24", **{"values.a": source_start}).out(0)
-        source_duration = graph.node("ComfyMathExpression", id="source_duration",
-                                     expression="a / 24", **{"values.a": length}).out(0)
-        source_audio = graph.node("TrimAudioDuration", id="source_audio", audio=components.out(1),
-                                  start_index=start_seconds, duration=source_duration).out(0)
-        source_video = graph.node("CreateVideo", id="source_video", images=source_images,
-                                  audio=source_audio, fps=components.out(2)).out(0)
-
     reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id="reference",
                            clip=clip, vae=vae, audio_vae=audio_vae,
                            prompt=prompt, width=main_width, height=main_height,
                            length=length, ref_image_size=ref_image_size)
-    for name, link in (("image", image), ("video", source_video if source_video is not None else video),
-                       ("audio", audio if source_video is None else None)):
+    for name, link in (("image", image), ("video", video), ("audio", audio)):
         if link is not None:
             reference.set_input(name, link)
 
@@ -125,11 +101,6 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
         guide_images = _guide_from_previous(graph, previous, "main_ctx_", context_noise_strength)
         conditioning = _add_guide(graph, conditioning, reference.out(1), vae, audio_vae,
                                    guide_images, previous.out(1), "main_context_add_guide")
-    # 续段的头部由上一段引导；当前源视频继续作为 reference 使用。
-    if source_images is not None and previous is None:
-        conditioning = graph.node("MiniMaxH3AddGuide", id="source_guide", positive=conditioning,
-                                   latent=reference.out(1), vae=vae, image=source_images,
-                                   frame_idx=0).out(0)
 
     high_conditioning = None
     if two_pass and sampling_plan == "traditional":
@@ -137,8 +108,7 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
                                    clip=clip, vae=vae, audio_vae=audio_vae,
                                    prompt=prompt, width=width, height=height, length=length,
                                    ref_image_size=ref_image_size)
-        for name, link in (("image", image), ("video", source_video if source_video is not None else video),
-                           ("audio", audio if source_video is None else None)):
+        for name, link in (("image", image), ("video", video), ("audio", audio)):
             if link is not None:
                 high_reference.set_input(name, link)
         high_conditioning = high_reference.out(0)
@@ -146,10 +116,6 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
             high_conditioning = _add_guide(graph, high_conditioning, high_reference.out(1),
                                            vae, audio_vae, guide_images, previous.out(1),
                                            "high_context_add_guide")
-        elif source_images is not None:
-            high_conditioning = graph.node("MiniMaxH3AddGuide", id="high_source_guide", positive=high_conditioning,
-                                           latent=high_reference.out(1), vae=vae, image=source_images,
-                                           frame_idx=0).out(0)
 
     preparation = graph.node("YtonH3PrepareSampling", id="prepare_sampling",
                              model=model, conditioning=conditioning, clip=clip)
