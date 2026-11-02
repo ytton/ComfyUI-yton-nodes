@@ -29,7 +29,7 @@ package = types.ModuleType("replacement_test_plugin")
 package.__path__ = [str(PLUGIN)]
 sys.modules[package.__name__] = package
 from replacement_test_plugin.llm_connection import LLMConnection
-from replacement_test_plugin.replacement.media import contact_sheet, encode, ffmpeg, inspect, reference_images, segment_video
+from replacement_test_plugin.replacement.media import contact_sheet, encode, ffmpeg, inspect, output_size, reference_images, segment_video
 from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementVideoSave
 from replacement_test_plugin.replacement.plan import make_plan
 from replacement_test_plugin.replacement.prompts import SYSTEM, load_skill, optimize, save_skill, signature
@@ -131,6 +131,33 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(output.result[3:7],(96,64,15,1.25))
         video=output.result[1][0].get_components()
         self.assertEqual(output.result[3:6],(video.images.shape[2],video.images.shape[1],video.images.shape[0]))
+
+    def test_original_ratio_resolution_uses_short_edge(self):
+        config = self.config()
+        config["ratio"] = "原视频"
+        for resolution, portrait, landscape, square in (
+            ("480p", (480, 864), (864, 480), (480, 480)),
+            ("720p", (704, 1280), (1280, 704), (704, 704)),
+            ("1080p", (1088, 1920), (1920, 1088), (1088, 1088)),
+        ):
+            config["resolution"] = resolution
+            for size, expected in (((1080, 1918), portrait), ((1920, 1080), landscape), ((1080, 1080), square)):
+                with self.subTest(resolution=resolution, source=size):
+                    self.assertEqual(output_size(config, dict(zip(("width", "height"), size))), expected)
+        config["crop"] = [0, 0, .31640625, 1]  # A 9:16 crop from 1920x1080.
+        self.assertEqual(output_size(config, {"width": 1920, "height": 1080}), (1088, 1920))
+
+    def test_portrait_1080p_output_matches_prepared_video(self):
+        encode(["-f", "lavfi", "-i", "color=c=blue:size=90x160:rate=24:duration=0.25",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", self.root / "input/portrait.mp4"])
+        config = self.config()
+        config.update(video="portrait.mp4", ratio="原视频", resolution="1080p")
+        config["compression"]["max_edge"] = 0
+        output = self.node().execute(0, json.dumps(config))
+        self.assertEqual(output.result[3:6], (1088, 1920, 6))
+        video = output.result[1][0]
+        self.assertEqual(video.get_dimensions(), (1088, 1920))
+        self.assertEqual(tuple(video.get_components().images.shape), (6, 1920, 1088, 3))
 
     def test_project_directory_uses_source_video_name_for_every_segment(self):
         source = self.root / "input/引用视频/舞蹈参考.v1.mp4"

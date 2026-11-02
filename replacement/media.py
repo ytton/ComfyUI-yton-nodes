@@ -77,8 +77,10 @@ def output_size(config, metadata):
             width, height = metadata["width"] * crop[2] * factor, metadata["height"] * crop[3] * factor
         return tuple(max(32, round(side / 32) * 32) for side in (width, height))
     if ratio == "原视频":
-        height = int(config.get("resolution", "480p").removesuffix("p"))
-        return max(32, round(height * source_ratio / 32) * 32), max(32, round(height / 32) * 32)
+        short_edge = int(config.get("resolution", "480p").removesuffix("p"))
+        width, height = ((short_edge * source_ratio, short_edge) if source_ratio >= 1
+                         else (short_edge, short_edge / source_ratio))
+        return tuple(max(32, round(side / 32) * 32) for side in (width, height))
     width, height, *_ = YtonResolutionSelector().get_resolution(
         "MiniMax H3 (Video)", ratio, config.get("resolution", "480p"))
     return width, height
