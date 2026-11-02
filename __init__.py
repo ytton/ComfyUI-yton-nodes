@@ -61,8 +61,9 @@ NODE_DISPLAY_NAME_MAPPINGS["YtonH3ReferenceStudio"] = "H3 参考视频工作台"
 _configure_node_catalog(NODE_CLASS_MAPPINGS)
 
 from .replacement.nodes import CLASSES as _replacement_classes
+from .nodes.media_list_node import CLASSES as _media_list_classes
 from .replacement.routes import install as _install_replacement_routes
-for _node in _replacement_classes:
+for _node in [*_replacement_classes, *_media_list_classes]:
     _schema = _node.define_schema()
     NODE_CLASS_MAPPINGS[_schema.node_id] = _node
     NODE_DISPLAY_NAME_MAPPINGS[_schema.node_id] = _schema.display_name

@@ -46,7 +46,8 @@ def defaults(**overrides):
             values[name] = options["default"]
         elif isinstance(definition[0], list):
             values[name] = definition[0][0]
-    values.update(model_loader=["loader", 0], **overrides)
+    values.update(model=["model", 0], clip=["clip", 0], vae=["video_vae", 0], audio_vae=["audio_vae", 0])
+    values.update(overrides)
     return values
 
 

@@ -51,14 +51,15 @@ class YtonCharacterReplacement(io.ComfyNode):
             inputs=[io.Int.Input("index", default=0, min=0, force_input=True, display_name="当前索引"),
                     io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
                     io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
-            outputs=[io.String.Output(display_name="提示词"), io.Image.Output(display_name="图片列表", is_output_list=True),
+            outputs=[io.Image.Output(display_name="图片列表", is_output_list=True),
                      io.Video.Output(display_name="视频列表", is_output_list=True),
-                     io.Int.Output(display_name="片段序号", tooltip="当前索引 + 1，从 1 开始；连接保存器的片段序号。"),
-                     io.Int.Output(display_name="片段总数"),
+                     io.String.Output(display_name="提示词"),
                      io.Int.Output(display_name="宽度", tooltip="当前输出视频的实际宽度，单位为像素。"),
                      io.Int.Output(display_name="高度", tooltip="当前输出视频的实际高度，单位为像素。"),
                      io.Int.Output(display_name="长度（帧数）", tooltip="当前输出视频的实际帧数，尾段按剩余长度计算。"),
-                     io.Float.Output(display_name="时长（秒）", tooltip="实际帧数除以输出帧率，可连接全模态生成节点的时长。")],
+                     io.Float.Output(display_name="时长（秒）", tooltip="实际帧数除以输出帧率，可连接全模态生成节点的时长。"),
+                     io.Int.Output(display_name="片段序号", tooltip="当前索引 + 1，从 1 开始；连接保存器的片段序号。"),
+                     io.Int.Output(display_name="片段总数")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
 
     @classmethod
@@ -88,8 +89,8 @@ class YtonCharacterReplacement(io.ComfyNode):
             result = config["optimized"].get(slot, {})
             text = result["text"] if result.get("signature") == source_signature else source_prompt(config, index)
         text = resolve_references(text, config)
-        return io.NodeOutput(text, image_tensors(images), [video], index + 1, len(plan["segments"]),
-                             width, height, frames, duration,
+        return io.NodeOutput(image_tensors(images), [video], text, width, height, frames, duration,
+                             index + 1, len(plan["segments"]),
                              ui={"replacement_prompt": [{"index": index, "slot": slot, "text": text,
                                   "signature": source_signature, "frames": plan["segments"][index]["end"] - plan["segments"][index]["start"],
                                   "total": len(plan["segments"])}]})

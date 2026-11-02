@@ -10,6 +10,11 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
   try {
     await p.goto(baseURL)
     await p.getByTestId('workflows-tab-button').waitFor({ timeout: 60000 })
+    await p.waitForFunction(() => {
+      const app = window.comfyAPI?.app?.app
+      return app?.vueAppReady && app.graphLoadSequence > 0 &&
+        app.committedGraphLoadSequence === app.graphLoadSequence && app.pendingGraphLoads.size === 0
+    }, { timeout: 60000 })
     await context.routeWebSocket('**/ws**', socket => socket.close())
     await p.evaluate(() => window.comfyAPI.api.api.socket?.close())
     const results = await p.evaluate(async ({ definitions, examples }) => {
@@ -34,13 +39,21 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         }
         assert(node.title === definition.display_name, type + ' has requested title')
         assert(w('sampling_mode').value === '二采', type + ' defaults to progressive or second pass')
-        assert(node.inputs.filter(i => !i.widget).map(i => i.name).join(',') === 'model_loader,image,video,audio,sigmas,previous_video', 'primary inputs stay at the top')
+        assert(node.inputs.filter(i => !i.widget).map(i => i.name).join(',') === 'model,clip,vae,audio_vae,image,video,audio,sigmas,previous_video', 'primary inputs stay at the top')
+        for (const [name, kind] of [['image', 'IMAGE'], ['video', 'VIDEO'], ['audio', 'AUDIO']]) {
+          const input = node.inputs[node.findInputSlot(name)]
+          assert(input.type === kind && input.shape === LiteGraph.GRID_SHAPE, name + ' uses the native media type and list icon')
+        }
         assert(w('h3_context_length').value === 22 && w('h3_context_length').serialize === false, 'fixed context length stays visible')
         assert(w('sampling_plan').serialize === false, 'plan is display-only')
         assert(Boolean(w('film_model')) === tr && Boolean(w('selflift_transition_step')) === selflift, 'controls match the selected generator')
         assert(Boolean(w('second_sigma_values')) !== selflift, 'SelfLift uses only the main schedule')
         assert(w('first_pass_scale').disabled === tr, 'only TR fixes the first-pass scale')
         change('width', 1920); change('height', 1088)
+        const width = LiteGraph.createNode('PrimitiveInt')
+        app.graph.add(width)
+        width.widgets.find(w => w.name === 'value').value = 1920
+        width.connect(0, node, node.findInputSlot('width'))
         if (!tr) change('first_pass_scale', 0.5)
         if (selflift) { change('selflift_transition_step', 2); change('selflift_rho', 0.2) }
         const sigma = LiteGraph.createNode('ManualSigmas')
@@ -63,6 +76,14 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         app.graph.getNodeById(12).connect(0, node, node.findInputSlot('second_model'))
         const twoPassHeight = node.size[1]
         await draw()
+        for (const name of ['prompt', 'width']) {
+          const slot = node.findInputSlot(name)
+          const position = node.getInputPos(slot)
+          const connection = node.getConnectionPos(true, slot)
+          assert(position.every(Number.isFinite) && connection.every(Number.isFinite), name + ' has a visible connection target')
+          assert(connection[1] > node.pos[1] + w('h3_section_生成').y, name + ' connection stays in the generation section')
+          assert(!w(name).hidden && !w(name).connectionSuppressed, name + ' connected control stays visible')
+        }
         for (const [name, heading] of [['second_model', '二采方案'], ['face_model', '小脸修复']]) {
           const slot = node.findInputSlot(name)
           assert(node.getInputPos(slot)[1] > node.pos[1] + w('h3_section_' + heading).y, name + ' is in its section')
@@ -80,10 +101,11 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         change('sampling_mode', '二采')
         await draw()
         const prompt = (await app.graphToPrompt()).output[id]
-        for (const name of ['model_loader', 'image', 'video', 'sigmas', 'second_model', 'face_model', 'previous_video', 'face_sigmas']) {
+        for (const name of ['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'sigmas', 'second_model', 'face_model', 'previous_video', 'face_sigmas']) {
           assert(Array.isArray(prompt.inputs[name]), name + ' link survives reload')
         }
-        assert(prompt.inputs.width === 1920 && prompt.inputs.height === 1088, 'final resolution survives reload')
+        assert(Array.isArray(prompt.inputs.width) && prompt.inputs.height === 1088, 'final resolution and width link survive reload')
+        assert(Array.isArray(prompt.inputs.prompt), 'prompt link survives reload')
         assert(prompt.inputs.context_noise_strength === 0.23 && prompt.inputs.context_color_strength === 0.42,
           'context noise and colour strengths survive reload and reach the API')
         assert(!('sampling_plan' in prompt.inputs) && !('h3_context_length' in prompt.inputs), 'display fields are not submitted')

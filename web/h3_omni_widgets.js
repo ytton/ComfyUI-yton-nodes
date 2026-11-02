@@ -118,12 +118,16 @@ function setupSections(node) {
     type: widget.type, computeSize: widget.computeSize, computeLayoutSize: widget.computeLayoutSize,
   }]));
   let secondPassVisible = true;
-  const hiddenInput = input => widgets.get(input?.widget?.name)?.hidden === true;
+  const hiddenInput = input => widgets.get(input?.widget?.name)?.type === "hidden";
   const updateDisabled = node.updateComputedDisabled;
   node.updateComputedDisabled = function () {
     updateDisabled.apply(this, arguments);
     for (const widget of this.widgets) {
-      if (socketLabels[widget.name]) widget.connectionSuppressed = false;
+      if (widget.type === "hidden") continue;
+      if (socketLabels[widget.name] || this.inputs.some(input => input.widget?.name === widget.name && input.link != null)) {
+        widget.connectionSuppressed = false;
+        widget.hidden = false;
+      }
     }
   };
   const setConcreteSlots = node._setConcreteSlots;
@@ -173,13 +177,14 @@ function setupSections(node) {
     if (node.graph) node.arrange();
   }
   function labelSockets() {
-    const inputLabels = { model_loader: "主模型", image: "图片", video: "视频", audio: "音频", previous_video: "上一段视频（可选）", sigmas: "自定义 Sigma", face_sigmas: "修脸 Sigma",
+    const inputLabels = { model: "主模型", clip: "CLIP", vae: "视频 VAE", audio_vae: "音频 VAE", image: "图片列表", video: "视频列表", audio: "音频列表", previous_video: "上一段视频（可选）", sigmas: "自定义 Sigma", face_sigmas: "修脸 Sigma",
       second_model: "二采模型（可选）", face_model: "修脸模型（可选）", ...labels };
     inputLabels.sigmas = "自定义 Sigma";
     inputLabels.second_sigma_values = "二采 Sigma";
     inputLabels.face_sigmas = "修脸 Sigma";
     for (const input of node.inputs) {
       if (inputLabels[input.name]) input.label = inputLabels[input.name];
+      if (["image", "video", "audio"].includes(input.name)) input.shape = LiteGraph.GRID_SHAPE;
       if (socketLabels[input.name]) input.widget = { name: input.name };
     }
     for (const output of node.outputs) {

@@ -46,8 +46,11 @@ class H3OmniGenerate:
     @classmethod
     def INPUT_TYPES(cls):
         required = {
-            "model_loader": ("FAST_MODEL_LOADER", {"rawLink": True,
-                "tooltip": "主加载器的视频 VAE 使用普通 H3 VAE，例如 minimax_h3_video_vae_int8_convrot.safetensors，供参考编码、SelfLift 校正和小脸修复使用。X2 Detail 权重由下方解码模式在内部单独加载。"}),
+            "model": ("MODEL", {"rawLink": True, "tooltip": "H3 主模型，可连接标准模型加载器及 LoRA 加载器的 MODEL 输出。"}),
+            "clip": ("CLIP", {"rawLink": True, "tooltip": "H3 文本编码器，连接 CLIP 输出。"}),
+            "vae": ("VAE", {"rawLink": True,
+                "tooltip": "普通 H3 视频 VAE，用于参考编码、上下文、SelfLift 校正和修脸。X2 Detail 最终解码权重由下方解码模式单独加载。"}),
+            "audio_vae": ("VAE", {"rawLink": True, "tooltip": "H3 音频 VAE，用于音频参考编码和最终音频解码。"}),
             "prompt": ("STRING", {"default": "", "multiline": True}),
             "width": ("INT", {"default": 1344, "min": 32, "max": 16384, "step": 32}),
             "height": ("INT", {"default": 768, "min": 32, "max": 16384, "step": 32}),
@@ -182,7 +185,7 @@ class H3OmniGenerate:
         for name in ("width", "height"):
             required[name][1]["tooltip"] += " X2 VAE 模式下，此值为解码前采样画布尺寸，成片对应边长为其 2 倍；切换模式不会改写此值。"
         required["vae_decode_mode"] = (DECODE_MODES, {"default": "标准解码",
-            "tooltip": "标准解码沿用原流程；X2 VAE 解码是作者模式一；X2 VAE 解码 + 参考图增强是模式二，逐张增强图片参考后生成，最后 X2 fast 解码。X2 权重已内置，主加载器仍应使用普通 H3 视频 VAE，供小脸修复等内部处理使用。两种 X2 模式均输出宽高各 2 倍，不改变采样宽高。未提供图片时跳过参考图增强。"})
+            "tooltip": "标准解码沿用原流程；X2 VAE 解码是作者模式一；X2 VAE 解码 + 参考图增强是模式二，逐张增强图片参考后生成，最后 X2 fast 解码。X2 权重已内置，视频 VAE 输入仍应连接普通 H3 视频 VAE，供小脸修复等内部处理使用。两种 X2 模式均输出宽高各 2 倍，不改变采样宽高。未提供图片时跳过参考图增强。"})
         required["vae_tile_size"] = ("INT", {"default": 256, "min": 256, "max": 4096, "step": 16,
             "tooltip": "专用解码器的空间分块大小。作者基线 256；调大可能更快，但增加显存占用。"})
         required["vae_tile_overlap"] = ("INT", {"default": 64, "min": 16, "max": 1024, "step": 16,

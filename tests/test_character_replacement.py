@@ -109,25 +109,25 @@ class ReplacementTests(unittest.TestCase):
         config["original"]="将 @视频 的人物替换成 @图片3。"
         output=self.node().execute(0,json.dumps(config))
         self.assertEqual(len(output.result),9)
-        self.assertIn("<Picture 2>",output.result[0])
-        self.assertEqual([tuple(i.shape) for i in output.result[1]],[(1,120,60,3),(1,45,120,3)])
-        self.assertEqual(len(output.result[2]),1)
-        self.assertEqual(output.result[3:5],(1,2))
-        self.assertEqual(output.result[5:],(160,96,39,39/24))
+        self.assertIn("<Picture 2>",output.result[2])
+        self.assertEqual([tuple(i.shape) for i in output.result[0]],[(1,120,60,3),(1,45,120,3)])
+        self.assertEqual(len(output.result[1]),1)
+        self.assertEqual(output.result[7:9],(1,2))
+        self.assertEqual(output.result[3:7],(160,96,39,39/24))
         config["images"]=[""]*6
-        self.assertEqual(self.node().execute(0,json.dumps(config)).result[1],[])
+        self.assertEqual(self.node().execute(0,json.dumps(config)).result[0],[])
 
     def test_dimensions_and_length_follow_prepared_segment(self):
         config=self.config()
         tail=self.node().execute(1,json.dumps(config))
-        self.assertEqual(tail.result[5:],(160,96,38,38/24))
+        self.assertEqual(tail.result[3:7],(160,96,38,38/24))
         config["crop"]=[.1,0,.8,1]
         config["plan"].update(enabled=False,seconds=1.25)
         config["compression"].update(width=96,height=64,fps=12)
         output=self.node().execute(0,json.dumps(config))
-        self.assertEqual(output.result[5:],(96,64,15,1.25))
-        video=output.result[2][0].get_components()
-        self.assertEqual(output.result[5:8],(video.images.shape[2],video.images.shape[1],video.images.shape[0]))
+        self.assertEqual(output.result[3:7],(96,64,15,1.25))
+        video=output.result[1][0].get_components()
+        self.assertEqual(output.result[3:6],(video.images.shape[2],video.images.shape[1],video.images.shape[0]))
 
     def test_auto_shared_once_per_run_and_per_segment(self):
         config=self.config(); config.update(auto=True,shared=True)
@@ -145,9 +145,9 @@ class ReplacementTests(unittest.TestCase):
 
     def test_manual_result_invalidated_by_media_changes(self):
         config=self.config();config["optimized"]["0"]={"text":"manual optimized", "signature":signature(config,0)}
-        self.assertEqual(self.node().execute(0,json.dumps(config)).result[0],"manual optimized")
+        self.assertEqual(self.node().execute(0,json.dumps(config)).result[2],"manual optimized")
         config["image_scale"]=.75
-        self.assertNotEqual(self.node().execute(0,json.dumps(config)).result[0],"manual optimized")
+        self.assertNotEqual(self.node().execute(0,json.dumps(config)).result[2],"manual optimized")
 
     def test_native_loop_expansions_share_correct_owner(self):
         dyn=DynamicPrompt({})
@@ -172,11 +172,11 @@ class ReplacementTests(unittest.TestCase):
         prompt={
             "start":{"class_type":"WhileLoopStartPGS","inputs":{"condition":True,"initial_value0":0}},
             "config":{"class_type":"YtonCharacterReplacement","inputs":{"index":["start",1],"config":json.dumps(config)}},
-            "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["config",2],"current":["config",3],"total":["config",4],
+            "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["config",1],"current":["config",7],"total":["config",8],
                     "filename_prefix":"native-loop/video","container":"mp4","fps":24,"crf":18,"save_full":True}},
-            "compare":{"class_type":"ComparePGS","inputs":{"a":["config",3],"b":["config",4],"comparison":"a < b"}},
+            "compare":{"class_type":"ComparePGS","inputs":{"a":["config",7],"b":["config",8],"comparison":"a < b"}},
             "end":{"class_type":"WhileLoopEndPGS","inputs":{"flow":["start",0],"condition":["compare",0],
-                   "initial_value0":["config",3],"initial_value1":["save",0]}},
+                   "initial_value0":["config",7],"initial_value1":["save",0]}},
         }
         events=[]
         server=types.SimpleNamespace(client_id=None,last_node_id=None,send_sync=lambda *args:events.append(args))

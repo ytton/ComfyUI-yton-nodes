@@ -100,13 +100,12 @@ class VaeDecodeTests(unittest.TestCase):
         for index in range(2):
             self.assertIs(merged[0][index], refs[index])
 
-    def test_standard_mode_uses_loader_vae_without_loading_x2_weights(self):
+    def test_standard_mode_uses_video_vae_input_without_loading_x2_weights(self):
         for cls in VARIANTS.values():
             graph = expanded(cls, vae_decode_mode="标准解码")
             self.assertNotIn("decode_vae", graph)
             self.assertEqual(graph["frames"]["class_type"], "VAEDecode")
-            self.assertTrue(graph["frames"]["inputs"]["vae"][0].endswith("models"))
-            self.assertEqual(graph["frames"]["inputs"]["vae"][1], 2)
+            self.assertEqual(graph["frames"]["inputs"]["vae"], ["video_vae", 0])
 
     def test_x2_only_replaces_final_video_vae_and_keeps_author_settings(self):
         for cls in VARIANTS.values():
@@ -120,7 +119,7 @@ class VaeDecodeTests(unittest.TestCase):
             self.assertEqual(decode["output_device"], "cpu")
             self.assertFalse(decode["temporal_tiling"])
             self.assertEqual(graph["sound"]["class_type"], "VAEDecodeAudio")
-            self.assertEqual(graph["sound"]["inputs"]["vae"][1], 3)
+            self.assertEqual(graph["sound"]["inputs"]["vae"], ["audio_vae", 0])
 
     def test_tile_controls_match_installed_decoder_interface(self):
         schema = self.native.MiniMaxH3VAEDecodeFast.INPUT_TYPES()

@@ -250,12 +250,6 @@
       ],
       "outputs": [
         {
-          "localized_name": "提示词",
-          "name": "提示词",
-          "type": "STRING",
-          "links": null
-        },
-        {
           "localized_name": "图片列表",
           "name": "图片列表",
           "shape": 6,
@@ -272,23 +266,10 @@
           ]
         },
         {
-          "localized_name": "片段序号",
-          "name": "片段序号",
-          "type": "INT",
-          "links": [
-            5,
-            7,
-            11
-          ]
-        },
-        {
-          "localized_name": "片段总数",
-          "name": "片段总数",
-          "type": "INT",
-          "links": [
-            6,
-            8
-          ]
+          "localized_name": "提示词",
+          "name": "提示词",
+          "type": "STRING",
+          "links": null
         },
         {
           "localized_name": "宽度",
@@ -313,6 +294,25 @@
           "name": "时长（秒）",
           "type": "FLOAT",
           "links": null
+        },
+        {
+          "localized_name": "片段序号",
+          "name": "片段序号",
+          "type": "INT",
+          "links": [
+            5,
+            7,
+            11
+          ]
+        },
+        {
+          "localized_name": "片段总数",
+          "name": "片段总数",
+          "type": "INT",
+          "links": [
+            6,
+            8
+          ]
         }
       ],
       "properties": {
@@ -670,7 +670,7 @@
     [
       4,
       4,
-      2,
+      1,
       5,
       0,
       "VIDEO"
@@ -678,7 +678,7 @@
     [
       5,
       4,
-      3,
+      7,
       5,
       1,
       "INT"
@@ -686,7 +686,7 @@
     [
       6,
       4,
-      4,
+      8,
       5,
       2,
       "INT"
@@ -694,7 +694,7 @@
     [
       7,
       4,
-      3,
+      7,
       6,
       0,
       "INT"
@@ -702,7 +702,7 @@
     [
       8,
       4,
-      4,
+      8,
       6,
       1,
       "INT"
@@ -726,7 +726,7 @@
     [
       11,
       4,
-      3,
+      7,
       7,
       1,
       "INT"

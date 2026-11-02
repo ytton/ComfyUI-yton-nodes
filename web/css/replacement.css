@@ -2,6 +2,8 @@
 .yton-replacement-panel *{box-sizing:border-box}
 .yton-replacement-panel{display:grid;grid-template-columns:minmax(260px,.9fr) minmax(330px,1.1fr);gap:14px;background:var(--yr-bg);padding:10px;border-radius:8px;min-width:0;width:100%}
 .yr-media,.yr-prompt{min-width:0;display:flex;flex-direction:column;gap:9px}
+.yr-media{margin-top:calc(-1 * var(--yr-media-offset,0px))}.yr-prompt{align-self:stretch}
+.yr-prompt .yr-rich-host{flex:1;height:auto;position:relative}.yr-prompt .yr-rich-host .yr-pgs-rich-editor,.yr-prompt .yr-rich-host .yr-plain-editor{position:absolute;inset:0;height:100%;max-height:none}
 .yr-button{border:1px solid var(--yr-line);color:inherit;background:var(--yr-field);border-radius:5px;padding:5px 9px;font:inherit;cursor:pointer;white-space:nowrap}
 .yr-button:hover{border-color:var(--yr-accent);background:color-mix(in srgb,var(--yr-field) 85%,var(--yr-accent))}
 .yr-button:disabled{opacity:.45;cursor:default}

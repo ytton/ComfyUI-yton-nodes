@@ -33,7 +33,7 @@ async (basePage) => {
       llm.pos=[20,150];node.pos=[370,150];save.pos=[1160,150];
       node.widgets.find(w=>w.name==="config").value=JSON.stringify(config);node.onConfigure?.();
       llm.connect(0,node,node.inputs.findIndex(i=>i.name==="llm"));
-      for(const [output,input] of [[2,"video"],[3,"current"],[4,"total"]]) node.connect(output,save,save.inputs.findIndex(i=>i.name===input));
+      for(const [output,input] of [[1,"video"],[7,"current"],[8,"total"]]) node.connect(output,save,save.inputs.findIndex(i=>i.name===input));
       app.canvas.ds.scale=.9;app.canvas.ds.offset=[0,10];
       window.replacementTest={llm,node,save};
     },{defs,config});
@@ -170,7 +170,9 @@ async (basePage) => {
     check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").inputs.some(i=>i.name==="index" && i.type==="INT"),"index is a normal INT input");
     const geometry=await page.locator(".yton-replacement-panel:not(.yr-save):not(.yr-connector)").evaluate(panel=>({width:panel.clientWidth,scroll:panel.scrollWidth,overflow:getComputedStyle(panel.parentElement).overflow}));
     check(geometry.width>=700 && geometry.scroll===geometry.width,"default panel has no horizontal overflow");
-    check(geometry.overflow==="hidden","panel shell has no stray scrollbar");
+    check(geometry.overflow==="visible","media column can extend into the unused left socket area");
+    const layout=await page.locator(".yton-replacement-panel:not(.yr-save):not(.yr-connector)").evaluate(panel=>{const left=panel.querySelector(".yr-media"),right=panel.querySelector(".yr-prompt");return {lift:right.getBoundingClientRect().top-left.getBoundingClientRect().top,controls:left.contains(panel.querySelector(".yr-config-controls")),editor:!right.querySelector(".yr-config-controls")};});
+    check(layout.lift>=100 && layout.controls && layout.editor,"media starts above prompt and generation controls appear below reference images");
     check(await page.locator(".yr-save").evaluate(panel=>getComputedStyle(panel.parentElement).overflow)==="hidden","save panel shell has no stray scrollbar");
     await page.screenshot({path:"C:/Users/YuanTong/AppData/Local/Temp/replacement-implemented.png"});
     check(!errors.length,errors.join("; "));

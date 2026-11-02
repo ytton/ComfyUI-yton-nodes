@@ -1,270 +1,139 @@
 {
   "id": "f92b830d-8655-4951-9bdc-a651a499ddec",
   "revision": 0,
-  "last_node_id": 59,
-  "last_link_id": 41,
+  "last_node_id": 62,
+  "last_link_id": 18,
   "nodes": [
     {
-      "id": 1,
-      "type": "fast h3Loader",
+      "id": 62,
+      "type": "VAELoader",
+      "title": "H3 音频 VAE",
       "pos": [
         64,
-        150
+        610
       ],
       "size": [
-        520,
-        250
+        470,
+        110
       ],
       "flags": {},
       "order": 0,
       "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "开始加载",
-          "name": "开始加载",
-          "shape": 7,
-          "type": "*",
-          "link": null
-        },
-        {
-          "localized_name": "主模型",
-          "name": "主模型",
-          "type": "COMBO",
-          "widget": {
-            "name": "主模型"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "副模型",
-          "name": "副模型",
-          "type": "COMBO",
-          "widget": {
-            "name": "副模型"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "加载模式",
-          "name": "加载模式",
-          "type": "COMBO",
-          "widget": {
-            "name": "加载模式"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "文本编码器",
-          "name": "文本编码器",
-          "type": "COMBO",
-          "widget": {
-            "name": "文本编码器"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "VAE",
-          "name": "VAE",
-          "type": "COMBO",
-          "widget": {
-            "name": "VAE"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "音频VAE",
-          "name": "音频VAE",
-          "type": "COMBO",
-          "widget": {
-            "name": "音频VAE"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "预览VAE",
-          "name": "预览VAE",
-          "type": "COMBO",
-          "widget": {
-            "name": "预览VAE"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "注意力机制",
-          "name": "注意力机制",
-          "type": "COMBO",
-          "widget": {
-            "name": "注意力机制"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "启用fp16累加",
-          "name": "启用fp16累加",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "启用fp16累加"
-          },
-          "link": null
-        }
-      ],
+      "inputs": [],
       "outputs": [
         {
-          "localized_name": "模型加载器",
-          "name": "模型加载器",
-          "type": "FAST_MODEL_LOADER",
-          "slot_index": 0,
+          "name": "VAE",
+          "type": "VAE",
           "links": [
-            1,
-            2
+            12
           ]
         }
       ],
-      "title": "H3 模型与编码器",
       "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "8.0"
-        }
+        "Node name for S&R": "VAELoader"
       },
       "widgets_values": [
-        "H3\\minimax_h3_ref2va_pruned_int8_convrot.safetensors",
-        "None",
-        "使用主模型",
-        "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-        "minimax_h3_video_vae_int8_convrot.safetensors",
-        "minimax_h3_audio_vae_fp32.safetensors",
-        "taeh3.safetensors",
-        "default",
-        false
-      ],
-      "widgets_values_named": {
-        "主模型": "H3\\minimax_h3_ref2va_pruned_int8_convrot.safetensors",
-        "副模型": "None",
-        "加载模式": "使用主模型",
-        "文本编码器": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-        "VAE": "minimax_h3_video_vae_int8_convrot.safetensors",
-        "音频VAE": "minimax_h3_audio_vae_fp32.safetensors",
-        "预览VAE": "taeh3.safetensors",
-        "注意力机制": "default",
-        "启用fp16累加": false
-      }
+        "minimax_h3_audio_vae_fp32.safetensors"
+      ]
     },
     {
-      "id": 2,
-      "type": "SetNode",
+      "id": 61,
+      "type": "VAELoader",
+      "title": "H3 视频 VAE",
       "pos": [
         64,
-        460
+        470
       ],
       "size": [
-        305.98828125,
-        58
+        470,
+        110
       ],
       "flags": {},
-      "order": 15,
+      "order": 1,
       "mode": 0,
-      "inputs": [
-        {
-          "label": "输入",
-          "localized_name": "输入",
-          "name": "FAST_MODEL_LOADER",
-          "type": "FAST_MODEL_LOADER",
-          "link": 1
-        }
-      ],
+      "inputs": [],
       "outputs": [
         {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "FAST_MODEL_LOADER",
-          "type": "FAST_MODEL_LOADER",
-          "slot_index": 0,
-          "links": null
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            11
+          ]
         }
       ],
-      "title": "Set_1029 · 加载器",
       "properties": {
-        "Node name for S&R": "SetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "previousName": "1029 · 加载器",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
+        "Node name for S&R": "VAELoader"
       },
       "widgets_values": [
-        "1029 · 加载器"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 加载器"
-      }
+        "minimax_h3_video_vae_int8_convrot.safetensors"
+      ]
     },
     {
-      "id": 3,
-      "type": "fast modelFromLoader",
+      "id": 60,
+      "type": "CLIPLoader",
+      "title": "H3 文本编码器",
       "pos": [
-        628,
+        64,
+        310
+      ],
+      "size": [
+        470,
+        110
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "minimax",
+        "default"
+      ]
+    },
+    {
+      "id": 1,
+      "type": "UNETLoader",
+      "title": "H3 主模型",
+      "pos": [
+        64,
         150
       ],
       "size": [
-        340,
-        86
+        470,
+        110
       ],
       "flags": {},
-      "order": 16,
+      "order": 3,
       "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "模型加载器",
-          "name": "模型加载器",
-          "type": "FAST_MODEL_LOADER",
-          "link": 2
-        }
-      ],
+      "inputs": [],
       "outputs": [
         {
-          "localized_name": "model",
-          "name": "model",
+          "name": "MODEL",
           "type": "MODEL",
-          "slot_index": 0,
           "links": [
-            3
+            1
           ]
-        },
-        {
-          "localized_name": "clip",
-          "name": "clip",
-          "type": "CLIP",
-          "slot_index": 1,
-          "links": null
-        },
-        {
-          "localized_name": "vae",
-          "name": "vae",
-          "type": "VAE",
-          "slot_index": 2,
-          "links": null
-        },
-        {
-          "localized_name": "audio_vae",
-          "name": "audio_vae",
-          "type": "VAE",
-          "slot_index": 3,
-          "links": null
         }
       ],
-      "title": "提取基础模型",
       "properties": {
-        "Node name for S&R": "fast modelFromLoader",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "8.0"
-        }
-      }
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "H3\\minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+        "default"
+      ]
     },
     {
       "id": 4,
@@ -278,14 +147,14 @@
         58
       ],
       "flags": {},
-      "order": 21,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {
           "localized_name": "model",
           "name": "model",
           "type": "MODEL",
-          "link": 3
+          "link": 1
         },
         {
           "localized_name": "head_chunks",
@@ -304,7 +173,7 @@
           "type": "MODEL",
           "slot_index": 0,
           "links": [
-            4
+            2
           ]
         }
       ],
@@ -338,14 +207,14 @@
         82
       ],
       "flags": {},
-      "order": 24,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
           "localized_name": "model",
           "name": "model",
           "type": "MODEL",
-          "link": 4
+          "link": 2
         },
         {
           "localized_name": "chunks",
@@ -373,7 +242,7 @@
           "type": "MODEL",
           "slot_index": 0,
           "links": [
-            5
+            3
           ]
         }
       ],
@@ -409,14 +278,14 @@
         58
       ],
       "flags": {},
-      "order": 26,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
           "localized_name": "model",
           "name": "model",
           "type": "MODEL",
-          "link": 5
+          "link": 3
         },
         {
           "localized_name": "attention",
@@ -435,7 +304,8 @@
           "type": "MODEL",
           "slot_index": 0,
           "links": [
-            6
+            4,
+            8
           ]
         }
       ],
@@ -458,59 +328,6 @@
       }
     },
     {
-      "id": 7,
-      "type": "SetNode",
-      "pos": [
-        628,
-        674
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 28,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "输入",
-          "localized_name": "输入",
-          "name": "MODEL",
-          "type": "MODEL",
-          "link": 6
-        }
-      ],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "MODEL",
-          "type": "MODEL",
-          "slot_index": 0,
-          "links": null
-        }
-      ],
-      "title": "Set_1029 · 基础模型",
-      "properties": {
-        "Node name for S&R": "SetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "previousName": "1029 · 基础模型",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 基础模型"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 基础模型"
-      },
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
       "id": 8,
       "type": "MiniMaxH3SigmaShift",
       "pos": [
@@ -522,14 +339,14 @@
         82
       ],
       "flags": {},
-      "order": 17,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {
           "localized_name": "model",
           "name": "model",
           "type": "MODEL",
-          "link": 7
+          "link": 4
         },
         {
           "localized_name": "视频偏移",
@@ -557,7 +374,7 @@
           "type": "MODEL",
           "slot_index": 0,
           "links": [
-            8
+            5
           ]
         }
       ],
@@ -582,52 +399,6 @@
       }
     },
     {
-      "id": 9,
-      "type": "GetNode",
-      "pos": [
-        1096,
-        150
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "MODEL",
-          "type": "MODEL",
-          "slot_index": 0,
-          "links": [
-            7
-          ]
-        }
-      ],
-      "title": "Get_1029 · 基础模型",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 基础模型"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 基础模型"
-      },
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
       "id": 10,
       "type": "BlockSparseAttention",
       "pos": [
@@ -639,14 +410,14 @@
         250
       ],
       "flags": {},
-      "order": 22,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
           "localized_name": "model",
           "name": "model",
           "type": "MODEL",
-          "link": 8
+          "link": 5
         },
         {
           "localized_name": "selection",
@@ -737,7 +508,7 @@
           "type": "MODEL",
           "slot_index": 0,
           "links": [
-            9
+            6
           ]
         }
       ],
@@ -787,14 +558,14 @@
         82
       ],
       "flags": {},
-      "order": 25,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "localized_name": "模型",
           "name": "model",
           "type": "MODEL",
-          "link": 9
+          "link": 6
         },
         {
           "localized_name": "LoRA名称",
@@ -822,7 +593,7 @@
           "type": "MODEL",
           "slot_index": 0,
           "links": [
-            10
+            7
           ]
         }
       ],
@@ -858,14 +629,14 @@
         82
       ],
       "flags": {},
-      "order": 27,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "localized_name": "模型",
           "name": "model",
           "type": "MODEL",
-          "link": 10
+          "link": 7
         },
         {
           "localized_name": "LoRA名称",
@@ -893,7 +664,7 @@
           "type": "MODEL",
           "slot_index": 0,
           "links": [
-            11
+            9
           ]
         }
       ],
@@ -918,215 +689,6 @@
       }
     },
     {
-      "id": 13,
-      "type": "fast modelsBridge",
-      "pos": [
-        1480,
-        268
-      ],
-      "size": [
-        340,
-        126
-      ],
-      "flags": {},
-      "order": 29,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "模型加载器",
-          "name": "模型加载器",
-          "shape": 7,
-          "type": "FAST_MODEL_LOADER",
-          "link": 12
-        },
-        {
-          "localized_name": "model",
-          "name": "model",
-          "shape": 7,
-          "type": "MODEL",
-          "link": 11
-        },
-        {
-          "localized_name": "clip",
-          "name": "clip",
-          "shape": 7,
-          "type": "CLIP",
-          "link": null
-        },
-        {
-          "localized_name": "vae",
-          "name": "vae",
-          "shape": 7,
-          "type": "VAE",
-          "link": null
-        },
-        {
-          "localized_name": "clip_vision",
-          "name": "clip_vision",
-          "shape": 7,
-          "type": "CLIP_VISION",
-          "link": null
-        },
-        {
-          "localized_name": "style_model",
-          "name": "style_model",
-          "shape": 7,
-          "type": "STYLE_MODEL",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "模型加载器",
-          "name": "模型加载器",
-          "type": "FAST_MODEL_LOADER",
-          "slot_index": 0,
-          "links": [
-            13
-          ]
-        },
-        {
-          "localized_name": "模型",
-          "name": "模型",
-          "type": "MODEL",
-          "slot_index": 1,
-          "links": null
-        },
-        {
-          "localized_name": "CLIP",
-          "name": "CLIP",
-          "type": "CLIP",
-          "slot_index": 2,
-          "links": null
-        },
-        {
-          "localized_name": "VAE",
-          "name": "VAE",
-          "type": "VAE",
-          "slot_index": 3,
-          "links": null
-        },
-        {
-          "localized_name": "CLIP视觉模型",
-          "name": "CLIP视觉模型",
-          "type": "CLIP_VISION",
-          "slot_index": 4,
-          "links": null
-        },
-        {
-          "localized_name": "风格模型",
-          "name": "风格模型",
-          "type": "STYLE_MODEL",
-          "slot_index": 5,
-          "links": null
-        }
-      ],
-      "title": "主采／二采模型",
-      "properties": {
-        "Node name for S&R": "fast modelsBridge",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "8.0"
-        }
-      }
-    },
-    {
-      "id": 14,
-      "type": "GetNode",
-      "pos": [
-        1480,
-        150
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "FAST_MODEL_LOADER",
-          "type": "FAST_MODEL_LOADER",
-          "slot_index": 0,
-          "links": [
-            12
-          ]
-        }
-      ],
-      "title": "Get_1029 · 加载器",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 加载器"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 加载器"
-      }
-    },
-    {
-      "id": 15,
-      "type": "SetNode",
-      "pos": [
-        1480,
-        454
-      ],
-      "size": [
-        305.98828125,
-        58
-      ],
-      "flags": {},
-      "order": 30,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "输入",
-          "localized_name": "输入",
-          "name": "FAST_MODEL_LOADER",
-          "type": "FAST_MODEL_LOADER",
-          "link": 13
-        }
-      ],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "FAST_MODEL_LOADER",
-          "type": "FAST_MODEL_LOADER",
-          "slot_index": 0,
-          "links": null
-        }
-      ],
-      "title": "Set_1029 · 生成模型",
-      "properties": {
-        "Node name for S&R": "SetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "previousName": "1029 · 生成模型",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 生成模型"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 生成模型"
-      }
-    },
-    {
       "id": 16,
       "type": "LoraLoaderModelOnly",
       "pos": [
@@ -1138,14 +700,14 @@
         82
       ],
       "flags": {},
-      "order": 18,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
           "localized_name": "模型",
           "name": "model",
           "type": "MODEL",
-          "link": 14
+          "link": 8
         },
         {
           "localized_name": "LoRA名称",
@@ -1173,7 +735,7 @@
           "type": "MODEL",
           "slot_index": 0,
           "links": [
-            35
+            13
           ]
         }
       ],
@@ -1198,103 +760,6 @@
       }
     },
     {
-      "id": 17,
-      "type": "GetNode",
-      "pos": [
-        1480,
-        572
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "MODEL",
-          "type": "MODEL",
-          "slot_index": 0,
-          "links": [
-            14
-          ]
-        }
-      ],
-      "title": "Get_1029 · 基础模型",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 基础模型"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 基础模型"
-      },
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
-      "id": 20,
-      "type": "SetNode",
-      "pos": [
-        1480,
-        1136
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 23,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "输入",
-          "localized_name": "输入",
-          "name": "MODEL",
-          "type": "MODEL",
-          "link": 35
-        }
-      ],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "MODEL",
-          "type": "MODEL",
-          "slot_index": 0,
-          "links": null
-        }
-      ],
-      "title": "Set_1029 · 修脸模型",
-      "properties": {
-        "Node name for S&R": "SetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "previousName": "1029 · 修脸模型",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 修脸模型"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 修脸模型"
-      }
-    },
-    {
       "id": 27,
       "type": "YtonEasyMediaLoader",
       "pos": [
@@ -1306,7 +771,7 @@
         618
       ],
       "flags": {},
-      "order": 4,
+      "order": 12,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -1317,7 +782,7 @@
           "type": "IMAGE",
           "slot_index": 0,
           "links": [
-            38
+            15
           ]
         },
         {
@@ -1327,7 +792,7 @@
           "type": "VIDEO",
           "slot_index": 1,
           "links": [
-            39
+            16
           ]
         },
         {
@@ -1336,7 +801,9 @@
           "shape": 6,
           "type": "AUDIO",
           "slot_index": 2,
-          "links": null
+          "links": [
+            17
+          ]
         }
       ],
       "title": "人物参考图 · 按图片顺序添加",
@@ -1432,7 +899,7 @@
         88
       ],
       "flags": {},
-      "order": 5,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -1452,7 +919,7 @@
           "type": "STRING",
           "slot_index": 0,
           "links": [
-            24
+            14
           ]
         }
       ],
@@ -1475,541 +942,6 @@
       }
     },
     {
-      "id": 30,
-      "type": "SetNode",
-      "pos": [
-        608,
-        2344
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 19,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "输入",
-          "localized_name": "输入",
-          "name": "STRING",
-          "type": "STRING",
-          "link": 24
-        }
-      ],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "STRING",
-          "type": "STRING",
-          "slot_index": 0,
-          "links": null
-        }
-      ],
-      "title": "Set_1029 · 本段提示词",
-      "properties": {
-        "Node name for S&R": "SetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "previousName": "1029 · 本段提示词",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 本段提示词"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 本段提示词"
-      }
-    },
-    {
-      "id": 32,
-      "type": "ManualSigmas",
-      "pos": [
-        1060,
-        1620
-      ],
-      "size": [
-        340,
-        58
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "sigmas",
-          "name": "sigmas",
-          "type": "STRING",
-          "widget": {
-            "name": "sigmas"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "Sigmas",
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "slot_index": 0,
-          "links": [
-            26
-          ]
-        }
-      ],
-      "title": "修脸 Sigma · 1 步",
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.42.3",
-        "Node name for S&R": "ManualSigmas",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "8.0"
-        }
-      },
-      "widgets_values": [
-        "0.615, 0"
-      ],
-      "widgets_values_named": {
-        "sigmas": "0.615, 0"
-      }
-    },
-    {
-      "id": 34,
-      "type": "SetNode",
-      "pos": [
-        1620,
-        1518
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 20,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "输入",
-          "localized_name": "输入",
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "link": 26
-        }
-      ],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "slot_index": 0,
-          "links": null
-        }
-      ],
-      "title": "Set_1029 · 修脸 Sigma",
-      "properties": {
-        "Node name for S&R": "SetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "previousName": "1029 · 修脸 Sigma",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 修脸 Sigma"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 修脸 Sigma"
-      },
-      "color": "#485248",
-      "bgcolor": "#272e27"
-    },
-    {
-      "id": 39,
-      "type": "GetNode",
-      "pos": [
-        1900,
-        340
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "FAST_MODEL_LOADER",
-          "type": "FAST_MODEL_LOADER",
-          "slot_index": 0,
-          "links": [
-            37
-          ]
-        }
-      ],
-      "title": "Get_1029 · 生成模型",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 生成模型"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 生成模型"
-      }
-    },
-    {
-      "id": 40,
-      "type": "GetNode",
-      "pos": [
-        1900,
-        500
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "MODEL",
-          "type": "MODEL",
-          "slot_index": 0,
-          "links": [
-            41
-          ]
-        }
-      ],
-      "title": "Get_1029 · 修脸模型",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 修脸模型"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 修脸模型"
-      }
-    },
-    {
-      "id": 44,
-      "type": "GetNode",
-      "pos": [
-        1900,
-        820
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "slot_index": 0,
-          "links": []
-        }
-      ],
-      "title": "Get_1029 · 修脸 Sigma",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 修脸 Sigma"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 修脸 Sigma"
-      },
-      "color": "#485248",
-      "bgcolor": "#272e27"
-    },
-    {
-      "id": 47,
-      "type": "GetNode",
-      "pos": [
-        1900,
-        980
-      ],
-      "size": [
-        230,
-        58
-      ],
-      "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "输出",
-          "localized_name": "输出",
-          "name": "STRING",
-          "type": "STRING",
-          "slot_index": 0,
-          "links": null
-        }
-      ],
-      "title": "Get_1029 · 本段提示词",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "1029 · 本段提示词"
-      ],
-      "widgets_values_named": {
-        "Constant": "1029 · 本段提示词"
-      }
-    },
-    {
-      "id": 57,
-      "type": "easy saveVideo",
-      "pos": [
-        3000,
-        440
-      ],
-      "size": [
-        340,
-        150
-      ],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "输入模式",
-          "name": "input_mode",
-          "type": "COMFY_DYNAMICCOMBO_V3",
-          "widget": {
-            "name": "input_mode"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "video",
-          "name": "input_mode.video",
-          "type": "VIDEO",
-          "link": 40
-        },
-        {
-          "localized_name": "audio",
-          "name": "input_mode.audio",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": null
-        },
-        {
-          "localized_name": "输出模式",
-          "name": "output_mode",
-          "type": "COMFY_DYNAMICCOMBO_V3",
-          "widget": {
-            "name": "output_mode"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "save_metadata",
-          "name": "output_mode.save_metadata",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "output_mode.save_metadata"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "文件名前缀",
-          "name": "filename_prefix",
-          "type": "STRING",
-          "widget": {
-            "name": "filename_prefix"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "视频",
-          "name": "VIDEO",
-          "type": "VIDEO",
-          "slot_index": 0,
-          "links": null
-        },
-        {
-          "localized_name": "文件路径",
-          "name": "file_path",
-          "type": "STRING",
-          "slot_index": 1,
-          "links": null
-        }
-      ],
-      "title": "保存本段视频",
-      "properties": {
-        "cnr_id": "comfyui-easy-media",
-        "ver": "89d31f7b663c977653bf76f3da6bc10c68325254",
-        "Node name for S&R": "easy saveVideo",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "8.0"
-        }
-      },
-      "widgets_values": [
-        "video",
-        "save",
-        false,
-        "MiniMax/H3分段修脸"
-      ],
-      "widgets_values_named": {
-        "input_mode": "video",
-        "output_mode": "save",
-        "output_mode.save_metadata": false,
-        "filename_prefix": "MiniMax/H3分段修脸"
-      }
-    },
-    {
-      "id": 58,
-      "type": "LoadVideo",
-      "pos": [
-        1850,
-        1790
-      ],
-      "size": [
-        420,
-        400
-      ],
-      "flags": {},
-      "order": 12,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "文件",
-          "name": "file",
-          "type": "COMBO",
-          "widget": {
-            "name": "file"
-          },
-          "link": null
-        },
-        {
-          "localized_name": "选择要上传的文件",
-          "name": "upload",
-          "type": "IMAGEUPLOAD",
-          "widget": {
-            "name": "upload"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "视频",
-          "name": "VIDEO",
-          "type": "VIDEO",
-          "slot_index": 0,
-          "links": null
-        }
-      ],
-      "title": "上一段成片 · 续段时连接",
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.43.1",
-        "Node name for S&R": "LoadVideo",
-        "ue_properties": {
-          "widget_ue_connectable": {
-            "file": true
-          },
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "",
-        "image"
-      ],
-      "widgets_values_named": {
-        "file": "",
-        "upload": "image"
-      }
-    },
-    {
-      "id": 59,
-      "type": "MarkdownNote",
-      "pos": [
-        2320,
-        1790
-      ],
-      "size": [
-        460,
-        280
-      ],
-      "flags": {},
-      "order": 13,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "视频上下文用法",
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "首段：上一段视频留空，序号设为 1。\n\n续段：加载上段成片，连接到生成节点的「上一段视频」；或直接连接前一个生成节点的「本段视频」。\n\n视频仍接当前源素材。节点自动取上段尾部 22 帧与音频、添加引导并裁回本段目标时长。"
-      ],
-      "widgets_values_named": {
-        "text": "首段：上一段视频留空，序号设为 1。\n\n续段：加载上段成片，连接到生成节点的「上一段视频」；或直接连接前一个生成节点的「本段视频」。\n\n视频仍接当前源素材。节点自动取上段尾部 22 帧与音频、添加引导并裁回本段目标时长。"
-      },
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
       "id": 38,
       "type": "YtonH3TraditionalOmniGenerate",
       "pos": [
@@ -2025,35 +957,52 @@
       "mode": 0,
       "inputs": [
         {
+          "name": "model",
+          "type": "MODEL",
           "label": "主模型",
-          "localized_name": "model_loader",
-          "name": "model_loader",
-          "type": "FAST_MODEL_LOADER",
-          "link": 37
+          "link": 9
         },
         {
-          "label": "图片",
+          "name": "clip",
+          "type": "CLIP",
+          "label": "CLIP",
+          "link": 10
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "label": "视频 VAE",
+          "link": 11
+        },
+        {
+          "name": "audio_vae",
+          "type": "VAE",
+          "label": "音频 VAE",
+          "link": 12
+        },
+        {
+          "label": "图片列表",
           "localized_name": "image",
           "name": "image",
-          "shape": 7,
+          "shape": 6,
           "type": "IMAGE",
-          "link": 38
+          "link": 15
         },
         {
-          "label": "视频",
+          "label": "视频列表",
           "localized_name": "video",
           "name": "video",
-          "shape": 7,
+          "shape": 6,
           "type": "VIDEO",
-          "link": 39
+          "link": 16
         },
         {
-          "label": "音频",
+          "label": "音频列表",
           "localized_name": "audio",
           "name": "audio",
-          "shape": 7,
+          "shape": 6,
           "type": "AUDIO",
-          "link": null
+          "link": 17
         },
         {
           "label": "自定义 Sigma",
@@ -2083,7 +1032,7 @@
           "widget": {
             "name": "face_model"
           },
-          "link": 41
+          "link": 13
         },
         {
           "label": "上一段视频（可选）",
@@ -2101,7 +1050,7 @@
           "widget": {
             "name": "prompt"
           },
-          "link": null
+          "link": 14
         },
         {
           "label": "最终宽度",
@@ -2378,7 +1327,7 @@
           "name": "video",
           "type": "VIDEO",
           "links": [
-            40
+            18
           ]
         },
         {
@@ -2386,7 +1335,7 @@
           "localized_name": "av_latent",
           "name": "av_latent",
           "type": "LATENT",
-          "links": null
+          "links": []
         }
       ],
       "properties": {
@@ -2458,6 +1407,144 @@
         "context_noise_strength": 0.1,
         "context_color_strength": 0.75
       }
+    },
+    {
+      "id": 57,
+      "type": "easy saveVideo",
+      "pos": [
+        3000,
+        440
+      ],
+      "size": [
+        340,
+        150
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "输入模式",
+          "name": "input_mode",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "input_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "video",
+          "name": "input_mode.video",
+          "type": "VIDEO",
+          "link": 18
+        },
+        {
+          "localized_name": "audio",
+          "name": "input_mode.audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "localized_name": "输出模式",
+          "name": "output_mode",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "output_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "save_metadata",
+          "name": "output_mode.save_metadata",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "output_mode.save_metadata"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "文件名前缀",
+          "name": "filename_prefix",
+          "type": "STRING",
+          "widget": {
+            "name": "filename_prefix"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "视频",
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "slot_index": 0,
+          "links": []
+        },
+        {
+          "localized_name": "文件路径",
+          "name": "file_path",
+          "type": "STRING",
+          "slot_index": 1,
+          "links": []
+        }
+      ],
+      "title": "保存本段视频",
+      "properties": {
+        "cnr_id": "comfyui-easy-media",
+        "ver": "89d31f7b663c977653bf76f3da6bc10c68325254",
+        "Node name for S&R": "easy saveVideo",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        }
+      },
+      "widgets_values": [
+        "video",
+        "save",
+        false,
+        "MiniMax/H3分段修脸"
+      ],
+      "widgets_values_named": {
+        "input_mode": "video",
+        "output_mode": "save",
+        "output_mode.save_metadata": false,
+        "filename_prefix": "MiniMax/H3分段修脸"
+      }
+    },
+    {
+      "id": 59,
+      "type": "MarkdownNote",
+      "pos": [
+        2320,
+        1790
+      ],
+      "size": [
+        460,
+        280
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "视频上下文用法",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "8.0",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "首段：上一段视频留空，序号设为 1。\n\n续段：加载上段成片，连接到生成节点的「上一段视频」；或直接连接前一个生成节点的「本段视频」。\n\n视频仍接当前源素材。节点自动取上段尾部 22 帧与音频、添加引导并裁回本段目标时长。"
+      ],
+      "widgets_values_named": {
+        "text": "首段：上一段视频留空，序号设为 1。\n\n续段：加载上段成片，连接到生成节点的「上一段视频」；或直接连接前一个生成节点的「本段视频」。\n\n视频仍接当前源素材。节点自动取上段尾部 22 帧与音频、添加引导并裁回本段目标时长。"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
     }
   ],
   "links": [
@@ -2465,28 +1552,12 @@
       1,
       1,
       0,
+      4,
+      0,
+      "MODEL"
+    ],
+    [
       2,
-      0,
-      "FAST_MODEL_LOADER"
-    ],
-    [
-      2,
-      1,
-      0,
-      3,
-      0,
-      "FAST_MODEL_LOADER"
-    ],
-    [
-      3,
-      3,
-      0,
-      4,
-      0,
-      "MODEL"
-    ],
-    [
-      4,
       4,
       0,
       5,
@@ -2494,7 +1565,7 @@
       "MODEL"
     ],
     [
-      5,
+      3,
       5,
       0,
       6,
@@ -2502,23 +1573,23 @@
       "MODEL"
     ],
     [
+      4,
       6,
-      6,
-      0,
-      7,
-      0,
-      "MODEL"
-    ],
-    [
-      7,
-      9,
       0,
       8,
       0,
       "MODEL"
     ],
     [
-      9,
+      5,
+      8,
+      0,
+      10,
+      0,
+      "MODEL"
+    ],
+    [
+      6,
       10,
       0,
       11,
@@ -2526,7 +1597,7 @@
       "MODEL"
     ],
     [
-      10,
+      7,
       11,
       0,
       12,
@@ -2534,177 +1605,95 @@
       "MODEL"
     ],
     [
-      11,
-      12,
-      0,
-      13,
-      1,
-      "MODEL"
-    ],
-    [
-      12,
-      14,
-      0,
-      13,
-      0,
-      "FAST_MODEL_LOADER"
-    ],
-    [
-      13,
-      13,
-      0,
-      15,
-      0,
-      "FAST_MODEL_LOADER"
-    ],
-    [
-      14,
-      17,
+      8,
+      6,
       0,
       16,
       0,
       "MODEL"
     ],
     [
-      24,
+      9,
+      12,
+      0,
+      38,
+      0,
+      "MODEL"
+    ],
+    [
+      10,
+      60,
+      0,
+      38,
+      1,
+      "CLIP"
+    ],
+    [
+      11,
+      61,
+      0,
+      38,
+      2,
+      "VAE"
+    ],
+    [
+      12,
+      62,
+      0,
+      38,
+      3,
+      "VAE"
+    ],
+    [
+      13,
+      16,
+      0,
+      38,
+      9,
+      "MODEL"
+    ],
+    [
+      14,
       29,
       0,
-      30,
-      0,
+      38,
+      11,
       "STRING"
     ],
     [
-      26,
-      32,
-      0,
-      34,
-      0,
-      "SIGMAS"
-    ],
-    [
-      35,
-      16,
-      0,
-      20,
-      0,
-      "MODEL"
-    ],
-    [
-      8,
-      8,
-      0,
-      10,
-      0,
-      "MODEL"
-    ],
-    [
-      37,
-      39,
-      0,
-      38,
-      0,
-      "FAST_MODEL_LOADER"
-    ],
-    [
-      38,
+      15,
       27,
       0,
       38,
-      1,
+      4,
       "IMAGE"
     ],
     [
-      39,
+      16,
       27,
       1,
       38,
-      2,
+      5,
       "VIDEO"
     ],
     [
-      40,
+      17,
+      27,
+      2,
+      38,
+      6,
+      "AUDIO"
+    ],
+    [
+      18,
       38,
       0,
       57,
       1,
       "VIDEO"
-    ],
-    [
-      41,
-      40,
-      0,
-      38,
-      6,
-      "MODEL"
     ]
   ],
-  "groups": [
-    {
-      "id": 1,
-      "title": "01 · 模型与采样配置",
-      "bounding": [
-        40,
-        80,
-        1780,
-        1260
-      ],
-      "color": "#3f789e",
-      "flags": {},
-      "font_size": 20
-    },
-    {
-      "id": 2,
-      "title": "02 · 参考素材与提示词",
-      "bounding": [
-        40,
-        1360,
-        1780,
-        1170
-      ],
-      "color": "#648c69",
-      "flags": {},
-      "font_size": 20
-    },
-    {
-      "id": 3,
-      "title": "03 · H3 全模态生成",
-      "bounding": [
-        1820,
-        80,
-        1220,
-        1580
-      ],
-      "color": "#8b8050",
-      "flags": {},
-      "font_size": 20
-    },
-    {
-      "id": 4,
-      "title": "04 · 输出",
-      "bounding": [
-        2980,
-        300,
-        620,
-        500
-      ],
-      "color": "#8d789d",
-      "flags": {},
-      "font_size": 20
-    },
-    {
-      "id": 5,
-      "title": "05 · 上一段视频",
-      "bounding": [
-        1820,
-        1700,
-        1220,
-        620
-      ],
-      "color": "#648c69",
-      "flags": {},
-      "font_size": 20
-    }
-  ],
+  "groups": [],
   "config": {},
   "extra": {
     "ds": {

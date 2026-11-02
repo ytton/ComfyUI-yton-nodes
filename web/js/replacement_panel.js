@@ -48,15 +48,17 @@ export async function setupReplacementPanel(node) {
   toolbar.append(referenceButton, dialogueButton, modeButton, framesButton);
   const controls = el("div", "yr-config-controls");
   const promptStatus = el("div", "yr-muted yr-prompt-status");
-  right.append(heading, navigation, switches, tabs, toolbar, editorHost, promptStatus, controls);
-  left.append(videoSlot,el("div","yr-muted","参考图片 · 3 × 2"),imageGrid,
+  right.append(heading, navigation, switches, tabs, toolbar, editorHost, promptStatus);
+  left.append(videoSlot,el("div","yr-muted","参考图片 · 3 × 2"),imageGrid,controls,
     el("div","yr-upload-hint","拖拽、Ctrl + V 或点击上传；选中图片槽可替换该图片。"));
   root.append(left, right, message);
   root.addEventListener("pointerdown", event => event.stopPropagation());
   root.addEventListener("keydown", event => event.stopPropagation());
   followNodeColours(node, root);
   mountNodePanel(node, "人物替换面板", root, 780, 660, {fitHeight:true});
-  root.parentElement.style.overflow = "hidden";
+  const mediaOffset = Math.max(0, node.outputs.length - node.inputs.filter(input => !input.widget).length) * LiteGraph.NODE_SLOT_HEIGHT;
+  root.style.setProperty("--yr-media-offset", `${mediaOffset}px`);
+  root.parentElement.style.overflow = "visible";
   const slotKey = () => config.shared ? "shared" : String(index);
   const original = () => config.prompts[slotKey()] ?? config.original;
 

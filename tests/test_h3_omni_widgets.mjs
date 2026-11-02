@@ -5,7 +5,7 @@ import vm from 'node:vm'
 let extension
 const app = { registerExtension(value) { extension = value } }
 const source = fs.readFileSync(new URL('../web/h3_omni_widgets.js', import.meta.url), 'utf8').replace(/^import[^\n]*\n/, '')
-vm.runInNewContext(source, { app, LiteGraph: { NODE_TEXT_COLOR: '#fff' } })
+vm.runInNewContext(source, { app, LiteGraph: { NODE_TEXT_COLOR: '#fff', GRID_SHAPE: 6 } })
 const common = {
   prompt: '', width: 1344, height: 768, mode: '普通模式', duration: 5, ref_image_size: 'match',
   sampling_mode: '二采', steps: 4, sampler_name: 'euler', scheduler: 'simple', denoise: 1,
@@ -27,7 +27,7 @@ const plans = {
 for (const [comfyClass, specific] of Object.entries(plans)) {
   const node = {
     comfyClass, widgets: Object.entries({ ...common, ...specific }).map(([name, value]) => ({ name, value })),
-    inputs: ['model_loader', 'image', 'video', 'audio', 'sigmas', 'second_model', 'face_model', 'previous_video',
+    inputs: ['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'audio', 'sigmas', 'second_model', 'face_model', 'previous_video',
       'face_sigmas', ...('second_sigma_values' in specific ? ['second_sigma_values'] : [])].map(name => ({ name, link: null })),
     outputs: [{ name: 'video' }, { name: 'av_latent' }], size: [400, 500],
     addCustomWidget(widget) { this.widgets.push(widget); return widget },
@@ -40,11 +40,15 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
     assert.equal(node.inputs.find(i => i.name === name).widget.name, name)
     assert.equal(widgets.get(name).serialize, false)
   }
-  for (const name of ['model_loader', 'image', 'video', 'audio', 'sigmas', 'previous_video']) {
+  for (const name of ['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'audio', 'sigmas', 'previous_video']) {
     assert.equal(node.inputs.find(i => i.name === name).widget, undefined)
     assert.equal(widgets.has(name), false)
   }
   assert.equal(node.inputs.find(i => i.name === 'sigmas').label, '自定义 Sigma')
+  for (const [name, label] of [['image', '图片列表'], ['video', '视频列表'], ['audio', '音频列表']]) {
+    assert.equal(node.inputs.find(i => i.name === name).shape, 6)
+    assert.equal(node.inputs.find(i => i.name === name).label, label)
+  }
   assert.equal(widgets.get('h3_context_length').value, 22)
   assert.equal(widgets.get('h3_context_length').serialize, false)
   const contextStart = node.widgets.findIndex(w => w.name === 'h3_section_分段上下文')

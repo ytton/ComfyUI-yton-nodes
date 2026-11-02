@@ -21,7 +21,8 @@ def variant_defaults(cls, **overrides):
             values[name] = options["default"]
         elif isinstance(definition[0], list):
             values[name] = definition[0][0]
-    values.update(model_loader=["loader", 0], **overrides)
+    values.update(model=["model", 0], clip=["clip", 0], vae=["video_vae", 0], audio_vae=["audio_vae", 0])
+    values.update(overrides)
     return values
 
 
@@ -53,6 +54,23 @@ class OmniVariantTests(unittest.TestCase):
                 self.assertEqual("selflift_transition_step" in names, cls.SAMPLING_PLAN == "selflift")
                 self.assertEqual("first_pass_scale" in names, cls.SAMPLING_PLAN != "tr")
                 self.assertEqual("second_sigma_values" in names, cls.SAMPLING_PLAN != "selflift")
+
+    def test_native_model_inputs_reach_each_stage_without_loader_unpacking(self):
+        for cls in VARIANTS.values():
+            required=cls.INPUT_TYPES()["required"]
+            self.assertNotIn("model_loader",required)
+            for name,kind in (("model","MODEL"),("clip","CLIP"),("vae","VAE"),("audio_vae","VAE")):
+                self.assertEqual(required[name][0],kind)
+                self.assertTrue(required[name][1]["rawLink"])
+            graph=expanded(cls,face_refine=True,enable_context=True,previous_video=["prior",0])
+            self.assertFalse(any(node["class_type"].startswith("fast ") for node in graph.values()))
+            for name in ("reference","face_0_reference"):
+                self.assertEqual(graph[name]["inputs"]["clip"],["clip",0])
+                self.assertEqual(graph[name]["inputs"]["vae"],["video_vae",0])
+                self.assertEqual(graph[name]["inputs"]["audio_vae"],["audio_vae",0])
+            self.assertEqual(graph["prepare_sampling"]["inputs"]["model"],["model",0])
+            self.assertEqual(graph["sound"]["inputs"]["vae"],["audio_vae",0])
+            self.assertEqual(graph["face_0_denoise"]["inputs"]["model"],["model",0])
 
     def test_all_variants_single_pass_skips_both_upscale_engines_and_uses_target_size(self):
         for cls in VARIANTS.values():

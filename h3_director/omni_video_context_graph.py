@@ -46,7 +46,7 @@ def _color_match(graph, frames, previous, prefix, strength):
                       strength=strength).out(0)
 
 
-def build_video_context_graph(model_loader, prompt, width, height, mode, duration, ref_image_size,
+def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height, mode, duration, ref_image_size,
                               sampling_mode, steps, sampler_name, scheduler, denoise, seed,
                               clip_index, face_refine, face_count, face_reverse, image=None, video=None, audio=None,
                               sigmas=None, previous_video=None, second_model=None,
@@ -67,7 +67,6 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
         previous_video = None
     graph = GraphBuilder()
     image = add_reference_detail(graph, image, vae_decode_mode, reference_detail_strength)
-    models = graph.node("fast modelFromLoader", id="models", **{"模型加载器": model_loader})
     two_pass = sampling_mode == "二采"
     overlap = CONTEXT_FRAMES if previous_video is not None else 0
 
@@ -113,7 +112,7 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                                   audio=source_audio, fps=components.out(2)).out(0)
 
     reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id="reference",
-                           clip=models.out(1), vae=models.out(2), audio_vae=models.out(3),
+                           clip=clip, vae=vae, audio_vae=audio_vae,
                            prompt=prompt, width=main_width, height=main_height,
                            length=length, ref_image_size=ref_image_size)
     for name, link in (("image", image), ("video", source_video if source_video is not None else video),
@@ -124,18 +123,18 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
     conditioning = reference.out(0)
     if previous is not None:
         guide_images = _guide_from_previous(graph, previous, "main_ctx_", context_noise_strength)
-        conditioning = _add_guide(graph, conditioning, reference.out(1), models.out(2), models.out(3),
+        conditioning = _add_guide(graph, conditioning, reference.out(1), vae, audio_vae,
                                    guide_images, previous.out(1), "main_context_add_guide")
     # 续段的头部由上一段引导；当前源视频继续作为 reference 使用。
     if source_images is not None and previous is None:
         conditioning = graph.node("MiniMaxH3AddGuide", id="source_guide", positive=conditioning,
-                                   latent=reference.out(1), vae=models.out(2), image=source_images,
+                                   latent=reference.out(1), vae=vae, image=source_images,
                                    frame_idx=0).out(0)
 
     high_conditioning = None
     if two_pass and sampling_plan == "traditional":
         high_reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id="high_reference",
-                                   clip=models.out(1), vae=models.out(2), audio_vae=models.out(3),
+                                   clip=clip, vae=vae, audio_vae=audio_vae,
                                    prompt=prompt, width=width, height=height, length=length,
                                    ref_image_size=ref_image_size)
         for name, link in (("image", image), ("video", source_video if source_video is not None else video),
@@ -145,24 +144,24 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
         high_conditioning = high_reference.out(0)
         if previous is not None:
             high_conditioning = _add_guide(graph, high_conditioning, high_reference.out(1),
-                                           models.out(2), models.out(3), guide_images, previous.out(1),
+                                           vae, audio_vae, guide_images, previous.out(1),
                                            "high_context_add_guide")
         elif source_images is not None:
             high_conditioning = graph.node("MiniMaxH3AddGuide", id="high_source_guide", positive=high_conditioning,
-                                           latent=high_reference.out(1), vae=models.out(2), image=source_images,
+                                           latent=high_reference.out(1), vae=vae, image=source_images,
                                            frame_idx=0).out(0)
 
     preparation = graph.node("YtonH3PrepareSampling", id="prepare_sampling",
-                             model=models.out(0), conditioning=conditioning, clip=models.out(1))
+                             model=model, conditioning=conditioning, clip=clip)
     if high_conditioning is not None:
         preparation.set_input("additional_conditioning", high_conditioning)
     main_model = preparation.out(0)
 
     schedule = sigmas
     if schedule is None:
-        schedule = graph.node("BasicScheduler", id="schedule", model=models.out(0),
+        schedule = graph.node("BasicScheduler", id="schedule", model=model,
                               scheduler=scheduler, steps=steps, denoise=denoise).out(0)
-    high_model = models.out(0) if second_model is None else second_model
+    high_model = model if second_model is None else second_model
     if two_pass and second_ff_chunks != "沿用模型":
         high_model = graph.node("MiniMaxChunkFeedForward", id="high_ff_chunks", model=high_model,
                                 chunks=int(second_ff_chunks), seq_threshold=4096).out(0)
@@ -180,9 +179,9 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
         negative = graph.node("ConditioningZeroOut", id="selflift_negative", conditioning=conditioning)
         sampler = graph.node("KSamplerSelect", id="sampler", sampler_name="euler")
         high_model = graph.node("YtonH3PrepareSampling", id="high_prepare_sampling",
-                                model=high_model, clip=models.out(1), conditioning=conditioning).out(0)
+                                model=high_model, clip=clip, conditioning=conditioning).out(0)
         final = graph.node("SelfLiftH3Sampler", id="main", model=main_model, model_hires=high_model,
-                           positive=conditioning, negative=negative.out(0), vae=models.out(2),
+                           positive=conditioning, negative=negative.out(0), vae=vae,
                            latent_image=reference.out(1), sampler=sampler.out(0), sigmas=schedule,
                            seed=seed, cfg=1.0, transition_step=selflift_transition_step, lowres_scale=first_pass_scale,
                            rho=selflift_rho, w_min=selflift_w_min, w_max=selflift_w_max,
@@ -225,21 +224,21 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                                 video_latent=upscaled.out(0), audio_latent=split.out(1)).out(0)
             sampling_noise = high_noise.out(0)
         high_model = graph.node("YtonH3PrepareSampling", id="high_prepare_sampling",
-                                model=high_model, clip=models.out(1), conditioning=high_conditioning).out(0)
+                                model=high_model, clip=clip, conditioning=high_conditioning).out(0)
         high_guider = graph.node("BasicGuider", id="high_guider", model=high_model, conditioning=high_conditioning)
         high_sampler = graph.node("KSamplerSelect", id="high_sampler", sampler_name=second_sampler)
         final = graph.node("SamplerCustomAdvanced", id="high_sample", noise=sampling_noise,
                            guider=high_guider.out(0), sampler=high_sampler.out(0), sigmas=high_schedule,
                            latent_image=latent).out(0)
 
-    frames = add_video_decode(graph, final, models.out(2), vae_decode_mode,
+    frames = add_video_decode(graph, final, vae, vae_decode_mode,
                               vae_tile_size, vae_tile_overlap)
-    sound = graph.node("VAEDecodeAudio", id="sound", samples=final, vae=models.out(3)).out(0)
+    sound = graph.node("VAEDecodeAudio", id="sound", samples=final, vae=audio_vae).out(0)
     if face_refine:
         if isinstance(face_sigmas, str):
             face_sigmas = graph.node("ManualSigmas", id="face_sigmas", sigmas=face_sigmas).out(0) if face_sigmas.strip() else None
-        face_model = models.out(0) if face_model is None else face_model
-        frames = add_face_refinement(graph, frames, final, face_model, models.out(1), models.out(2), models.out(3),
+        face_model = model if face_model is None else face_model
+        frames = add_face_refinement(graph, frames, final, face_model, clip, vae, audio_vae,
                                      image, prompt, ref_image_size, face_count, 4, 0.4,
                                      "bbox\\face_yolov8m.pt", face_reverse, 42, face_sigmas, 0.35, "none")
 
