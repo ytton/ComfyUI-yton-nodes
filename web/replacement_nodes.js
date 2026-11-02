@@ -38,6 +38,16 @@ function setupConnector(node) {
   followNodeColours(node,root);mountNodePanel(node,"LLM 服务",root,310,92,{fitHeight:true});root.parentElement.style.overflow="hidden";void refresh();
 }
 
+function setupSegment(node) {
+  const executed=node.onExecuted;
+  node.onExecuted=function(data) {
+    executed?.apply(this,arguments);
+    const link=node.graph?.links[node.inputs.find(input=>input.name==="plan")?.link];
+    const planner=link && node.graph.getNodeById(link.origin_id);
+    if(planner?.type==="YtonReplacementPlan") planner.onExecuted?.(data);
+  };
+}
+
 function setupSave(node) {
   const root=el("div","yton-replacement-panel yr-save");
   const video=el("video");video.controls=true;video.preload="metadata";video.hidden=true;
@@ -87,7 +97,7 @@ function setupSave(node) {
 app.registerExtension({
   name:"yton.character-replacement",
   async beforeRegisterNodeDef(nodeType,nodeData) {
-    const setup={YtonLLMConnector:setupConnector,YtonCharacterReplacement:setupReplacementPanel,YtonReplacementVideoSave:setupSave}[nodeData.name];
+    const setup={YtonLLMConnector:setupConnector,YtonCharacterReplacement:setupReplacementPanel,YtonReplacementPlan:setupReplacementPanel,YtonReplacementSegment:setupSegment,YtonReplacementVideoSave:setupSave}[nodeData.name];
     if(!setup) return;
     const created=nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated=function(){created?.apply(this,arguments);void setup(this);};

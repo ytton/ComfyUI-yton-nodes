@@ -308,7 +308,7 @@ export async function setupReplacementPanel(node) {
     if(event.defaultPrevented || removed || node.graph!==app.canvas?.graph) return;
     if(event.target instanceof Element && event.target.closest("input,textarea,[contenteditable]:not([contenteditable='false'])")) return;
     const selected=Object.values(app.canvas.selected_nodes || {});
-    if(selected.find(n=>n.type==="YtonCharacterReplacement")!==node) return;
+    if(selected.find(n=>["YtonCharacterReplacement","YtonReplacementPlan"].includes(n.type))!==node) return;
     const files=Array.from(event.clipboardData?.files || []).filter(f=>kind(f));
     if(!files.length) return;
     event.preventDefault();event.stopImmediatePropagation();void upload(files,activeImage);

@@ -5,7 +5,7 @@ import json
 from comfy_api.latest import io
 
 from ..llm_connection import LLMConnection
-from .media import image_tensors, reference_images, segment_video
+from .media import image_tensors, plan_for, reference_images, segment_video
 from .prompts import optimize, prompt_slot, resolve_references, signature, source_prompt
 from .save import execution_state, save_segment
 
@@ -96,6 +96,42 @@ class YtonCharacterReplacement(io.ComfyNode):
                                   "total": len(plan["segments"])}]})
 
 
+class YtonReplacementPlan(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="YtonReplacementPlan", display_name="人物替换配置器 · 循环规划", category="yton-nodes/媒体",
+            description="放在循环外配置视频与提示词，提前计算片段总数；分段配置连接【人物替换 · 当前片段】。",
+            inputs=[io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
+                    io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
+            outputs=[io.Custom("YTON_REPLACEMENT_PLAN").Output(display_name="分段配置"),
+                     io.Int.Output(display_name="片段总数", tooltip="在循环开始前确定，连接 Start Loop 的 max_iteration。")])
+
+    @classmethod
+    def fingerprint_inputs(cls, **inputs):
+        return float("nan")
+
+    @classmethod
+    def execute(cls, config, llm=None):
+        _, plan = plan_for(parse_config(config))
+        return io.NodeOutput({"config": config, "llm": llm}, len(plan["segments"]))
+
+
+class YtonReplacementSegment(YtonCharacterReplacement):
+    @classmethod
+    def define_schema(cls):
+        schema = super().define_schema()
+        schema.node_id = "YtonReplacementSegment"
+        schema.display_name = "人物替换 · 当前片段"
+        schema.description = "放在循环内，按 0 起始索引从分段配置中准备当前片段、参考图片与提示词。"
+        schema.inputs = [io.Int.Input("index", default=0, min=0, force_input=True, display_name="当前索引"),
+                         io.Custom("YTON_REPLACEMENT_PLAN").Input("plan", display_name="分段配置")]
+        return schema
+
+    @classmethod
+    def execute(cls, index, plan):
+        return super().execute(index, plan["config"], plan["llm"])
+
+
 class YtonReplacementVideoSave(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -126,4 +162,4 @@ class YtonReplacementVideoSave(io.ComfyNode):
         return io.NodeOutput(video, ui={"replacement_saved": [result]})
 
 
-CLASSES = [YtonLLMConnector, YtonCharacterReplacement, YtonReplacementVideoSave]
+CLASSES = [YtonLLMConnector, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementSegment, YtonReplacementVideoSave]

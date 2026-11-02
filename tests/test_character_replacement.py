@@ -1,6 +1,7 @@
 """CPU integration tests: real files, audio, segment boundaries and loop state."""
 
 from copy import deepcopy
+import asyncio
 from dataclasses import dataclass, field
 from fractions import Fraction
 import json
@@ -28,7 +29,7 @@ package.__path__ = [str(PLUGIN)]
 sys.modules[package.__name__] = package
 from replacement_test_plugin.llm_connection import LLMConnection
 from replacement_test_plugin.replacement.media import contact_sheet, encode, inspect, reference_images, segment_video
-from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement
+from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan
 from replacement_test_plugin.replacement.plan import make_plan
 from replacement_test_plugin.replacement.prompts import signature
 from replacement_test_plugin.replacement.save import execution_state, save_segment
@@ -158,6 +159,94 @@ class ReplacementTests(unittest.TestCase):
         self.assertIs(a,execution_state(dyn,"loop.2.config"))
         self.assertIsNot(a,execution_state(dyn,"loop.1.save"))
         self.assertIsNot(a,execution_state(DynamicPrompt({}),"config"))
+
+    def test_loop_plan_does_not_prepare_media_or_optimize(self):
+        config = self.config()
+        config.update(auto=True, shared=True)
+        llm = FakeLLM()
+        with patch("replacement_test_plugin.replacement.nodes.segment_video") as prepare:
+            plan = YtonReplacementPlan.execute(json.dumps(config), llm)
+        prepare.assert_not_called()
+        self.assertEqual(llm.calls, [])
+        self.assertEqual(plan.result[1], 2)
+        self.assertIs(plan.result[0]["llm"], llm)
+        config["plan"]["frames"] = 22
+        self.assertEqual(YtonReplacementPlan.execute(json.dumps(config)).result[1], 4)
+
+    def test_official_loop_uses_plan_count_carries_video_and_finishes_saving(self):
+        import execution
+        import nodes
+        from comfy_extras import nodes_loop
+        from server import PromptServer
+
+        config = self.config()
+        config.update(auto=True, shared=True)
+        config["plan"]["overlap"] = 0
+        llm = FakeLLM()
+        rendered = []
+        test = self
+
+        class Connector(io.ComfyNode):
+            @classmethod
+            def define_schema(cls):
+                return io.Schema(node_id="ReplacementTestConnector", inputs=[],
+                                 outputs=[io.Custom("YTON_LLM").Output()])
+
+            @classmethod
+            def execute(cls):
+                return io.NodeOutput(llm)
+
+        class Render(io.ComfyNode):
+            @classmethod
+            def define_schema(cls):
+                return io.Schema(node_id="ReplacementTestRender",
+                    inputs=[io.Video.Input("video"), io.Int.Input("index"),
+                            io.Video.Input("previous", optional=True)], outputs=[io.Video.Output()])
+
+            @classmethod
+            def execute(cls, video, index, previous=None):
+                if index == 0:
+                    test.assertIsNone(previous)
+                else:
+                    test.assertIs(previous, rendered[-1])
+                    manifests = list((test.root/"output/official-loop").rglob("segments.json"))
+                    test.assertEqual(len(manifests), 1)
+                    test.assertEqual(len(json.loads(manifests[0].read_text())["segments"]), index)
+                rendered.append(video)
+                return io.NodeOutput(video)
+
+        prompt = {
+            "llm": {"class_type": "ReplacementTestConnector", "inputs": {}},
+            "plan": {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "llm": ["llm", 0]}},
+            "start": {"class_type": "StartLoop", "inputs": {"mode": "For", "mode.start_iteration_index": 0,
+                       "mode.max_iteration": ["plan", 1], "mode.step": 1, "cache_iterations": False}},
+            "segment": {"class_type": "YtonReplacementSegment", "inputs": {"index": ["start", 0], "plan": ["plan", 0]}},
+            "render": {"class_type": "ReplacementTestRender", "inputs": {"video": ["segment", 1],
+                        "index": ["start", 0], "previous": ["start", 4]}},
+            "save": {"class_type": "YtonReplacementVideoSave", "inputs": {"video": ["render", 0],
+                      "current": ["segment", 7], "total": ["plan", 1], "filename_prefix": "official-loop/video",
+                      "container": "mp4", "fps": 24, "crf": 18, "save_full": True}},
+            "end": {"class_type": "EndLoop", "inputs": {"output_value": ["save", 0],
+                     "next_iteration_value": ["save", 0], "accumulate": False}},
+        }
+        mapping = {**{cls.__name__: cls for cls in CLASSES}, **nodes_loop.NODE_CLASS_MAPPINGS,
+                   "ReplacementTestConnector": Connector, "ReplacementTestRender": Render}
+        server = types.SimpleNamespace(client_id=None, last_node_id=None, send_sync=lambda *args: None,
+                                       send_progress_text=lambda *args: None)
+        with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, "instance", server, create=True):
+            valid, error, outputs, errors = asyncio.run(execution.validate_prompt("replacement-loop", prompt, None))
+            self.assertTrue(valid, (error, errors))
+            executor = execution.PromptExecutor(server, cache_type=execution.CacheType.CLASSIC,
+                                                cache_args={"ram": 0, "ram_inactive": 0})
+            asyncio.run(executor.execute_async(prompt, uuid.uuid4().hex, execute_outputs=outputs))
+            self.assertTrue(executor.success, executor.status_messages)
+        self.assertEqual(len(rendered), 2)
+        self.assertEqual([video.get_frame_count() for video in rendered], [39, 33])
+        self.assertEqual(len(llm.calls), 1)
+        manifest = next((self.root/"output/official-loop").rglob("segments.json"))
+        self.assertEqual(sorted(json.loads(manifest.read_text())["segments"]), ["1", "2"])
+        self.assertTrue((manifest.parent/"complete.mp4").is_file())
+        self.assertEqual(InputImpl.VideoFromFile(str(manifest.parent/"complete.mp4")).get_frame_count(), 72)
 
     def test_real_pgs_loop_executes_each_save_and_merges(self):
         import execution
