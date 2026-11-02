@@ -130,6 +130,14 @@ class H3OmniGenerate:
             "default": False,
             "tooltip": "仅开启并接入上一段视频时，才提取尾部 22 帧与音频接续；关闭时忽略上一段视频，按独立片段生成。",
         })
+        required["context_noise_strength"] = ("FLOAT", {
+            "default": 0.1, "min": 0.0, "max": 1.0, "step": 0.01, "round": False,
+            "tooltip": "上一段尾部 22 帧中，前 21 帧的加噪强度；0 不加噪，最后一帧始终保持原样。仅在启用上下文且传入上一段视频时使用。",
+        })
+        required["context_color_strength"] = ("FLOAT", {
+            "default": 0.75, "min": 0.0, "max": 1.0, "step": 0.01, "round": False,
+            "tooltip": "本段裁除上下文后，参照上一段末帧匹配整段颜色的强度；0 关闭调色，1 完全应用颜色匹配。仅在启用上下文且传入上一段视频时使用。",
+        })
         schema["required"]["clip_index"][1]["tooltip"] = (
             "普通模式按序号从源视频截取当前片段；开启上下文并接入上一段视频后，自动增加并裁除 22 帧上下文。"
         )

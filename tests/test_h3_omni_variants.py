@@ -62,6 +62,34 @@ class OmniVariantTests(unittest.TestCase):
             for name in ("upscale", "high_sample", "high_ff_chunks", "previous"):
                 self.assertNotIn(name, graph)
 
+    def test_context_controls_reach_guide_and_final_colour_in_every_variant(self):
+        for cls in VARIANTS.values():
+            schema = cls.INPUT_TYPES()['required']
+            self.assertEqual(schema['context_noise_strength'][1]['default'], 0.1)
+            self.assertEqual(schema['context_color_strength'][1]['default'], 0.75)
+            for sampling_mode in ('单采', '二采'):
+                for noise, colour in ((0.0, 0.0), (0.23, 0.42), (1.0, 1.0)):
+                    with self.subTest(plan=cls.SAMPLING_PLAN, mode=sampling_mode, noise=noise, colour=colour):
+                        graph = expanded(cls, sampling_mode=sampling_mode, enable_context=True,
+                                         previous_video=['previous', 0], context_noise_strength=noise,
+                                         context_color_strength=colour)
+                        self.assertEqual(graph['main_ctx_context_first_noise']['inputs']['strength'], noise)
+                        self.assertEqual(graph['main_ctx_context_last_exact']['inputs']['strength'], 0)
+                        if colour:
+                            self.assertEqual(graph['seamless_color_match']['inputs']['strength'], colour)
+                            self.assertTrue(graph['seamless_color_match']['inputs']['image_target'][0].endswith('trim'))
+                        else:
+                            self.assertNotIn('seamless_color_match', graph)
+                            self.assertTrue(graph['video']['inputs']['images'][0].endswith('trim'))
+                        if sampling_mode == '二采' and cls.SAMPLING_PLAN == 'traditional':
+                            self.assertEqual(graph['high_context_add_guide']['inputs']['image'],
+                                             graph['main_context_add_guide']['inputs']['image'])
+            for previous, enabled in ((None, True), (['previous', 0], False)):
+                graph = expanded(cls, previous_video=previous, enable_context=enabled,
+                                 context_noise_strength=1.0, context_color_strength=1.0)
+                self.assertNotIn('main_ctx_context_first_noise', graph)
+                self.assertNotIn('seamless_color_match', graph)
+
     def test_traditional_uses_targeted_3d_upscale_and_preserves_audio(self):
         cls = VARIANTS["YtonH3TraditionalOmniGenerate"]
         graph = expanded(cls, width=1920, height=1088, first_pass_scale=0.5,

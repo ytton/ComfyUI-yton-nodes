@@ -2363,6 +2363,22 @@
             "name": "face_sigmas"
           },
           "link": null
+        },
+        {
+          "name": "context_noise_strength",
+          "type": "FLOAT",
+          "widget": {
+            "name": "context_noise_strength"
+          },
+          "link": null
+        },
+        {
+          "name": "context_color_strength",
+          "type": "FLOAT",
+          "widget": {
+            "name": "context_color_strength"
+          },
+          "link": null
         }
       ],
       "outputs": [
@@ -2418,7 +2434,9 @@
         873790131440316,
         "fixed",
         false,
-        1
+        1,
+        0.1,
+        0.75
       ],
       "widgets_values_named": {
         "prompt": "",
@@ -2448,7 +2466,9 @@
         "seed": 873790131440316,
         "control_after_generate": "fixed",
         "enable_context": false,
-        "clip_index": 1
+        "clip_index": 1,
+        "context_noise_strength": 0.1,
+        "context_color_strength": 0.75
       }
     }
   ],

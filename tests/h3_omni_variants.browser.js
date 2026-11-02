@@ -4,22 +4,18 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
   const p = await context.newPage()
   const errors = []
   p.on('pageerror', error => errors.push(error.message))
-  await context.route(/\/(?:api\/)?object_info(?:\/[^?]+)?(?:\?.*)?$/, async route => {
-    const response = await route.fetch()
-    const data = await response.json()
-    delete data.YtonH3OmniGenerate
-    Object.assign(data, definitions)
-    await route.fulfill({ response, json: data })
-  })
   await context.route('**/userdata/**', route => route.request().method() === 'GET' ? route.continue() : route.fulfill({ json: {} }))
   await context.route(/\/(?:api\/)?settings(?:\/|$)/, route => route.request().method() === 'POST' ? route.fulfill({ json: {} }) : route.continue())
   await context.route(/\/(?:api\/)?prompt$/, route => route.request().method() === 'POST' ? route.abort() : route.continue())
   try {
     await p.goto(baseURL)
     await p.getByTestId('workflows-tab-button').waitFor({ timeout: 60000 })
+    await context.routeWebSocket('**/ws**', socket => socket.close())
+    await p.evaluate(() => window.comfyAPI.api.api.socket?.close())
     const results = await p.evaluate(async ({ definitions, examples }) => {
       const assert = (condition, message) => { if (!condition) throw new Error(message) }
       const app = window.comfyAPI.app.app
+      await app.registerNodesFromDefs(definitions)
       const results = []
       assert(!LiteGraph.registered_node_types.YtonH3OmniGenerate, 'old generator is not registered')
       for (const [type, definition] of Object.entries(definitions)) {
@@ -56,6 +52,13 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         media.connect(1, node, node.findInputSlot('previous_video'))
         assert(w('enable_context').value === false, 'previous video does not enable context automatically')
         change('enable_context', true)
+        change('context_noise_strength', 0.23)
+        change('context_color_strength', 0.42)
+        const contextControls = node.widgets.slice(
+          node.widgets.findIndex(w => w.name === 'h3_section_分段上下文'),
+          node.widgets.findIndex(w => w.name === 'h3_section_视频解码'))
+        assert(contextControls.includes(w('context_noise_strength')) && contextControls.includes(w('context_color_strength')),
+          'both controls appear in the context section')
         change('face_refine', true)
         app.graph.getNodeById(12).connect(0, node, node.findInputSlot('second_model'))
         const twoPassHeight = node.size[1]
@@ -81,6 +84,8 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
           assert(Array.isArray(prompt.inputs[name]), name + ' link survives reload')
         }
         assert(prompt.inputs.width === 1920 && prompt.inputs.height === 1088, 'final resolution survives reload')
+        assert(prompt.inputs.context_noise_strength === 0.23 && prompt.inputs.context_color_strength === 0.42,
+          'context noise and colour strengths survive reload and reach the API')
         assert(!('sampling_plan' in prompt.inputs) && !('h3_context_length' in prompt.inputs), 'display fields are not submitted')
         if (tr) assert(!('first_pass_scale' in prompt.inputs), 'TR fixed scale is not submitted')
         else assert(prompt.inputs.first_pass_scale === 0.5, 'editable scale is submitted')

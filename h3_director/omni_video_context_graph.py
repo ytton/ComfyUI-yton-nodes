@@ -11,14 +11,14 @@ from .omni_sampling import FILM_MODEL, UPSCALE_MODEL, sampling_dimensions
 CONTEXT_FRAMES = 22
 
 
-def _guide_from_previous(graph, previous, prefix):
-    """前 21 帧加 0.1 噪声，最后一帧保持原样。"""
+def _guide_from_previous(graph, previous, prefix, noise_strength):
+    """前 21 帧按指定强度加噪，最后一帧保持原样。"""
     first = graph.node("GetImageRangeFromBatch", id=prefix + "context_first",
                        images=previous.out(0), start_index=0, num_frames=CONTEXT_FRAMES - 1).out(0)
     last = graph.node("GetImageRangeFromBatch", id=prefix + "context_last",
                       images=previous.out(0), start_index=CONTEXT_FRAMES - 1, num_frames=1).out(0)
     first_noisy = graph.node("ImageAddNoise", id=prefix + "context_first_noise",
-                             image=first, seed=0, strength=0.1).out(0)
+                             image=first, seed=0, strength=noise_strength).out(0)
     last_exact = graph.node("ImageAddNoise", id=prefix + "context_last_exact",
                             image=last, seed=0, strength=0.0).out(0)
     guide = graph.node("ImageBatchMulti", id=prefix + "context_guide",
@@ -33,15 +33,17 @@ def _add_guide(graph, positive, latent, vae, audio_vae, image, audio, prefix):
                       positive=guide.out(0), audio_feather_ticks=256).out(0)
 
 
-def _color_match(graph, frames, previous, prefix):
+def _color_match(graph, frames, previous, prefix, strength):
     """用上一段最后一帧匹配本段颜色，整段共用首帧的变换。"""
+    if strength == 0:
+        return frames
     reference = graph.node("GetImageRangeFromBatch", id=prefix + "reference_frame",
                            images=previous.out(0), start_index=CONTEXT_FRAMES - 1,
                            num_frames=1).out(0)
     return graph.node("ColorTransfer", id=prefix + "color_match", image_target=frames,
                       image_ref=reference, method="mkl_lab",
                       source_stats="target_frame", **{"source_stats.target_index": 0},
-                      strength=0.75).out(0)
+                      strength=strength).out(0)
 
 
 def build_video_context_graph(model_loader, prompt, width, height, mode, duration, ref_image_size,
@@ -49,6 +51,7 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                               clip_index, face_refine, face_count, face_reverse, image=None, video=None, audio=None,
                               sigmas=None, previous_video=None, second_model=None,
                               face_model=None, face_sigmas=None, enable_context=False,
+                              context_noise_strength=0.1, context_color_strength=0.75,
                               film_model=FILM_MODEL, film_method="learned model",
                               film_audio_denoise=0.0, film_noise_resample="independent", film_match_stats=0.0,
                               second_steps=4, second_sigma_start=0.4, second_rho=7.0, second_ff_chunks="8",
@@ -120,7 +123,7 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
 
     conditioning = reference.out(0)
     if previous is not None:
-        guide_images = _guide_from_previous(graph, previous, "main_ctx_")
+        guide_images = _guide_from_previous(graph, previous, "main_ctx_", context_noise_strength)
         conditioning = _add_guide(graph, conditioning, reference.out(1), models.out(2), models.out(3),
                                    guide_images, previous.out(1), "main_context_add_guide")
     # 续段的头部由上一段引导；当前源视频继续作为 reference 使用。
@@ -244,6 +247,6 @@ def build_video_context_graph(model_loader, prompt, width, height, mode, duratio
                          head_trim_frames=head_trim_frames, tail_trim_frames=tail_trim_frames, fps=24.0)
     frames = trimmed.out(0)
     if previous is not None:
-        frames = _color_match(graph, frames, previous, "seamless_")
+        frames = _color_match(graph, frames, previous, "seamless_", context_color_strength)
     video_result = graph.node("CreateVideo", id="video", images=frames, audio=trimmed.out(1), fps=24.0)
     return {"result": (video_result.out(0), final), "expand": graph.finalize()}

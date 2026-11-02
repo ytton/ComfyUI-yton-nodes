@@ -10,6 +10,7 @@ const common = {
   prompt: '', width: 1344, height: 768, mode: '普通模式', duration: 5, ref_image_size: 'match',
   sampling_mode: '二采', steps: 4, sampler_name: 'euler', scheduler: 'simple', denoise: 1,
   seed: 1, control_after_generate: 'fixed', clip_index: 1, enable_context: false,
+  context_noise_strength: 0.1, context_color_strength: 0.75,
   face_refine: false, face_count: 1, face_sigmas: '', face_reverse: false, second_ff_chunks: '8',
   vae_decode_mode: '标准解码', vae_tile_size: 256, vae_tile_overlap: 64,
   reference_detail_strength: 1,
@@ -46,6 +47,14 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   assert.equal(node.inputs.find(i => i.name === 'sigmas').label, '自定义 Sigma')
   assert.equal(widgets.get('h3_context_length').value, 22)
   assert.equal(widgets.get('h3_context_length').serialize, false)
+  const contextStart = node.widgets.findIndex(w => w.name === 'h3_section_分段上下文')
+  const contextEnd = node.widgets.findIndex(w => w.name === 'h3_section_视频解码')
+  for (const [name, label] of [['context_noise_strength', '前 21 帧噪声强度'], ['context_color_strength', '接续调色强度']]) {
+    assert.ok(node.widgets.slice(contextStart, contextEnd).includes(widgets.get(name)))
+    assert.equal(widgets.get(name).label, label)
+    change(name, 0.23)
+    assert.equal(widgets.get(name).value, 0.23)
+  }
   assert.equal(widgets.has('x2_vae_name'), false)
   assert.ok(widgets.get('vae_tile_size').hidden)
   assert.ok(widgets.get('reference_detail_strength').hidden)

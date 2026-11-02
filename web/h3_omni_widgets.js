@@ -6,7 +6,7 @@ const sections = [
   ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "second_model", "film_method", "film_model", "second_sampler", "second_steps", "second_sigma_start", "second_rho", "second_sigma_values", "second_ff_chunks", "film_audio_denoise", "film_noise_resample", "film_match_stats", "selflift_transition_step", "selflift_rho", "selflift_w_min", "selflift_w_max", "selflift_highres_tiling", "selflift_highres_tiles"]],
   ["小脸修复", ["face_model", "face_refine", "face_count", "face_sigmas", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
-  ["分段上下文", ["enable_context", "clip_index", "h3_context_length"]],
+  ["分段上下文", ["enable_context", "clip_index", "h3_context_length", "context_noise_strength", "context_color_strength"]],
   ["视频解码", ["vae_decode_mode", "vae_tile_size", "vae_tile_overlap", "reference_detail_strength"]],
 ];
 const labels = {
@@ -16,6 +16,8 @@ const labels = {
   scheduler: "调度器", denoise: "调度降噪", seed: "随机种子",
   clip_index: "当前片段序号",
   enable_context: "启用上下文",
+  context_noise_strength: "前 21 帧噪声强度",
+  context_color_strength: "接续调色强度",
   first_pass_scale: "首采宽高比例", upscale_model: "潜空间放大模型",
   second_sampler: "二采采样器", second_sigma_values: "二采 Sigma（手填）",
   second_steps: "二采步数", second_sigma_start: "二采起始 Sigma / 重绘力度", second_rho: "去网格曲线 / rho",
