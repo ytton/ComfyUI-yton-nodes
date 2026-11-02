@@ -10,19 +10,81 @@ from unittest.mock import Mock, patch
 PLUGIN = Path(__file__).resolve().parents[1]
 WORKFLOW = PLUGIN / 'examples/H3测试流-传统二采极速-全模态上下文.json'
 BASELINE = PLUGIN / 'examples/H3测试流-传统二采极速-调度优化.json'
+PROMPT_FIXTURE = PLUGIN / 'tests/fixtures/h3_omni_context_prompt.json'
+
+
+class WorkflowView:
+    """Resolve native subgraphs and promoted widgets by stable original node identity."""
+
+    def __init__(self, workflow):
+        self.definitions = {s['id']: s for s in workflow['definitions']['subgraphs']}
+        self.nodes, self.scopes = {}, {}
+        self.root = self.Scope(self, workflow)
+        self.root.visit()
+
+    @staticmethod
+    def key(node):
+        key = str(node.get('properties', {}).get('h3_layout_key', node['id']))
+        return int(key) if key.isdecimal() else key
+
+    def source(self, node_id, name):
+        node = self.nodes[node_id]
+        socket = next(i for i in node['inputs'] if i['name'] == name)
+        key, slot = self.scopes[node_id].resolve_link(socket['link'])
+        return key, slot
+
+    def prompt(self, expected):
+        result = {}
+        for key, expected_node in expected.items():
+            node_key = int(key) if key.isdecimal() else key
+            node, scope = self.nodes[node_key], self.scopes[node_key]
+            values = dict(node.get('widgets_values_named', {}))
+            names = set(expected_node['inputs'])
+            for port in node.get('inputs', []):
+                if port.get('link') is not None:
+                    values[port['name']] = scope.resolve_link(port['link'])
+                    names.add(port['name'])
+            result[key] = {'class_type': node['type'], 'inputs': {name: values[name] for name in names}}
+        return result
+
+    class Scope:
+        def __init__(self, view, graph, parent=None, host=None):
+            self.view, self.graph, self.parent, self.host = view, graph, parent, host
+            self.nodes = {str(n['id']): n for n in graph['nodes']}
+            self.links = {str(l[0] if isinstance(l, list) else l['id']): l for l in graph['links']}
+
+        def resolve_link(self, link_id):
+            link = self.links[str(link_id)]
+            source, slot = (link[1:3] if isinstance(link, list) else (link['origin_id'], link['origin_slot']))
+            if str(source) == '-10':
+                port = self.host['inputs'][slot]
+                if port.get('link') is not None:
+                    return self.parent.resolve_link(port['link'])
+                names = [p['widget']['name'] for p in self.host['inputs'] if p.get('widget')]
+                return self.host['widgets_values'][names.index(port['widget']['name'])]
+            node = self.nodes[str(source)]
+            if node['type'] in self.view.definitions:
+                graph = self.view.definitions[node['type']]
+                return self.__class__(self.view, graph, self, node).resolve_link(graph['outputs'][slot]['linkIds'][0])
+            return [self.view.key(node), slot]
+
+        def visit(self):
+            for node in self.nodes.values():
+                key = self.view.key(node)
+                self.view.nodes[key], self.view.scopes[key] = node, self
+                if node['type'] in self.view.definitions:
+                    self.__class__(self.view, self.view.definitions[node['type']], self, node).visit()
 
 
 class OmniContextWorkflowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.workflow = json.loads(WORKFLOW.read_text(encoding='utf-8'))
-        cls.nodes = {node['id']: node for node in cls.workflow['nodes']}
-        cls.links = {link[0]: link for link in cls.workflow['links']}
+        cls.view = WorkflowView(cls.workflow)
+        cls.nodes = cls.view.nodes
 
     def source(self, node_id, name):
-        socket = next(item for item in self.nodes[node_id]['inputs'] if item['name'] == name)
-        link = self.links[socket['link']]
-        return link[1], link[2]
+        return self.view.source(node_id, name)
 
     def test_loop_carries_the_actual_final_video_and_skips_context_on_first_segment(self):
         self.assertEqual(self.source(624, 'video'), (527, 4))
@@ -42,8 +104,9 @@ class OmniContextWorkflowTests(unittest.TestCase):
     def test_both_guides_match_omni_context_settings(self):
         self.assertEqual(self.nodes[625]['widgets_values'], [0, 21])
         self.assertEqual(self.nodes[626]['widgets_values'], [21, 1])
-        self.assertEqual(self.nodes[627]['widgets_values_named'], {'seed': 0, 'strength': .1})
-        self.assertEqual(self.nodes[628]['widgets_values_named'], {'seed': 0, 'strength': 0.0})
+        for node_id, strength in ((627, .1), (628, 0.0)):
+            self.assertEqual(self.nodes[node_id]['widgets_values_named']['seed'], 0)
+            self.assertEqual(self.nodes[node_id]['widgets_values_named']['strength'], strength)
         self.assertEqual(self.source(629, 'image_1'), (627, 0))
         self.assertEqual(self.source(629, 'image_2'), (628, 0))
         for guide, reference, feather in [(581, 550, 630), (611, 609, 632)]:
@@ -73,7 +136,8 @@ class OmniContextWorkflowTests(unittest.TestCase):
         before = {n['id']: n for n in baseline['nodes']}
         for node_id in (313, 314, 320, 588, 601, 602, 603, 607, 612, 613, 615, 616, 618):
             self.assertEqual(self.nodes[node_id].get('widgets_values'), before[node_id].get('widgets_values'), node_id)
-        self.assertEqual(self.workflow['definitions'], baseline['definitions'])
+        original = {s['id'] for s in baseline['definitions']['subgraphs']}
+        self.assertTrue(original.issubset(self.view.definitions))
         self.assertEqual(self.source(622, 'signal'), (633, 0))
         self.assertEqual(self.source(622, 'value'), (631, 0))
         self.assertEqual(self.source(623, 'conditioning'), (622, 1))
@@ -82,26 +146,68 @@ class OmniContextWorkflowTests(unittest.TestCase):
         self.assertTrue({421, 561, 605}.isdisjoint(self.nodes))
 
     def test_graph_has_no_dependency_cycles_and_links_match_both_sockets(self):
+        expected = json.loads(PROMPT_FIXTURE.read_text(encoding='utf-8'))
+        prompt = self.view.prompt(expected)
         visited, visiting = set(), set()
         def visit(node_id):
             self.assertNotIn(node_id, visiting)
             if node_id in visited:
                 return
             visiting.add(node_id)
-            for item in self.nodes[node_id].get('inputs', []):
-                if item.get('link') is not None:
-                    visit(self.links[item['link']][1])
+            for value in prompt[str(node_id)]['inputs'].values():
+                if isinstance(value, list) and len(value) == 2 and str(value[0]) in prompt:
+                    visit(str(value[0]))
             visiting.remove(node_id)
             visited.add(node_id)
-        for node_id in self.nodes:
+        for node_id in prompt:
             visit(node_id)
-        for link_id, source, output, target, slot, _ in self.links.values():
-            self.assertIn(link_id, self.nodes[source]['outputs'][output]['links'])
-            self.assertEqual(self.nodes[target]['inputs'][slot]['link'], link_id)
-        for node in self.nodes.values():
-            for slot, output in enumerate(node.get('outputs', [])):
-                for link_id in output.get('links') or []:
-                    self.assertEqual(self.links[link_id][1:3], [node['id'], slot])
+        for graph in [self.workflow, *self.view.definitions.values()]:
+            nodes = {str(n['id']): n for n in graph['nodes']}
+            links = {}
+            for item in graph['links']:
+                if isinstance(item, list):
+                    link_id, source, output, target, slot, _ = item
+                else:
+                    link_id, source, output, target, slot = (item[name] for name in
+                        ('id', 'origin_id', 'origin_slot', 'target_id', 'target_slot'))
+                links[link_id] = (str(source), output, str(target), slot)
+                source_links = (graph['inputs'][output]['linkIds'] if str(source) == '-10'
+                                else nodes[str(source)]['outputs'][output]['links'])
+                self.assertIn(link_id, source_links)
+                if str(target) == '-20':
+                    self.assertIn(link_id, graph['outputs'][slot]['linkIds'])
+                else:
+                    self.assertEqual(nodes[str(target)]['inputs'][slot]['link'], link_id)
+            for node in nodes.values():
+                for slot, output in enumerate(node.get('outputs', [])):
+                    for link_id in output.get('links') or []:
+                        self.assertEqual(links[link_id][:2], (str(node['id']), slot))
+
+    def test_packaging_preserves_every_executable_input_and_exposes_controls(self):
+        expected = json.loads(PROMPT_FIXTURE.read_text(encoding='utf-8'))
+        # Fixture was exported from the original graph by native graphToPrompt.
+        actual = self.view.prompt(expected)
+        # JSON uses string node identifiers; graph source resolution preserves original ints.
+        for node in actual.values():
+            for name, value in node['inputs'].items():
+                if isinstance(value, list) and len(value) == 2 and str(value[0]) in expected:
+                    node['inputs'][name] = [str(value[0]), value[1]]
+        self.assertEqual(actual, expected)
+        modules = {n['properties'].get('h3_layout_module'): n for n in self.workflow['nodes']}
+        for module, names in {'second': {'model_name', 'noise_seed', 'sampler_name', 'sigmas', 'chunks'},
+                              'face': {'enabled', 'face_count', 'sigmas', 'reverse'}}.items():
+            host = modules[module]
+            widgets = {p['name'] for p in host['inputs'] if p.get('widget')}
+            self.assertTrue(names.issubset(widgets))
+            self.assertIn(host['type'], self.view.definitions)
+        self.assertEqual(len(self.workflow['nodes']), 19)
+        for module, labels in {'conditions': {'width': '首采宽度', 'height': '首采高度',
+                                              'image': '上段 22 帧', 'audio': '上段音频'},
+                                'face': {'enabled': '开启修脸'},
+                                'output': {'image_ref': '上段末帧', 'values.a': '是否首段'}}.items():
+            host = modules[module]
+            for name, label in labels.items():
+                self.assertEqual(next(p['label'] for p in host['inputs'] if p['name'] == name), label)
 
     def test_native_loop_skips_absent_video_then_carries_each_previous_result(self):
         from test_h3_video_context import asyncio, execution, torch, InputImpl, Types, Fraction, YtonH3VideoTail
