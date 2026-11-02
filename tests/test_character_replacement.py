@@ -159,6 +159,7 @@ class ReplacementTests(unittest.TestCase):
                 config["ratio"] = ratio
                 output = self.node().execute(0, json.dumps(config))
                 self.assertEqual(output.result[3:6], (*size, 6))
+                self.assertEqual((output.ui["replacement_prompt"][0]["width"], output.ui["replacement_prompt"][0]["height"]), size)
                 video = output.result[1][0]
                 self.assertEqual(video.get_dimensions(), size)
                 self.assertEqual(tuple(video.get_components().images.shape), (6, size[1], size[0], 3))

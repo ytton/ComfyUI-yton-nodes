@@ -95,7 +95,7 @@ class YtonCharacterReplacement(io.ComfyNode):
                              index + 1, len(plan["segments"]), project_directory,
                              ui={"replacement_prompt": [{"index": index, "slot": slot, "text": text,
                                   "signature": source_signature, "frames": plan["segments"][index]["end"] - plan["segments"][index]["start"],
-                                  "total": len(plan["segments"])}]})
+                                  "total": len(plan["segments"]), "width": width, "height": height}]})
 
 
 class YtonReplacementPlan(io.ComfyNode):

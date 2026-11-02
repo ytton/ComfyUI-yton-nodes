@@ -76,3 +76,40 @@ export function hideWidget(widget) {
   if (widget.options) widget.options.hidden = true;
   if (widget.element) widget.element.style.display = "none";
 }
+
+export function showReplacementDimensions(node, dimensions) {
+  node._replacementDimensions=dimensions;
+  if(node.type==="YtonReplacementPlan") {
+    for(const id of node.outputs[0]?.links || []) {
+      const link=node.graph?.links[id], target=link && node.graph.getNodeById(link.target_id);
+      if(target?.type==="YtonReplacementSegment") showReplacementDimensions(target,dimensions);
+    }
+  } else {
+    for(const [index,key] of [[3,"width"],[4,"height"]]) {
+      const output=node.outputs[index];
+      if(!output) continue;
+      output.label=dimensions ? `${dimensions[key]}  ${output.name}` : output.name;
+      if(output._replacementDimensionDraw) continue;
+      const draw=output.draw;
+      output.draw=function(ctx,options) {
+        const value=node._replacementDimensions?.[key];
+        if(value===undefined || options.lowQuality) return draw.apply(this,arguments);
+        const label=this.label;
+        this.label=this.name;
+        try {
+          draw.apply(this,arguments);
+        } finally {
+          this.label=label;
+        }
+        const [x,y]=this._centreOffset;
+        ctx.save();
+        ctx.textAlign="right";
+        ctx.fillStyle="#38bdf8";
+        ctx.fillText(String(value),x-10-ctx.measureText(`  ${this.name}`).width,y+5);
+        ctx.restore();
+      };
+      output._replacementDimensionDraw=true;
+    }
+  }
+  node.setDirtyCanvas(true,true);
+}

@@ -63,7 +63,6 @@
 .yr-option-row>.yr-label{font-size:12px}.yr-options{display:flex;gap:4px;min-width:0;align-items:center}
 .yr-options>button{flex:1;padding:4px 3px;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:4px}
 .yr-options>input{width:70px;flex:1;padding:4px;font-size:12px}
-.yr-output-size{font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .yr-ratio{width:16px;height:10px;display:block;border:1px solid currentColor;border-radius:1px;flex-shrink:0}.yr-ratio.tall{width:8px;height:13px}.yr-ratio.square{width:11px;height:11px}
 .yr-button[aria-pressed=true]{border-color:var(--yr-accent);background:color-mix(in srgb,var(--yr-accent) 16%,var(--yr-bg));color:var(--yr-accent)}
 .yr-status{grid-column:1/-1;font-size:12px;overflow-wrap:anywhere}.yr-status:empty{display:none}

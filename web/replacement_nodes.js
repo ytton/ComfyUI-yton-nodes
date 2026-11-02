@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { applyTextReplacements } from "../../scripts/utils.js";
-import { button, el, field, hideWidget, input, mediaURL, request, select, toggle } from "./js/replacement_common.js";
+import { button, el, field, hideWidget, input, mediaURL, request, select, showReplacementDimensions, toggle } from "./js/replacement_common.js";
 import { mountNodePanel, followNodeColours } from "./js/node_panel.js";
 import { availableModels, settingsEvents } from "./js/prompt_optimizer_api.js";
 import { openOptimizerSettings } from "./js/prompt_optimizer_settings.js";
@@ -40,9 +40,20 @@ function setupConnector(node) {
 }
 
 function setupSegment(node) {
+  function syncDimensions() {
+    const link=node.graph?.links[node.inputs.find(input=>input.name==="plan")?.link];
+    const planner=link && node.graph.getNodeById(link.origin_id);
+    showReplacementDimensions(node,planner?._replacementDimensions);
+  }
+  const connectionsChanged=node.onConnectionsChange;
+  node.onConnectionsChange=function(){connectionsChanged?.apply(this,arguments);syncDimensions();};
+  const configured=node.onConfigure;
+  node.onConfigure=function(){configured?.apply(this,arguments);syncDimensions();};
   const executed=node.onExecuted;
   node.onExecuted=function(data) {
     executed?.apply(this,arguments);
+    const output=data.replacement_prompt?.[0];
+    if(output) showReplacementDimensions(node,output);
     const link=node.graph?.links[node.inputs.find(input=>input.name==="plan")?.link];
     const planner=link && node.graph.getNodeById(link.origin_id);
     if(planner?.type==="YtonReplacementPlan") planner.onExecuted?.(data);

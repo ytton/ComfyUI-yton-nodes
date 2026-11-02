@@ -59,21 +59,21 @@ async (basePage) => {
       config.compression.max_edge=0;config.compression.width=608;config.compression.height=1088;
       widget.value=JSON.stringify(config);node.onConfigure();
     });
-    const size=page.getByLabel("输出尺寸",{exact:true});
+    check(await page.getByLabel("输出尺寸",{exact:true}).count()===0,"configuration controls have no dimensions row");
     await page.getByRole("button",{name:"1080p",exact:true}).click();
     await page.getByRole("button",{name:"9:16",exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('.yr-output-size')?.textContent==="宽 1088 × 高 1920");
-    check(await size.innerText()==="宽 1088 × 高 1920","9:16 1080p shows aligned portrait output and clears custom dimensions");
+    await page.waitForFunction(()=>window.replacementTest.node.outputs[3].label==="1088  宽度" && window.replacementTest.node.outputs[4].label==="1920  高度");
+    await page.screenshot({path:"C:/Users/YuanTong/AppData/Local/Temp/replacement-output-dimensions.png"});
     await page.getByRole("button",{name:"16:9",exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('.yr-output-size')?.textContent==="宽 1920 × 高 1088");
+    await page.waitForFunction(()=>window.replacementTest.node.outputs[3].label==="1920  宽度" && window.replacementTest.node.outputs[4].label==="1088  高度");
     await page.getByRole("button",{name:"720p",exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('.yr-output-size')?.textContent==="宽 1280 × 高 704");
+    await page.waitForFunction(()=>window.replacementTest.node.outputs[3].label==="1280  宽度" && window.replacementTest.node.outputs[4].label==="704  高度");
     check(await page.getByRole("button",{name:"1:1",exact:true}).count()===0,"ratio options are original, portrait and landscape");
     await page.evaluate(()=>{
       const {node}=window.replacementTest;
       node.widgets.find(w=>w.name==="config").value=JSON.stringify(window.replacementSizeConfig);node.onConfigure();
     });
-    await page.waitForFunction(()=>document.querySelector('.yr-output-size')?.textContent==="宽 160 × 高 96");
+    await page.waitForFunction(()=>window.replacementTest.node.outputs[3].label==="160  宽度" && window.replacementTest.node.outputs[4].label==="96  高度");
     await page.getByRole("button",{name:"设置提示词优化 Skill",exact:true}).click();
     const skill=page.locator(".yr-skill-dialog");
     await page.waitForFunction(()=>document.querySelector('.yr-skill-content')?.value.startsWith("你是视频人物替换提示词编写助手"));
@@ -292,6 +292,26 @@ async (basePage) => {
     const layout=await page.locator(".yton-replacement-panel:not(.yr-save):not(.yr-connector)").evaluate(panel=>{const left=panel.querySelector(".yr-media"),right=panel.querySelector(".yr-prompt");return {lift:right.getBoundingClientRect().top-left.getBoundingClientRect().top,controls:left.contains(panel.querySelector(".yr-config-controls")),editor:!right.querySelector(".yr-config-controls")};});
     check(layout.lift>=100 && layout.controls && layout.editor,"media starts above prompt and generation controls appear below reference images");
     check(await page.locator(".yr-save").evaluate(panel=>getComputedStyle(panel.parentElement).overflow)==="hidden","save panel shell has no stray scrollbar");
+    phase="parser dimension labels";
+    await page.evaluate(()=>{
+      const {app}=window.comfyAPI.app;
+      const planner=LiteGraph.createNode("YtonReplacementPlan"),parser=LiteGraph.createNode("YtonReplacementSegment");
+      app.graph.add(planner);app.graph.add(parser);planner.pos=[1800,100];parser.pos=[2650,100];
+      const config=structuredClone(window.replacementSizeConfig);
+      config.ratio="9:16";config.resolution="1080p";Object.assign(config.compression,{width:0,height:0,max_edge:0});
+      planner.widgets.find(w=>w.name==="config").value=JSON.stringify(config);planner.onConfigure();
+      planner.connect(0,parser,parser.findInputSlot("plan"));
+      window.replacementDimensionTest={planner,parser};
+    });
+    await page.waitForFunction(()=>window.replacementDimensionTest.parser.outputs[3].label==="1088  宽度" && window.replacementDimensionTest.parser.outputs[4].label==="1920  高度");
+    await page.evaluate(()=>{
+      const {planner,parser}=window.replacementDimensionTest;
+      parser.onExecuted({replacement_prompt:[{index:0,slot:"0",text:"test",signature:"test",width:768,height:1024}]});
+      if(parser.outputs[3].label!=="768  宽度" || parser.outputs[4].label!=="1024  高度")throw new Error("parser shows actual execution dimensions");
+      parser.disconnectInput(parser.findInputSlot("plan"));
+      if(parser.outputs[3].label!=="宽度" || parser.outputs[4].label!=="高度")throw new Error("disconnect clears dimensions");
+      const {app}=window.comfyAPI.app;app.graph.remove(parser);app.graph.remove(planner);
+    });
     await page.screenshot({path:"C:/Users/YuanTong/AppData/Local/Temp/replacement-implemented.png"});
     check(!errors.length,errors.join("; "));
     return {checks:"uploads via picker, drop and paste; video drag feedback and cleanup; PGS aliases; shared prompts; optimization; frame plans; serialized settings; playable merge; segment-only cards and return to complete preview",playback,geometry,screenshot:"C:/Users/YuanTong/AppData/Local/Temp/replacement-implemented.png"};
