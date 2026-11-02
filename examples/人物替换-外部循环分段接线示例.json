@@ -272,8 +272,8 @@
           ]
         },
         {
-          "localized_name": "当前视频",
-          "name": "当前视频",
+          "localized_name": "片段序号",
+          "name": "片段序号",
           "type": "INT",
           "links": [
             5,
@@ -282,8 +282,8 @@
           ]
         },
         {
-          "localized_name": "视频总段数",
-          "name": "视频总段数",
+          "localized_name": "片段总数",
+          "name": "片段总数",
           "type": "INT",
           "links": [
             6,
@@ -323,19 +323,19 @@
       "mode": 0,
       "inputs": [
         {
-          "localized_name": "本段视频",
+          "localized_name": "待保存视频",
           "name": "video",
           "type": "VIDEO",
           "link": 4
         },
         {
-          "localized_name": "当前视频",
+          "localized_name": "片段序号",
           "name": "current",
           "type": "INT",
           "link": 5
         },
         {
-          "localized_name": "视频总段数",
+          "localized_name": "片段总数",
           "name": "total",
           "type": "INT",
           "link": 6
@@ -388,8 +388,8 @@
       ],
       "outputs": [
         {
-          "localized_name": "本段视频",
-          "name": "本段视频",
+          "localized_name": "视频",
+          "name": "视频",
           "type": "VIDEO",
           "links": [
             12

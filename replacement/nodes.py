@@ -53,7 +53,8 @@ class YtonCharacterReplacement(io.ComfyNode):
                     io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
             outputs=[io.String.Output(display_name="提示词"), io.Image.Output(display_name="图片列表", is_output_list=True),
                      io.Video.Output(display_name="视频列表", is_output_list=True),
-                     io.Int.Output(display_name="当前视频"), io.Int.Output(display_name="视频总段数")],
+                     io.Int.Output(display_name="片段序号", tooltip="当前索引 + 1，从 1 开始；连接保存器的片段序号。"),
+                     io.Int.Output(display_name="片段总数")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
 
     @classmethod
@@ -91,15 +92,17 @@ class YtonReplacementVideoSave(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(node_id="YtonReplacementVideoSave", display_name="人物替换 · 循环视频保存", category="yton-nodes/媒体",
             description="每轮保存片段；全部片段完成后按序合并。关闭完整视频保存时，合并视频仅放临时目录供预览。",
-            inputs=[io.Video.Input("video", display_name="本段视频"),
-                    io.Int.Input("current", default=1, min=1, force_input=True, display_name="当前视频"),
-                    io.Int.Input("total", default=1, min=1, force_input=True, display_name="视频总段数"),
+            inputs=[io.Video.Input("video", display_name="待保存视频"),
+                    io.Int.Input("current", default=1, min=1, force_input=True, display_name="片段序号",
+                                 tooltip="视频是第几段，从 1 开始；用于确定保存与合并顺序。"),
+                    io.Int.Input("total", default=1, min=1, force_input=True, display_name="片段总数",
+                                 tooltip="这一轮需要保存的片段数量；全部到齐后合并。"),
                     io.String.Input("filename_prefix", default="replacement/video", display_name="保存目录 / 前缀"),
                     io.Combo.Input("container", options=["mp4", "mkv"], default="mp4", display_name="格式 · H.264"),
                     io.Int.Input("fps", default=24, min=1, max=120, display_name="保存帧率"),
                     io.Int.Input("crf", default=18, min=0, max=51, display_name="质量 CRF"),
                     io.Boolean.Input("save_full", default=True, display_name="保存完整视频")],
-            outputs=[io.Video.Output(display_name="本段视频", tooltip="保存完成后输出本段视频，可接循环结束节点，确保每轮先完成保存。")],
+            outputs=[io.Video.Output(display_name="视频", tooltip="保存完成后传出输入的视频，可接循环结束节点，确保每轮先完成保存。")],
             is_output_node=True, hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
 
     @classmethod
