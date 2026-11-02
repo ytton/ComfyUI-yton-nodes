@@ -31,7 +31,7 @@ export async function setupReplacementPanel(node) {
   const next = button("›", () => changeIndex(index+1), "下一段");
   const optimizeButton = button("✦ 优化", manualOptimize, "使用当前段抽帧和参考图片优化提示词");
   const promptActions = el("div", "yr-prompt-actions");
-  promptActions.append(button("⚙", () => openReplacementSkill(root), "查看提示词优化 Skill"), optimizeButton);
+  promptActions.append(button("⚙", () => openReplacementSkill(root), "设置提示词优化 Skill"), optimizeButton);
   heading.append(el("strong", "", "片段提示词"), promptActions);
   const navigation = el("div", "yr-segment-nav");
   navigation.append(previous, current, next);

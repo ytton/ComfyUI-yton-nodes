@@ -31,7 +31,7 @@ from replacement_test_plugin.llm_connection import LLMConnection
 from replacement_test_plugin.replacement.media import contact_sheet, encode, inspect, reference_images, segment_video
 from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan
 from replacement_test_plugin.replacement.plan import make_plan
-from replacement_test_plugin.replacement.prompts import signature
+from replacement_test_plugin.replacement.prompts import SYSTEM, load_skill, optimize, save_skill, signature
 from replacement_test_plugin.replacement.save import execution_state, save_segment
 from PIL import Image
 
@@ -50,10 +50,10 @@ class ReplacementTests(unittest.TestCase):
     def setUpClass(cls):
         cls.directory = tempfile.TemporaryDirectory(prefix="yton-replacement-test-")
         cls.root = Path(cls.directory.name)
-        for name in ("input", "output", "temp"):
+        for name in ("input", "output", "temp", "user"):
             (cls.root / name).mkdir()
         cls.patches = [patch.object(folder_paths, f"get_{name}_directory", return_value=str(cls.root / name))
-                       for name in ("input", "output", "temp")]
+                       for name in ("input", "output", "temp", "user")]
         for item in cls.patches:
             item.start()
         # Motion, colored patches and a real audio stream, all on CPU.
@@ -149,6 +149,38 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(self.node().execute(0,json.dumps(config)).result[2],"manual optimized")
         config["image_scale"]=.75
         self.assertNotEqual(self.node().execute(0,json.dumps(config)).result[2],"manual optimized")
+
+    def test_custom_skill_persists_and_drives_manual_and_automatic_optimization(self):
+        path = self.root / "user/yton-replacement-skill.md"
+        self.addCleanup(path.unlink, missing_ok=True)
+        self.assertEqual(load_skill(), SYSTEM)
+        custom = "保留角色引用，只写两部分：替换要求与动作同步。\n遵循用户自己的叙述方式。"
+        self.assertEqual(save_skill(custom), {"skill": custom, "default_skill": SYSTEM})
+        self.assertEqual(path.read_text(encoding="utf-8"), custom)
+        self.assertEqual(load_skill(), custom)
+        config = self.config()
+        video, _ = segment_video(config, 0)
+        llm = FakeLLM()
+        optimize(llm, config, 0, video, reference_images(config))
+        config["auto"] = True
+        self.node().execute(0, json.dumps(config), llm)
+        self.assertEqual(len(llm.calls), 2)
+        self.assertTrue(all(call[1]["system"] == custom for call in llm.calls))
+        save_skill(SYSTEM)
+        self.assertEqual(load_skill(), SYSTEM)
+
+    def test_skill_changes_invalidate_optimized_results_and_reject_blank_saves(self):
+        path = self.root / "user/yton-replacement-skill.md"
+        self.addCleanup(path.unlink, missing_ok=True)
+        config = self.config()
+        config["optimized"]["0"] = {"text": "old optimized", "signature": signature(config, 0)}
+        self.assertEqual(self.node().execute(0, json.dumps(config)).result[2], "old optimized")
+        save_skill("只根据当前角色参考与用户要求编写提示词。")
+        self.assertNotEqual(self.node().execute(0, json.dumps(config)).result[2], "old optimized")
+        for value in ("", " \n ", None):
+            with self.assertRaisesRegex(ValueError, "不能为空"):
+                save_skill(value)
+        self.assertEqual(load_skill(), "只根据当前角色参考与用户要求编写提示词。")
 
     def test_native_loop_expansions_share_correct_owner(self):
         dyn=DynamicPrompt({})

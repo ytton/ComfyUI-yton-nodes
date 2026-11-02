@@ -2,6 +2,10 @@
 
 import hashlib
 import json
+from pathlib import Path
+import tempfile
+
+import folder_paths
 
 from .media import contact_sheet, input_path
 
@@ -18,6 +22,29 @@ SYSTEM = """你是视频人物替换提示词编写助手。用户提供当前�
 【同步要求】
 【负面提示】
 负面提示应针对本片段的风险，包括身份漂移、比例错误、重影、模糊、过曝、背景透视畸变与动作节奏变化；不得反向否定用户明确要求的构图或特征。"""
+
+
+def load_skill():
+    path = Path(folder_paths.get_user_directory()) / "yton-replacement-skill.md"
+    return path.read_text(encoding="utf-8") if path.exists() else SYSTEM
+
+
+def save_skill(text):
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("优化 Skill 不能为空。")
+    path = Path(folder_paths.get_user_directory()) / "yton-replacement-skill.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=".yton-replacement-skill-", delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(text)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return {"skill": text, "default_skill": SYSTEM}
 
 
 def prompt_slot(config, index):
@@ -37,7 +64,7 @@ def resolve_references(text, config):
 
 def signature(config, index):
     files = [input_path(filename) for filename in [config["video"], *config["images"]] if filename]
-    values = [source_prompt(config, index), config["plan"], config.get("crop"), config.get("compression"),
+    values = [load_skill(), source_prompt(config, index), config["plan"], config.get("crop"), config.get("compression"),
               config.get("ratio"), config.get("resolution"), config.get("image_scale"),
               [(str(path), path.stat().st_mtime_ns, path.stat().st_size) for path in files]]
     return hashlib.sha256(json.dumps(values, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
@@ -48,7 +75,7 @@ def optimize(connection, config, index, video, images):
         raise ValueError("请连接【LLM 通用连接器】后再优化提示词。")
     result = connection.generate(
         f"当前片段：{index + 1}。参考图片共 {len(images)} 张。\n用户要求：\n{resolve_references(source_prompt(config, index), config)}",
-        system=SYSTEM, images=[contact_sheet(video), *images])
+        system=load_skill(), images=[contact_sheet(video), *images])
     if not result.strip():
         raise ValueError("模型返回了空提示词，请检查模型是否支持图片。")
     return result.strip()

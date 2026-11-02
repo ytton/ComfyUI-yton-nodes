@@ -12,7 +12,7 @@ from ..llm_connection import LLMConnection
 from ..prompt_optimizer import discover_models, get_store
 from .media import contact_sheet, plan_for, reference_images, segment_video
 from .save import preview
-from .prompts import SYSTEM, optimize, signature
+from .prompts import SYSTEM, load_skill, optimize, save_skill, signature
 
 
 def install():
@@ -59,7 +59,12 @@ def install():
 
     @routes.get("/yton/replacement/skill")
     async def optimization_skill(request):
-        return web.json_response({"skill": SYSTEM})
+        return await respond(lambda: {"skill": load_skill(), "default_skill": SYSTEM})
+
+    @routes.post("/yton/replacement/skill")
+    async def save_optimization_skill(request):
+        data = await request.json()
+        return await respond(lambda: save_skill(data["skill"]))
 
     @routes.post("/yton/replacement/optimize")
     async def optimize_prompt(request):

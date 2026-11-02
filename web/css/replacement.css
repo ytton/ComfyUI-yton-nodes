@@ -21,6 +21,7 @@
 .yr-prompt-actions{display:flex;align-items:center;gap:5px}.yr-prompt-actions>.yr-button:last-child{color:var(--yr-accent)}
 .yr-skill-dialog{width:min(780px,94vw);max-height:90vh;overflow:auto;background:var(--yr-bg);color:var(--yr-fg);border:1px solid var(--yr-line);border-radius:8px;padding:16px;font:13px/1.65 "Segoe UI","Microsoft YaHei",sans-serif}
 .yr-skill-dialog::backdrop{background:#0008}.yr-skill-steps{padding-left:22px;margin:14px 0}.yr-skill-steps li+li{margin-top:7px}.yr-skill-content{height:clamp(240px,42vh,480px);resize:vertical;line-height:1.7;white-space:pre-wrap}
+.yr-skill-footer{display:flex;justify-content:space-between;gap:12px;margin-top:12px}
 .yr-switches{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px 14px}
 .yr-toggle{display:flex;gap:5px;align-items:center;font-size:12px;cursor:pointer;white-space:nowrap}
 .yr-toggle input{accent-color:var(--yr-accent);margin:0}
