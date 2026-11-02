@@ -1774,6 +1774,13 @@
           "shape": 7,
           "type": "IMAGE",
           "link": null
+        },
+        {
+          "localized_name": "PGS 图片标记",
+          "name": "pgs_images",
+          "shape": 7,
+          "type": "H3_PGS_ASSETS",
+          "link": null
         }
       ],
       "outputs": [

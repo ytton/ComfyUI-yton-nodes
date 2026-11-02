@@ -17,6 +17,7 @@ class YtonH3ReferenceAssets(io.ComfyNode):
             category="yton-nodes/MiniMax H3",
             description=("参考图按入口顺序对应 <Picture N>；人物、场景、服装等用途由提示词决定。"
                          "连接后自动增加下一个入口，未连接的参考图不参与生成。"
+                         "可把 PGS 图片标记链接到“PGS 图片标记”，保留自定义别名和图片顺序。"
                          "素材集合同时供提示词编辑、首采、二采和修脸使用。"),
             inputs=[
                 io.Autogrow.Input("images", optional=True, display_name="参考图",
@@ -25,18 +26,26 @@ class YtonH3ReferenceAssets(io.ComfyNode):
                         names=[f"参考图 {i}" for i in range(1, io.Autogrow._MaxNames + 1)], min=0)),
                 io.Image.Input("video_frames", optional=True, display_name="源视频画面"),
                 io.Audio.Input("video_audio", optional=True, display_name="源视频音频"),
+                ASSETS.Input("pgs_images", optional=True, display_name="PGS 图片标记"),
             ],
             outputs=[ASSETS.Output(display_name="参考素材")],
         )
 
     @classmethod
-    def execute(cls, images=None, video_frames=None, video_audio=None):
-        pictures = [image for image in (images or {}).values() if image is not None]
-        schedule = {"assets": []}
-        if pictures:
+    def execute(cls, images=None, video_frames=None, video_audio=None, pgs_images=None):
+        marked = pgs_images or {}
+        pictures = list(marked.get("images", []))
+        metadata = [a for a in marked.get("assets", []) if a.get("kind") in ("picture", "image")]
+        if len(pictures) != len(metadata):
+            raise ValueError("PGS 图片标记未携带图片数据，请重启 ComfyUI 以加载更新后的 PGS 插件。")
+        schedule = {"assets": metadata}
+        ordered = sorted((images or {}).items(), key=lambda item: int(item[0].rsplit(" ", 1)[-1]))
+        extra = [image for _, image in ordered if image is not None]
+        if extra:
             register = nodes.NODE_CLASS_MAPPINGS["MiniMaxH3RefPGSPictureAsset"]()
-            for index, image in enumerate(pictures, 1):
+            for index, image in enumerate(extra, len(pictures) + 1):
                 schedule, _ = register.register(image, f"Picture_{index}", f"参考图 {index}", previous=schedule)
+        pictures.extend(extra)
         if video_frames is not None:
             register = nodes.NODE_CLASS_MAPPINGS["MiniMaxH3RefPGSVideoAsset"]()
             schedule, _ = register.register(video_frames, "Video_1", "源视频", previous=schedule,

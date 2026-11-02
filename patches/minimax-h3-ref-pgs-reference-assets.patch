@@ -1,0 +1,77 @@
+--- a/nodes.py
++++ b/nodes.py
+@@ -695 +695,3 @@
+-        return ({"assets": assets}, f"已注册图片素材 @{alias}（{native_label}）")
++        schedule = dict(previous or {})
++        schedule.update(assets=assets, images=[*schedule.get("images", []), image])
++        return (schedule, f"已注册图片素材 @{alias}（{native_label}）")
+@@ -743 +745 @@
+-        return ({"assets": assets}, status)
++        return ({**(previous or {}), "assets": assets}, status)
+@@ -774 +776 @@
+-        return ({"assets": assets}, f"已注册音频素材 @{alias}（{native_label}）")
++        return ({**(previous or {}), "assets": assets}, f"已注册音频素材 @{alias}（{native_label}）")
+--- a/web/pgs_collect.mjs
++++ b/web/pgs_collect.mjs
+@@ -12 +12,39 @@
+-export function collectPgsAssets(graph) {
++function connectedChain(source) {
++  const ordered = [], visited = new Set();
++  while (source && !visited.has(source)) {
++    visited.add(source);
++    if (source.mode !== 2 && source.mode !== 4) ordered.unshift(source);
++    source = inputSource(source, "previous");
++  }
++  return ordered;
++}
++
++function collectReferenceCollection(node) {
++  const marked = inputSource(node, "pgs_images");
++  const result = marked ? collectPgsAssets({ _nodes: connectedChain(marked) }).filter(a => a.kind === "image") : [];
++  let count = result.length;
++  const images = (node.inputs ?? []).filter(i => i.name.startsWith("images.") && i.link != null)
++    .sort((a, b) => Number(a.name.match(/\d+$/)?.[0]) - Number(b.name.match(/\d+$/)?.[0]));
++  for (const input of images) {
++    const source = inputSource(node, input.name);
++    if (!source || source.mode === 2 || source.mode === 4) continue;
++    const index = ++count;
++    result.push({ alias: `Picture_${index}`, label: `参考图 ${index}`, kind: "image", scenes: "",
++      node, source, nativeLabel: `<Picture ${index}>`, previewUrl: findPreviewFromNode(source, "image") });
++  }
++  const source = inputSource(node, "video_frames");
++  if (source && source.mode !== 2 && source.mode !== 4) {
++    const hasAudio = Boolean(inputSource(node, "video_audio"));
++    result.push({ alias: "Video_1", label: "源视频", kind: "video", scenes: "", node, source,
++      nativeLabel: "<Video 1>", previewUrl: findPreviewFromNode(source, "video"), has_audio: hasAudio });
++    if (hasAudio) result.push({ alias: "Video_1_audio", label: "来自视频 @Video_1 的音轨", kind: "audio", scenes: "",
++      node, source: null, nativeLabel: "<Audio 1>", previewUrl: null, is_video_audio: true,
++      linked_video_alias: "Video_1", linked_video_native_label: "<Video 1>" });
++  }
++  return result;
++}
++
++export function collectPgsAssets(graph, owner = null) {
++  const source = owner ? inputSource(owner, "assets") : null;
++  if (nodeType(source) === "YtonH3ReferenceAssets") return collectReferenceCollection(source);
++  if (source) graph = { _nodes: connectedChain(source) };
+--- a/web/pgs_scene_editor.mjs
++++ b/web/pgs_scene_editor.mjs
+@@ -528 +528,3 @@
+-    const allAssets = collectPgsAssets(planNode?.graph ?? node.graph ?? app.graph);
++    const allAssets = collectPgsAssets(planNode?.graph ?? node.graph ?? app.graph,
++      inputSource(node, "assets") ? node : planNode ?? node);
++    lastAssets = JSON.stringify(allAssets.map(a => [a.alias, a.label, a.kind, a.scenes, a.nativeLabel, a.previewUrl]));
+@@ -733,0 +736 @@
++  let lastAssets = "";
+@@ -738 +741,5 @@
+-    if (hasPlan !== lastHasPlan || value !== lastPlanValue) buildUI();
++    const { planNode } = getPlanContext();
++    const assets = collectPgsAssets(planNode?.graph ?? node.graph ?? app.graph,
++      inputSource(node, "assets") ? node : planNode ?? node);
++    const signature = JSON.stringify(assets.map(a => [a.alias, a.label, a.kind, a.scenes, a.nativeLabel, a.previewUrl]));
++    if (hasPlan !== lastHasPlan || value !== lastPlanValue || signature !== lastAssets) buildUI();
+--- a/web/pgs_plan_editor.mjs
++++ b/web/pgs_plan_editor.mjs
+@@ -43 +43 @@
+-    const allAssets = collectPgsAssets(node.graph ?? app.graph);
++    const allAssets = collectPgsAssets(node.graph ?? app.graph, node);
