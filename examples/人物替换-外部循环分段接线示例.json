@@ -329,7 +329,8 @@
       ],
       "widgets_values_named": {
         "config": "{\"video\":\"\",\"images\":[\"\",\"\",\"\",\"\",\"\",\"\"],\"original\":\"将 <Video 1> 中的主体替换为 <Picture 1> 中的角色，动作与镜头沿用原视频。\",\"prompts\":{},\"optimized\":{},\"shared\":false,\"auto\":false,\"ratio\":\"原视频\",\"resolution\":\"480p\",\"image_scale\":1,\"plan\":{\"enabled\":true,\"mode\":\"MiniMax H3\",\"frames\":175,\"seconds\":5,\"overlap\":22,\"output\":\"仅新增片段\",\"start\":0,\"end\":0},\"crop\":null,\"compression\":{\"fps\":24,\"crf\":18,\"max_edge\":0,\"width\":0,\"height\":0,\"resize_method\":\"pad\"}}"
-      }
+      },
+      "title": "人物替换配置器 · 媒体输出"
     },
     {
       "id": 5,

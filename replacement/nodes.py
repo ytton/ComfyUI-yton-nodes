@@ -46,8 +46,8 @@ class YtonLLMConnector(io.ComfyNode):
 class YtonCharacterReplacement(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="YtonCharacterReplacement", display_name="人物替换配置器", category="yton-nodes/媒体",
-            description="一个视频、六张参考图；按 0 起始索引输出当前片段。启用分段计划后，时长随计划显示为帧数。",
+        return io.Schema(node_id="YtonCharacterReplacement", display_name="人物替换配置器 · 媒体输出", category="yton-nodes/媒体",
+            description="配置视频、参考图片与提示词，并按当前索引直接输出媒体、提示词、尺寸和片段信息；索引从 0 开始。",
             inputs=[io.Int.Input("index", default=0, min=0, force_input=True, display_name="当前索引"),
                     io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
                     io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
@@ -99,12 +99,12 @@ class YtonCharacterReplacement(io.ComfyNode):
 class YtonReplacementPlan(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="YtonReplacementPlan", display_name="人物替换配置器 · 循环规划", category="yton-nodes/媒体",
-            description="放在循环外配置视频与提示词，提前计算片段总数；分段配置连接【人物替换 · 当前片段】。",
+        return io.Schema(node_id="YtonReplacementPlan", display_name="人物替换配置器 · 配置输出", category="yton-nodes/媒体",
+            description="将视频、参考图片、提示词与分段设置整合为一份配置，并计算片段总数；连接【人物替换配置解析器】提取媒体。",
             inputs=[io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
                     io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
             outputs=[io.Custom("YTON_REPLACEMENT_PLAN").Output(display_name="分段配置"),
-                     io.Int.Output(display_name="片段总数", tooltip="在循环开始前确定，连接 Start Loop 的 max_iteration。")])
+                     io.Int.Output(display_name="片段总数", tooltip="根据视频长度、选取范围和分段设置计算的总段数。")])
 
     @classmethod
     def fingerprint_inputs(cls, **inputs):
@@ -121,8 +121,8 @@ class YtonReplacementSegment(YtonCharacterReplacement):
     def define_schema(cls):
         schema = super().define_schema()
         schema.node_id = "YtonReplacementSegment"
-        schema.display_name = "人物替换 · 当前片段"
-        schema.description = "放在循环内，按 0 起始索引从分段配置中准备当前片段、参考图片与提示词。"
+        schema.display_name = "人物替换配置解析器"
+        schema.description = "接收整合后的分段配置，按当前索引输出视频、参考图片、提示词、尺寸和片段信息；索引从 0 开始。"
         schema.inputs = [io.Int.Input("index", default=0, min=0, force_input=True, display_name="当前索引"),
                          io.Custom("YTON_REPLACEMENT_PLAN").Input("plan", display_name="分段配置")]
         return schema
