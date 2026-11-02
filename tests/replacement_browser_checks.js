@@ -79,11 +79,26 @@ async (basePage) => {
     await dialog.waitFor({state:"detached"});
     await page.getByRole("button",{name:"下一段",exact:true}).click();
     check((await page.locator(".yr-duration").innerText()).includes("24 帧"),"tail displays actual frames");
+    const independentPrompts=await page.evaluate(()=>{
+      const config=JSON.parse(window.replacementTest.node.widgets.find(w=>w.name==="config").value);
+      return {original:config.prompts,optimized:config.optimized};
+    });
     await page.getByLabel("全段共用提示词",{exact:true}).check();
+    check(await page.getByLabel("查看片段提示词",{exact:true}).isDisabled(),"shared prompts disable segment selection");
+    for(const name of ["上一段","下一段"])check(await page.getByRole("button",{name,exact:true}).isDisabled(),"shared prompts disable "+name);
     await page.getByRole("button",{name:"原始要求",exact:true}).click();
     await page.locator(".yr-pgs-rich-editor").fill("将@图片3的人物替换视频中的主体。");
+    await page.getByLabel("全段共用提示词",{exact:true}).uncheck();
+    check(await page.getByLabel("查看片段提示词",{exact:true}).isEnabled(),"independent prompts restore segment selection");
+    const restoredPrompts=await page.evaluate(()=>{
+      const config=JSON.parse(window.replacementTest.node.widgets.find(w=>w.name==="config").value);
+      const {shared,...original}=config.prompts;
+      return {original,optimized:config.optimized};
+    });
+    check(JSON.stringify(restoredPrompts)===JSON.stringify(independentPrompts),"editing shared prompts preserves independent originals and optimizations");
     await page.getByRole("button",{name:"上一段",exact:true}).click();
-    check((await page.evaluate(()=>JSON.parse(window.replacementTest.node.widgets.find(w=>w.name==="config").value).prompts.shared)).includes("@图片3"),"shared prompt follows segment selection");
+    await page.getByLabel("全段共用提示词",{exact:true}).check();
+    check((await page.evaluate(()=>JSON.parse(window.replacementTest.node.widgets.find(w=>w.name==="config").value).prompts.shared)).includes("@图片3"),"shared prompt survives switching scopes and segments");
     check(await page.locator('.yr-pgs-rich-editor .yr-pgs-token[data-token="@图片3"]').count()===1,"Chinese reference alias renders as a chip next to Chinese prose");
     await page.getByRole("button",{name:"切换纯文本与富文本",exact:true}).click();
     check((await page.locator(".yr-rich-host textarea").inputValue()).includes("<Picture 2>的人物"),"plain text resolves reference identity and retains surrounding prose");

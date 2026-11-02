@@ -83,9 +83,9 @@ export async function setupReplacementPanel(node) {
       const option=el("option","",`第 ${i+1} / ${total} 段 · ${(segment.start/24).toFixed(2)}–${(segment.end/24).toFixed(2)}s`);
       option.value=i;return option;
     }) : [el("option","","待加载视频")]));
-    current.value=String(index);current.disabled=!total || busy;
-    previous.disabled = index <= 0 || busy;
-    next.disabled = index >= total-1 || busy;
+    current.value=String(index);current.disabled=config.shared || !total || busy;
+    previous.disabled = config.shared || index <= 0 || busy;
+    next.disabled = config.shared || index >= total-1 || busy;
     renderControls();
   }
   async function updatePlan() {
@@ -226,9 +226,8 @@ export async function setupReplacementPanel(node) {
   }
   function renderSwitches() {
     switches.replaceChildren(toggle("全段共用提示词",config.shared,value=>{
-      const text=original(); config.shared=value;
-      if(value && config.prompts.shared===undefined) config.prompts.shared=text;
-      commit(); renderSwitches(); renderEditor();
+      config.shared=value;
+      commit(); renderSwitches(); renderPosition(); renderEditor();
     }),toggle("每段自动优化",config.auto,value=>{config.auto=value;commit();}));
   }
   function renderControls() {
