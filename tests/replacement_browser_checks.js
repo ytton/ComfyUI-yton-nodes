@@ -37,6 +37,17 @@ async (basePage) => {
       app.canvas.ds.scale=.9;app.canvas.ds.offset=[0,10];
       window.replacementTest={llm,node,save};
     },{defs,config});
+    const prefixTemplate="video/人物替换/%date:yyyy-MM-dd%/片段";
+    await page.getByLabel("保存目录与前缀",{exact:true}).fill(prefixTemplate);
+    await page.getByLabel("保存目录与前缀",{exact:true}).press("Tab");
+    const prefixResult=await page.evaluate(async()=>{
+      const {app}=window.comfyAPI.app, {save}=window.replacementTest;
+      const prefix=save.widgets.find(w=>w.name==="filename_prefix"), now=new Date();
+      const date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),String(now.getDate()).padStart(2,"0")].join("-");
+      return {template:prefix.value,submitted:(await app.graphToPrompt()).output[save.id].inputs.filename_prefix,date};
+    });
+    check(prefixResult.template===prefixTemplate,"save prefix keeps its editable date template");
+    check(prefixResult.submitted===`video/人物替换/${prefixResult.date}/片段`,"save prefix expands date before submitting to Windows");
     await page.getByLabel("查看片段提示词",{exact:true}).locator("option").filter({hasText:"第 1 / 2 段"}).waitFor({state:"attached"});
     await page.locator(".yr-pgs-rich-editor").waitFor();
     check(await page.locator(".yr-image-slot").count()===6,"six image slots");

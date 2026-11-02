@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { applyTextReplacements } from "../../scripts/utils.js";
 import { button, el, field, hideWidget, input, mediaURL, request, select, toggle } from "./js/replacement_common.js";
 import { mountNodePanel, followNodeColours } from "./js/node_panel.js";
 import { availableModels, settingsEvents } from "./js/prompt_optimizer_api.js";
@@ -63,6 +64,8 @@ function setupSave(node) {
   const clips=el("div","yr-saved-clips");
   const controls=el("div","yr-config-controls");
   const widgets=new Map(node.widgets.map(w=>[w.name,w]));
+  const prefix=widgets.get("filename_prefix");
+  prefix.serializeValue=()=>applyTextReplacements(app,prefix.value);
   for(const name of ["filename_prefix","container","fps","crf","save_full"]) hideWidget(widgets.get(name));
   function change(name,value) {widgets.get(name).value=value;node.setDirtyCanvas(true,true);}
   function renderControls() {
