@@ -1,8 +1,8 @@
 {
   "id": "9db20753-f81d-4a30-a878-2389a693b443",
   "revision": 1,
-  "last_node_id": 644,
-  "last_link_id": 1878,
+  "last_node_id": 646,
+  "last_link_id": 1891,
   "nodes": [
     {
       "id": 313,
@@ -133,7 +133,7 @@
         440
       ],
       "flags": {},
-      "order": 1,
+      "order": 18,
       "mode": 0,
       "inputs": [
         {
@@ -236,11 +236,11 @@
         1060
       ],
       "size": [
-        330,
-        470
+        300,
+        450
       ],
       "flags": {},
-      "order": 2,
+      "order": 1,
       "mode": 0,
       "inputs": [
         {
@@ -295,8 +295,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            1821,
-            1834
+            1880
           ]
         },
         {
@@ -307,7 +306,7 @@
           "links": []
         }
       ],
-      "title": "场景参考 · Picture 2",
+      "title": "参考图 2 · <Picture 2> · 可断开",
       "properties": {
         "Node name for S&R": "InputSingleImagePGS",
         "pgs_metadata": "[{\"base_raw\":\"f06f15f70dc983c3cba922cde17a971e720c0e4bb6f7d432 (1).png\",\"doodle_raw\":null,\"opacity\":1,\"feather\":0,\"layers\":null}]",
@@ -354,7 +353,7 @@
         170
       ],
       "flags": {},
-      "order": 16,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
@@ -476,7 +475,7 @@
         150
       ],
       "flags": {},
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {
@@ -549,11 +548,11 @@
         1060
       ],
       "size": [
-        330,
-        470
+        300,
+        450
       ],
       "flags": {},
-      "order": 3,
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
@@ -608,9 +607,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            1820,
-            1833,
-            1865
+            1879
           ]
         },
         {
@@ -621,7 +618,7 @@
           "links": []
         }
       ],
-      "title": "人物参考 · Picture 1",
+      "title": "参考图 1 · <Picture 1>",
       "properties": {
         "Node name for S&R": "InputSingleImagePGS",
         "pgs_metadata": "[{\"base_raw\":\"f06f15f70dc983c3cba922cde17a971e720c0e4bb6f7d432.png\",\"doodle_raw\":null,\"opacity\":1,\"feather\":0,\"layers\":null}]",
@@ -664,11 +661,11 @@
         1060
       ],
       "size": [
-        1050,
+        920,
         866
       ],
       "flags": {},
-      "order": 14,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {
@@ -914,7 +911,7 @@
         240
       ],
       "flags": {},
-      "order": 4,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
@@ -1064,7 +1061,7 @@
         200
       ],
       "flags": {},
-      "order": 9,
+      "order": 19,
       "mode": 0,
       "inputs": [
         {
@@ -1139,11 +1136,11 @@
         1060
       ],
       "size": [
-        330,
-        470
+        340,
+        522
       ],
       "flags": {},
-      "order": 10,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
@@ -1313,8 +1310,7 @@
           "name": "frames",
           "type": "IMAGE",
           "links": [
-            1822,
-            1835
+            1881
           ]
         },
         {
@@ -1322,8 +1318,7 @@
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            1823,
-            1836
+            1882
           ]
         },
         {
@@ -1481,11 +1476,11 @@
         1060
       ],
       "size": [
-        330,
-        470
+        360,
+        482
       ],
       "flags": {},
-      "order": 5,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {
@@ -1575,7 +1570,7 @@
           ]
         }
       ],
-      "title": "最终分辨率 · 首采自动取半",
+      "title": "最终分辨率",
       "properties": {
         "aux_id": "ytton/ComfyUI-yton-nodes",
         "ver": "d003a28858e495b5900847f629d5aa4b9c47ac49",
@@ -1617,7 +1612,7 @@
         420
       ],
       "flags": {},
-      "order": 6,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1632,10 +1627,10 @@
         "h3_layout_key": "619"
       },
       "widgets_values": [
-        "# 全模态上下文 · 传统双采\n\n**从左向右**：加载 → LoRA → 编码 → 首采 → 传统二采 → 小脸修复 → 裁切调色 → 保存。\n\n**双击子流**可展开原节点并替换模块。二采的模型、种子、采样器和 Sigma，以及修脸开关、人数和 Sigma，可直接在主画布修改。\n\n**上方循环**控制生成段数。首段自动跳过上下文，后续传递上一段最终 VIDEO 的尾部 22 帧；输出自动裁掉重叠部分。\n\n**下方素材**：两张参考图、源视频、最终分辨率与提示词。首采宽高为最终的一半。"
+        "# 灵活参考素材与首采比例\n\n参考图按【参考素材集合】的入口顺序对应 <Picture N>，不固定人物或场景用途。连接一张后自动出现下一个入口；没有场景替换就不接场景图。\n\n可复制下方任意参考图加载器，连接到集合的新入口。首采、二采、修脸和提示词编辑共用同一顺序；增删参考后同步检查提示词里的编号。\n\n首采比例在分辨率下方调整，0.5 代表首采宽高各取最终尺寸的一半；尺寸按 32 对齐，最终输出分辨率保持由分辨率控件决定。\n\n修脸人数独立控制需要修复的检测目标数，不代表参考图片数量。双击生成子流仍可替换内部节点。"
       ],
       "widgets_values_named": {
-        "text": "# 全模态上下文 · 传统双采\n\n**从左向右**：加载 → LoRA → 编码 → 首采 → 传统二采 → 小脸修复 → 裁切调色 → 保存。\n\n**双击子流**可展开原节点并替换模块。二采的模型、种子、采样器和 Sigma，以及修脸开关、人数和 Sigma，可直接在主画布修改。\n\n**上方循环**控制生成段数。首段自动跳过上下文，后续传递上一段最终 VIDEO 的尾部 22 帧；输出自动裁掉重叠部分。\n\n**下方素材**：两张参考图、源视频、最终分辨率与提示词。首采宽高为最终的一半。"
+        "text": "# 灵活参考素材与首采比例\n\n参考图按【参考素材集合】的入口顺序对应 <Picture N>，不固定人物或场景用途。连接一张后自动出现下一个入口；没有场景替换就不接场景图。\n\n可复制下方任意参考图加载器，连接到集合的新入口。首采、二采、修脸和提示词编辑共用同一顺序；增删参考后同步检查提示词里的编号。\n\n首采比例在分辨率下方调整，0.5 代表首采宽高各取最终尺寸的一半；尺寸按 32 对齐，最终输出分辨率保持由分辨率控件决定。\n\n修脸人数独立控制需要修复的检测目标数，不代表参考图片数量。双击生成子流仍可替换内部节点。"
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -1652,7 +1647,7 @@
         150
       ],
       "flags": {},
-      "order": 11,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
@@ -1710,13 +1705,13 @@
           ]
         }
       ],
-      "title": "上下文准备 · 尾部 22 帧",
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.43.1",
         "ue_properties": {
           "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
+          "input_ue_unconnectable": {},
+          "version": "8.0"
         },
         "h3_layout_module": "context",
         "previewExposures": []
@@ -1734,70 +1729,77 @@
     },
     {
       "id": 639,
-      "type": "8ee5c35b-9925-4ae0-8600-f920fc43406b",
+      "type": "YtonH3ReferenceAssets",
       "pos": [
         770,
         1610
       ],
       "size": [
         330,
-        150
+        190
       ],
       "flags": {},
-      "order": 13,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
-          "label": "人物参考图",
-          "localized_name": "image",
-          "name": "image",
+          "localized_name": "参考图 1",
+          "name": "images.参考图 1",
+          "shape": 7,
           "type": "IMAGE",
-          "link": 1820
+          "link": 1879
         },
         {
-          "label": "场景参考图",
-          "localized_name": "image_1",
-          "name": "image_1",
+          "localized_name": "源视频画面",
+          "name": "video_frames",
+          "shape": 7,
           "type": "IMAGE",
-          "link": 1821
+          "link": 1881
         },
         {
-          "label": "源视频画面",
-          "localized_name": "video",
-          "name": "video",
-          "type": "IMAGE",
-          "link": 1822
-        },
-        {
-          "label": "源视频音频",
-          "localized_name": "audio_input",
-          "name": "audio_input",
+          "localized_name": "源视频音频",
+          "name": "video_audio",
           "shape": 7,
           "type": "AUDIO",
-          "link": 1823
+          "link": 1882
+        },
+        {
+          "name": "images.参考图 2",
+          "type": "IMAGE",
+          "link": 1880
+        },
+        {
+          "localized_name": "参考图 3",
+          "name": "images.参考图 3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
         }
       ],
       "outputs": [
         {
-          "label": "素材登记",
-          "localized_name": "schedule",
-          "name": "schedule",
+          "localized_name": "参考素材",
+          "name": "参考素材",
           "type": "H3_PGS_ASSETS",
           "links": [
-            1824
+            1824,
+            1885,
+            1887
           ]
         }
       ],
-      "title": "参考素材登记",
+      "title": "参考素材集合 · 连线后自动增加入口",
       "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.43.1",
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ver": "e1c9c66ed202244ad69b8afa264282e05ecdf725",
+        "Node name for S&R": "YtonH3ReferenceAssets",
         "ue_properties": {
           "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
+          "input_ue_unconnectable": {},
+          "version": "8.0"
         },
-        "h3_layout_module": "assets",
-        "previewExposures": []
+        "h3_layout_key": "639",
+        "h3_layout_module": "assets"
       },
       "color": "#322",
       "bgcolor": "#533"
@@ -1807,14 +1809,14 @@
       "type": "b421be3a-c165-4435-a59f-72e1a0f0ac16",
       "pos": [
         1130,
-        1610
+        1770
       ],
       "size": [
         330,
-        150
+        155
       ],
       "flags": {},
-      "order": 12,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
@@ -1830,6 +1832,13 @@
           "name": "values.a_1",
           "type": "FLOAT,INT,BOOLEAN",
           "link": 1826
+        },
+        {
+          "label": "首采比例",
+          "name": "first_pass_scale",
+          "shape": 7,
+          "type": "FLOAT",
+          "link": 1890
         }
       ],
       "outputs": [
@@ -1852,13 +1861,13 @@
           ]
         }
       ],
-      "title": "首采尺寸 · 最终宽高 × 0.5",
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.43.1",
         "ue_properties": {
           "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
+          "input_ue_unconnectable": {},
+          "version": "8.0"
         },
         "h3_layout_module": "size",
         "previewExposures": []
@@ -1878,7 +1887,7 @@
         338
       ],
       "flags": {},
-      "order": 15,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -1912,42 +1921,13 @@
           "link": 1832
         },
         {
-          "label": "人物参考图",
-          "localized_name": "ref_image_0",
-          "name": "ref_images.ref_image_0",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 1833
-        },
-        {
-          "label": "场景参考图",
-          "localized_name": "ref_image_1",
-          "name": "ref_images.ref_image_1",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 1834
-        },
-        {
-          "label": "源视频画面",
-          "localized_name": "ref_video_0",
-          "name": "ref_videos.ref_video_0",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 1835
-        },
-        {
-          "label": "源视频音频",
-          "localized_name": "ref_audio_0",
-          "name": "ref_audios.ref_audio_0",
-          "shape": 7,
-          "type": "AUDIO",
-          "link": 1836
-        },
-        {
           "label": "首采宽度",
           "localized_name": "宽度",
           "name": "width",
           "type": "INT",
+          "widget": {
+            "name": "width"
+          },
           "link": 1837
         },
         {
@@ -1955,6 +1935,9 @@
           "localized_name": "高度",
           "name": "height",
           "type": "INT",
+          "widget": {
+            "name": "height"
+          },
           "link": 1838
         },
         {
@@ -1962,6 +1945,9 @@
           "localized_name": "视频帧数",
           "name": "length",
           "type": "INT",
+          "widget": {
+            "name": "length"
+          },
           "link": 1839
         },
         {
@@ -1969,6 +1955,9 @@
           "localized_name": "宽度_1",
           "name": "width_1",
           "type": "INT",
+          "widget": {
+            "name": "width_1"
+          },
           "link": 1840
         },
         {
@@ -1976,6 +1965,9 @@
           "localized_name": "高度_1",
           "name": "height_1",
           "type": "INT",
+          "widget": {
+            "name": "height_1"
+          },
           "link": 1841
         },
         {
@@ -2003,6 +1995,13 @@
             "name": "cond"
           },
           "link": 1844
+        },
+        {
+          "label": "参考素材集合",
+          "name": "assets",
+          "shape": 7,
+          "type": "H3_PGS_ASSETS",
+          "link": 1885
         }
       ],
       "outputs": [
@@ -2034,21 +2033,31 @@
           ]
         }
       ],
-      "title": "03 参考与上下文编码 · 释放 TE",
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.43.1",
         "ue_properties": {
           "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
+          "input_ue_unconnectable": {},
+          "version": "8.0"
         },
         "h3_layout_module": "conditions",
         "previewExposures": []
       },
       "widgets_values": [
+        false,
+        768,
+        124,
+        1344,
+        768,
         false
       ],
       "widgets_values_named": {
+        "width": false,
+        "height": 768,
+        "length": 124,
+        "width_1": 1344,
+        "height_1": 768,
         "cond": false
       },
       "color": "#322",
@@ -2066,7 +2075,7 @@
         242
       ],
       "flags": {},
-      "order": 17,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
@@ -2177,13 +2186,13 @@
           ]
         }
       ],
-      "title": "05 传统放大与二采",
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.43.1",
         "ue_properties": {
           "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
+          "input_ue_unconnectable": {},
+          "version": "8.0"
         },
         "h3_layout_module": "second",
         "previewExposures": []
@@ -2221,7 +2230,7 @@
         210
       ],
       "flags": {},
-      "order": 18,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
@@ -2253,14 +2262,6 @@
           "shape": 7,
           "type": "CLIP",
           "link": 1864
-        },
-        {
-          "label": "人物参考图",
-          "localized_name": "参考图 1",
-          "name": "references.参考图 1",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 1865
         },
         {
           "label": "开启修脸",
@@ -2297,6 +2298,13 @@
             "name": "reverse"
           },
           "link": null
+        },
+        {
+          "label": "参考素材集合",
+          "name": "assets",
+          "shape": 7,
+          "type": "H3_PGS_ASSETS",
+          "link": 1887
         }
       ],
       "outputs": [
@@ -2310,13 +2318,13 @@
           ]
         }
       ],
-      "title": "06 视频解码与小脸修复",
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.43.1",
         "ue_properties": {
           "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
+          "input_ue_unconnectable": {},
+          "version": "8.0"
         },
         "h3_layout_module": "face",
         "previewExposures": []
@@ -2348,7 +2356,7 @@
         150
       ],
       "flags": {},
-      "order": 7,
+      "order": 17,
       "mode": 0,
       "inputs": [
         {
@@ -2411,13 +2419,13 @@
           ]
         }
       ],
-      "title": "07 裁去上下文与成片调色",
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.43.1",
         "ue_properties": {
           "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
+          "input_ue_unconnectable": {},
+          "version": "8.0"
         },
         "h3_layout_module": "output",
         "previewExposures": []
@@ -2432,6 +2440,61 @@
       },
       "color": "#432",
       "bgcolor": "#653"
+    },
+    {
+      "id": 645,
+      "type": "PrimitiveFloat",
+      "pos": [
+        1130,
+        1600
+      ],
+      "size": [
+        330,
+        100
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "值",
+          "name": "value",
+          "type": "FLOAT",
+          "widget": {
+            "name": "value"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "浮点",
+          "name": "FLOAT",
+          "type": "FLOAT",
+          "links": [
+            1890
+          ]
+        }
+      ],
+      "title": "首采比例 · 宽高缩放",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.43.1",
+        "Node name for S&R": "PrimitiveFloat",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        },
+        "h3_layout_key": "645",
+        "h3_layout_module": "scale"
+      },
+      "widgets_values": [
+        0.5
+      ],
+      "widgets_values_named": {
+        "value": 0.5
+      }
     }
   ],
   "links": [
@@ -2474,38 +2537,6 @@
       638,
       0,
       "VIDEO"
-    ],
-    [
-      1820,
-      518,
-      0,
-      639,
-      0,
-      "IMAGE"
-    ],
-    [
-      1821,
-      495,
-      0,
-      639,
-      1,
-      "IMAGE"
-    ],
-    [
-      1822,
-      588,
-      0,
-      639,
-      2,
-      "IMAGE"
-    ],
-    [
-      1823,
-      588,
-      1,
-      639,
-      3,
-      "AUDIO"
     ],
     [
       1824,
@@ -2564,43 +2595,11 @@
       "VAE"
     ],
     [
-      1833,
-      518,
-      0,
-      641,
-      4,
-      "IMAGE"
-    ],
-    [
-      1834,
-      495,
-      0,
-      641,
-      5,
-      "IMAGE"
-    ],
-    [
-      1835,
-      588,
-      0,
-      641,
-      6,
-      "IMAGE"
-    ],
-    [
-      1836,
-      588,
-      1,
-      641,
-      7,
-      "AUDIO"
-    ],
-    [
       1837,
       640,
       0,
       641,
-      8,
+      4,
       "INT"
     ],
     [
@@ -2608,7 +2607,7 @@
       640,
       1,
       641,
-      9,
+      5,
       "INT"
     ],
     [
@@ -2616,7 +2615,7 @@
       588,
       3,
       641,
-      10,
+      6,
       "INT"
     ],
     [
@@ -2624,7 +2623,7 @@
       601,
       0,
       641,
-      11,
+      7,
       "INT"
     ],
     [
@@ -2632,7 +2631,7 @@
       601,
       1,
       641,
-      12,
+      8,
       "INT"
     ],
     [
@@ -2640,7 +2639,7 @@
       638,
       2,
       641,
-      13,
+      9,
       "IMAGE"
     ],
     [
@@ -2648,7 +2647,7 @@
       638,
       0,
       641,
-      14,
+      10,
       "AUDIO"
     ],
     [
@@ -2656,7 +2655,7 @@
       527,
       1,
       641,
-      15,
+      11,
       "BOOLEAN"
     ],
     [
@@ -2748,14 +2747,6 @@
       "CLIP"
     ],
     [
-      1865,
-      518,
-      0,
-      643,
-      4,
-      "IMAGE"
-    ],
-    [
       1871,
       642,
       1,
@@ -2796,6 +2787,38 @@
       "IMAGE"
     ],
     [
+      1877,
+      644,
+      0,
+      528,
+      1,
+      "VIDEO"
+    ],
+    [
+      1885,
+      639,
+      0,
+      641,
+      12,
+      "H3_PGS_ASSETS"
+    ],
+    [
+      1887,
+      639,
+      0,
+      643,
+      8,
+      "H3_PGS_ASSETS"
+    ],
+    [
+      1890,
+      645,
+      0,
+      640,
+      2,
+      "FLOAT"
+    ],
+    [
       1876,
       644,
       0,
@@ -2804,12 +2827,36 @@
       "VIDEO"
     ],
     [
-      1877,
-      644,
+      1879,
+      518,
       0,
-      528,
+      639,
+      0,
+      "IMAGE"
+    ],
+    [
+      1881,
+      588,
+      0,
+      639,
       1,
-      "VIDEO"
+      "IMAGE"
+    ],
+    [
+      1882,
+      588,
+      1,
+      639,
+      2,
+      "AUDIO"
+    ],
+    [
+      1880,
+      495,
+      0,
+      639,
+      3,
+      "IMAGE"
     ]
   ],
   "groups": [
@@ -2823,8 +2870,8 @@
         350
       ],
       "color": "#3f789e",
-      "font_size": 24,
-      "flags": {}
+      "flags": {},
+      "font_size": 24
     },
     {
       "id": 2,
@@ -2836,8 +2883,8 @@
         570
       ],
       "color": "#3f789e",
-      "font_size": 24,
-      "flags": {}
+      "flags": {},
+      "font_size": 24
     },
     {
       "id": 3,
@@ -2849,8 +2896,8 @@
         1000
       ],
       "color": "#8A8",
-      "font_size": 24,
-      "flags": {}
+      "flags": {},
+      "font_size": 24
     },
     {
       "id": 4,
@@ -2862,8 +2909,8 @@
         1000
       ],
       "color": "#8A8",
-      "font_size": 24,
-      "flags": {}
+      "flags": {},
+      "font_size": 24
     },
     {
       "id": 5,
@@ -2875,8 +2922,8 @@
         1000
       ],
       "color": "#8A8",
-      "font_size": 24,
-      "flags": {}
+      "flags": {},
+      "font_size": 24
     },
     {
       "id": 6,
@@ -2888,8 +2935,8 @@
         520
       ],
       "color": "#3f789e",
-      "font_size": 24,
-      "flags": {}
+      "flags": {},
+      "font_size": 24
     }
   ],
   "definitions": {
@@ -2899,8 +2946,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
+          "lastNodeId": 646,
+          "lastLinkId": 1891,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -3362,8 +3409,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
+          "lastNodeId": 646,
+          "lastLinkId": 1891,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -4114,8 +4161,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
+          "lastNodeId": 646,
+          "lastLinkId": 1891,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -4733,8 +4780,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
+          "lastNodeId": 646,
+          "lastLinkId": 1891,
           "lastRerouteId": 0
         },
         "revision": 1,
@@ -4891,12 +4938,12 @@
             "properties": {
               "aux_id": "ytton/ComfyUI-yton-nodes",
               "ver": "baf02c2406926ec54248ce0164f0f21b5e76b7a0",
+              "Node name for S&R": "YtonH3VideoTail",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "YtonH3VideoTail",
               "h3_layout_key": "624"
             }
           },
@@ -4967,13 +5014,14 @@
                 "localized_name": "遮罩",
                 "name": "MASK",
                 "type": "MASK",
-                "links": null
+                "links": []
               }
             ],
             "title": "前 21 帧",
             "properties": {
               "cnr_id": "comfyui-kjnodes",
               "ver": "ab72eda7ffad6280422d71ab7d54d3fb87c0ba18",
+              "Node name for S&R": "GetImageRangeFromBatch",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "start_index": true,
@@ -4982,7 +5030,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "GetImageRangeFromBatch",
               "h3_layout_key": "625"
             },
             "widgets_values": [
@@ -5062,13 +5109,14 @@
                 "localized_name": "遮罩",
                 "name": "MASK",
                 "type": "MASK",
-                "links": null
+                "links": []
               }
             ],
             "title": "末帧 · 同时作为颜色参考",
             "properties": {
               "cnr_id": "comfyui-kjnodes",
               "ver": "ab72eda7ffad6280422d71ab7d54d3fb87c0ba18",
+              "Node name for S&R": "GetImageRangeFromBatch",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "start_index": true,
@@ -5077,7 +5125,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "GetImageRangeFromBatch",
               "h3_layout_key": "626"
             },
             "widgets_values": [
@@ -5146,6 +5193,7 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "ImageAddNoise",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "seed": true,
@@ -5154,7 +5202,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "ImageAddNoise",
               "h3_layout_key": "627"
             },
             "widgets_values": [
@@ -5225,6 +5272,7 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "ImageAddNoise",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "seed": true,
@@ -5233,7 +5281,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "ImageAddNoise",
               "h3_layout_key": "628"
             },
             "widgets_values": [
@@ -5460,487 +5507,17 @@
         "extra": {}
       },
       {
-        "id": "8ee5c35b-9925-4ae0-8600-f920fc43406b",
-        "version": 1,
-        "state": {
-          "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
-          "lastRerouteId": 0
-        },
-        "revision": 1,
-        "config": {},
-        "name": "参考素材登记",
-        "inputNode": {
-          "id": -10,
-          "bounding": [
-            30,
-            150,
-            270,
-            150
-          ]
-        },
-        "outputNode": {
-          "id": -20,
-          "bounding": [
-            2110,
-            150,
-            270,
-            150
-          ]
-        },
-        "inputs": [
-          {
-            "id": "190ddcbb-084c-41fb-b16e-b12456e52b99",
-            "name": "image",
-            "type": "IMAGE",
-            "linkIds": [
-              1713
-            ],
-            "localized_name": "image",
-            "label": "人物参考图",
-            "pos": [
-              276,
-              174
-            ]
-          },
-          {
-            "id": "0f347cea-cd6f-4fa8-9de6-3146f5ace5c1",
-            "name": "image_1",
-            "type": "IMAGE",
-            "linkIds": [
-              1708
-            ],
-            "localized_name": "image_1",
-            "label": "场景参考图",
-            "pos": [
-              276,
-              198
-            ]
-          },
-          {
-            "id": "aee48264-a198-4a84-ab61-1941adab30a9",
-            "name": "video",
-            "type": "IMAGE",
-            "linkIds": [
-              1710
-            ],
-            "localized_name": "video",
-            "label": "源视频画面",
-            "pos": [
-              276,
-              222
-            ]
-          },
-          {
-            "id": "327fd647-b76d-48da-921f-c44d67836567",
-            "name": "audio_input",
-            "type": "AUDIO",
-            "linkIds": [
-              1711
-            ],
-            "localized_name": "audio_input",
-            "label": "源视频音频",
-            "shape": 7,
-            "pos": [
-              276,
-              246
-            ]
-          }
-        ],
-        "outputs": [
-          {
-            "id": "dd67669f-24d3-48d2-9ae3-8e5b4fe6e0d3",
-            "name": "schedule",
-            "type": "H3_PGS_ASSETS",
-            "linkIds": [
-              1719
-            ],
-            "localized_name": "schedule",
-            "label": "素材登记",
-            "pos": [
-              2134,
-              174
-            ]
-          }
-        ],
-        "widgets": [],
-        "nodes": [
-          {
-            "id": 462,
-            "type": "MiniMaxH3RefPGSPictureAsset",
-            "pos": [
-              400,
-              150
-            ],
-            "size": [
-              440,
-              140
-            ],
-            "flags": {},
-            "order": 0,
-            "mode": 0,
-            "inputs": [
-              {
-                "localized_name": "image",
-                "name": "image",
-                "type": "IMAGE",
-                "link": 1713
-              },
-              {
-                "localized_name": "previous",
-                "name": "previous",
-                "shape": 7,
-                "type": "H3_PGS_ASSETS",
-                "link": null
-              },
-              {
-                "localized_name": "alias",
-                "name": "alias",
-                "type": "STRING",
-                "widget": {
-                  "name": "alias"
-                },
-                "link": null
-              },
-              {
-                "localized_name": "label",
-                "name": "label",
-                "type": "STRING",
-                "widget": {
-                  "name": "label"
-                },
-                "link": null
-              },
-              {
-                "localized_name": "scenes",
-                "name": "scenes",
-                "type": "STRING",
-                "widget": {
-                  "name": "scenes"
-                },
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "schedule",
-                "name": "schedule",
-                "type": "H3_PGS_ASSETS",
-                "links": [
-                  1709
-                ]
-              },
-              {
-                "localized_name": "status",
-                "name": "status",
-                "type": "STRING",
-                "links": []
-              }
-            ],
-            "title": "登记人物参考",
-            "properties": {
-              "ue_properties": {
-                "widget_ue_connectable": {
-                  "alias": true,
-                  "label": true,
-                  "scenes": true
-                },
-                "version": "8.0",
-                "input_ue_unconnectable": {}
-              },
-              "Node name for S&R": "MiniMaxH3RefPGSPictureAsset",
-              "h3_pgs_key": "462",
-              "h3_layout_key": "462"
-            },
-            "widgets_values": [
-              "Picture_1",
-              "图片素材",
-              ""
-            ],
-            "widgets_values_named": {
-              "alias": "Picture_1",
-              "label": "图片素材",
-              "scenes": ""
-            }
-          },
-          {
-            "id": 463,
-            "type": "MiniMaxH3RefPGSPictureAsset",
-            "pos": [
-              960,
-              150
-            ],
-            "size": [
-              440,
-              140
-            ],
-            "flags": {},
-            "order": 1,
-            "mode": 0,
-            "inputs": [
-              {
-                "localized_name": "image",
-                "name": "image",
-                "type": "IMAGE",
-                "link": 1708
-              },
-              {
-                "localized_name": "previous",
-                "name": "previous",
-                "shape": 7,
-                "type": "H3_PGS_ASSETS",
-                "link": 1709
-              },
-              {
-                "localized_name": "alias",
-                "name": "alias",
-                "type": "STRING",
-                "widget": {
-                  "name": "alias"
-                },
-                "link": null
-              },
-              {
-                "localized_name": "label",
-                "name": "label",
-                "type": "STRING",
-                "widget": {
-                  "name": "label"
-                },
-                "link": null
-              },
-              {
-                "localized_name": "scenes",
-                "name": "scenes",
-                "type": "STRING",
-                "widget": {
-                  "name": "scenes"
-                },
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "schedule",
-                "name": "schedule",
-                "type": "H3_PGS_ASSETS",
-                "links": [
-                  1712
-                ]
-              },
-              {
-                "localized_name": "status",
-                "name": "status",
-                "type": "STRING",
-                "links": []
-              }
-            ],
-            "title": "登记场景参考",
-            "properties": {
-              "ue_properties": {
-                "widget_ue_connectable": {
-                  "alias": true,
-                  "label": true,
-                  "scenes": true
-                },
-                "version": "8.0",
-                "input_ue_unconnectable": {}
-              },
-              "Node name for S&R": "MiniMaxH3RefPGSPictureAsset",
-              "h3_pgs_key": "463",
-              "h3_layout_key": "463"
-            },
-            "widgets_values": [
-              "Picture_2",
-              "图片素材",
-              ""
-            ],
-            "widgets_values_named": {
-              "alias": "Picture_2",
-              "label": "图片素材",
-              "scenes": ""
-            }
-          },
-          {
-            "id": 466,
-            "type": "MiniMaxH3RefPGSVideoAsset",
-            "pos": [
-              1520,
-              150
-            ],
-            "size": [
-              440,
-              146
-            ],
-            "flags": {},
-            "order": 2,
-            "mode": 0,
-            "inputs": [
-              {
-                "localized_name": "video",
-                "name": "video",
-                "type": "IMAGE",
-                "link": 1710
-              },
-              {
-                "localized_name": "audio_input",
-                "name": "audio_input",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": 1711
-              },
-              {
-                "localized_name": "previous",
-                "name": "previous",
-                "shape": 7,
-                "type": "H3_PGS_ASSETS",
-                "link": 1712
-              },
-              {
-                "localized_name": "alias",
-                "name": "alias",
-                "type": "STRING",
-                "widget": {
-                  "name": "alias"
-                },
-                "link": null
-              },
-              {
-                "localized_name": "label",
-                "name": "label",
-                "type": "STRING",
-                "widget": {
-                  "name": "label"
-                },
-                "link": null
-              },
-              {
-                "localized_name": "scenes",
-                "name": "scenes",
-                "type": "STRING",
-                "widget": {
-                  "name": "scenes"
-                },
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "schedule",
-                "name": "schedule",
-                "type": "H3_PGS_ASSETS",
-                "links": [
-                  1719
-                ]
-              },
-              {
-                "localized_name": "status",
-                "name": "status",
-                "type": "STRING",
-                "links": []
-              }
-            ],
-            "title": "登记源视频与声音",
-            "properties": {
-              "ue_properties": {
-                "widget_ue_connectable": {
-                  "alias": true,
-                  "label": true,
-                  "scenes": true
-                },
-                "version": "8.0",
-                "input_ue_unconnectable": {}
-              },
-              "Node name for S&R": "MiniMaxH3RefPGSVideoAsset",
-              "h3_pgs_key": "466",
-              "h3_layout_key": "466"
-            },
-            "widgets_values": [
-              "Video_1",
-              "视频素材",
-              ""
-            ],
-            "widgets_values_named": {
-              "alias": "Video_1",
-              "label": "视频素材",
-              "scenes": ""
-            }
-          }
-        ],
-        "groups": [],
-        "links": [
-          {
-            "id": 1709,
-            "origin_id": 462,
-            "origin_slot": 0,
-            "target_id": 463,
-            "target_slot": 1,
-            "type": "H3_PGS_ASSETS"
-          },
-          {
-            "id": 1712,
-            "origin_id": 463,
-            "origin_slot": 0,
-            "target_id": 466,
-            "target_slot": 2,
-            "type": "H3_PGS_ASSETS"
-          },
-          {
-            "id": 1713,
-            "origin_id": -10,
-            "origin_slot": 0,
-            "target_id": 462,
-            "target_slot": 0,
-            "type": "IMAGE"
-          },
-          {
-            "id": 1708,
-            "origin_id": -10,
-            "origin_slot": 1,
-            "target_id": 463,
-            "target_slot": 0,
-            "type": "IMAGE"
-          },
-          {
-            "id": 1710,
-            "origin_id": -10,
-            "origin_slot": 2,
-            "target_id": 466,
-            "target_slot": 0,
-            "type": "IMAGE"
-          },
-          {
-            "id": 1711,
-            "origin_id": -10,
-            "origin_slot": 3,
-            "target_id": 466,
-            "target_slot": 1,
-            "type": "AUDIO"
-          },
-          {
-            "id": 1719,
-            "origin_id": 466,
-            "origin_slot": 0,
-            "target_id": -20,
-            "target_slot": 0,
-            "type": "H3_PGS_ASSETS"
-          }
-        ],
-        "extra": {}
-      },
-      {
         "id": "b421be3a-c165-4435-a59f-72e1a0f0ac16",
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
+          "lastNodeId": 646,
+          "lastLinkId": 1891,
           "lastRerouteId": 0
         },
         "revision": 1,
         "config": {},
-        "name": "首采尺寸 · 最终宽高 × 0.5",
+        "name": "首采尺寸 · 根据比例计算",
         "inputNode": {
           "id": -10,
           "bounding": [
@@ -5986,6 +5563,20 @@
             "pos": [
               276,
               198
+            ]
+          },
+          {
+            "id": "07989854-079e-4151-95a6-00ac7dbdf424",
+            "name": "first_pass_scale",
+            "type": "FLOAT",
+            "linkIds": [
+              1888,
+              1889
+            ],
+            "label": "首采比例",
+            "pos": [
+              276,
+              222
             ]
           }
         ],
@@ -6047,6 +5638,13 @@
                 "name": "values.b",
                 "shape": 7,
                 "type": "FLOAT,INT,BOOLEAN",
+                "link": 1888
+              },
+              {
+                "localized_name": "c",
+                "name": "values.c",
+                "shape": 7,
+                "type": "FLOAT,INT,BOOLEAN",
                 "link": null
               },
               {
@@ -6081,24 +5679,24 @@
                 "links": []
               }
             ],
-            "title": "首采宽度 · 最终 × 0.5，32 对齐",
+            "title": "首采宽度 · 最终宽度 × 首采比例",
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "ComfyMathExpression",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "ComfyMathExpression",
               "h3_pgs_key": "lowW",
               "h3_layout_key": "602"
             },
             "widgets_values": [
-              "max(32, floor(a * 0.5 / 32) * 32)"
+              "max(32, floor(a * b / 32) * 32)"
             ],
             "widgets_values_named": {
-              "expression": "max(32, floor(a * 0.5 / 32) * 32)"
+              "expression": "max(32, floor(a * b / 32) * 32)"
             }
           },
           {
@@ -6125,6 +5723,13 @@
               {
                 "localized_name": "b",
                 "name": "values.b",
+                "shape": 7,
+                "type": "FLOAT,INT,BOOLEAN",
+                "link": 1889
+              },
+              {
+                "localized_name": "c",
+                "name": "values.c",
                 "shape": 7,
                 "type": "FLOAT,INT,BOOLEAN",
                 "link": null
@@ -6161,45 +5766,29 @@
                 "links": []
               }
             ],
-            "title": "首采高度 · 最终 × 0.5，32 对齐",
+            "title": "首采高度 · 最终高度 × 首采比例",
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "ComfyMathExpression",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "ComfyMathExpression",
               "h3_pgs_key": "lowH",
               "h3_layout_key": "603"
             },
             "widgets_values": [
-              "max(32, floor(a * 0.5 / 32) * 32)"
+              "max(32, floor(a * b / 32) * 32)"
             ],
             "widgets_values_named": {
-              "expression": "max(32, floor(a * 0.5 / 32) * 32)"
+              "expression": "max(32, floor(a * b / 32) * 32)"
             }
           }
         ],
         "groups": [],
         "links": [
-          {
-            "id": 1740,
-            "origin_id": -10,
-            "origin_slot": 0,
-            "target_id": 602,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
-            "id": 1741,
-            "origin_id": -10,
-            "origin_slot": 1,
-            "target_id": 603,
-            "target_slot": 0,
-            "type": "INT"
-          },
           {
             "id": 1731,
             "origin_id": 602,
@@ -6215,6 +5804,38 @@
             "target_id": -20,
             "target_slot": 1,
             "type": "INT"
+          },
+          {
+            "id": 1740,
+            "origin_id": -10,
+            "origin_slot": 0,
+            "target_id": 602,
+            "target_slot": 0,
+            "type": "INT"
+          },
+          {
+            "id": 1888,
+            "origin_id": -10,
+            "origin_slot": 2,
+            "target_id": 602,
+            "target_slot": 1,
+            "type": "FLOAT"
+          },
+          {
+            "id": 1741,
+            "origin_id": -10,
+            "origin_slot": 1,
+            "target_id": 603,
+            "target_slot": 0,
+            "type": "INT"
+          },
+          {
+            "id": 1889,
+            "origin_id": -10,
+            "origin_slot": 2,
+            "target_id": 603,
+            "target_slot": 1,
+            "type": "FLOAT"
           }
         ],
         "extra": {}
@@ -6224,8 +5845,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
+          "lastNodeId": 646,
+          "lastLinkId": 1891,
           "lastRerouteId": 0
         },
         "revision": 1,
@@ -6237,7 +5858,7 @@
             30,
             150,
             270,
-            434
+            362
           ]
         },
         "outputNode": {
@@ -6317,70 +5938,6 @@
             ]
           },
           {
-            "id": "0b57daa7-7e64-436b-8a14-738ef4630cda",
-            "name": "ref_images.ref_image_0",
-            "type": "IMAGE",
-            "linkIds": [
-              1726,
-              1753
-            ],
-            "localized_name": "ref_image_0",
-            "label": "人物参考图",
-            "shape": 7,
-            "pos": [
-              276,
-              270
-            ]
-          },
-          {
-            "id": "c3b5ea11-c391-4fb2-b350-b352c2e35485",
-            "name": "ref_images.ref_image_1",
-            "type": "IMAGE",
-            "linkIds": [
-              1727,
-              1754
-            ],
-            "localized_name": "ref_image_1",
-            "label": "场景参考图",
-            "shape": 7,
-            "pos": [
-              276,
-              294
-            ]
-          },
-          {
-            "id": "c646c042-17e8-4c10-8119-f5186eedd0cc",
-            "name": "ref_videos.ref_video_0",
-            "type": "IMAGE",
-            "linkIds": [
-              1728,
-              1755
-            ],
-            "localized_name": "ref_video_0",
-            "label": "源视频画面",
-            "shape": 7,
-            "pos": [
-              276,
-              318
-            ]
-          },
-          {
-            "id": "fe8dc62b-7517-4d26-954a-be99a3aaffa4",
-            "name": "ref_audios.ref_audio_0",
-            "type": "AUDIO",
-            "linkIds": [
-              1729,
-              1756
-            ],
-            "localized_name": "ref_audio_0",
-            "label": "源视频音频",
-            "shape": 7,
-            "pos": [
-              276,
-              342
-            ]
-          },
-          {
             "id": "21d6dde1-f33a-44f7-85fb-4e582b1e9da1",
             "name": "width",
             "type": "INT",
@@ -6391,7 +5948,7 @@
             "label": "首采宽度",
             "pos": [
               276,
-              366
+              270
             ]
           },
           {
@@ -6405,7 +5962,7 @@
             "label": "首采高度",
             "pos": [
               276,
-              390
+              294
             ]
           },
           {
@@ -6420,7 +5977,7 @@
             "label": "本段总帧数",
             "pos": [
               276,
-              414
+              318
             ]
           },
           {
@@ -6434,7 +5991,7 @@
             "label": "最终宽度",
             "pos": [
               276,
-              438
+              342
             ]
           },
           {
@@ -6448,7 +6005,7 @@
             "label": "最终高度",
             "pos": [
               276,
-              462
+              366
             ]
           },
           {
@@ -6464,7 +6021,7 @@
             "shape": 7,
             "pos": [
               276,
-              486
+              390
             ]
           },
           {
@@ -6480,7 +6037,7 @@
             "shape": 7,
             "pos": [
               276,
-              510
+              414
             ]
           },
           {
@@ -6495,7 +6052,21 @@
             "label": "是否首段",
             "pos": [
               276,
-              534
+              438
+            ]
+          },
+          {
+            "id": "f5fb8270-93f4-48bb-8848-a9b48b48ff97",
+            "name": "assets",
+            "type": "H3_PGS_ASSETS",
+            "linkIds": [
+              1883,
+              1884
+            ],
+            "label": "参考素材集合",
+            "pos": [
+              276,
+              462
             ]
           }
         ],
@@ -6589,6 +6160,7 @@
             ],
             "title": "取出本段提示词",
             "properties": {
+              "Node name for S&R": "MiniMaxH3RefPGSScenePromptExtractor",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "scene_index": true
@@ -6596,7 +6168,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "MiniMaxH3RefPGSScenePromptExtractor",
               "h3_pgs_key": "460",
               "h3_layout_key": "460"
             },
@@ -6609,69 +6180,48 @@
           },
           {
             "id": 550,
-            "type": "MiniMaxH3ReferenceToVideo",
+            "type": "YtonH3ReferenceFromAssets",
             "pos": [
               960,
               150
             ],
             "size": [
               440,
-              600
+              300
             ],
             "flags": {},
             "order": 2,
             "mode": 0,
             "inputs": [
               {
-                "localized_name": "CLIP",
+                "localized_name": "clip",
                 "name": "clip",
                 "type": "CLIP",
                 "link": 1723
               },
               {
-                "localized_name": "VAE",
+                "localized_name": "vae",
                 "name": "vae",
                 "shape": 7,
                 "type": "VAE",
                 "link": 1724
               },
               {
-                "localized_name": "音频 VAE",
+                "localized_name": "audio_vae",
                 "name": "audio_vae",
                 "shape": 7,
                 "type": "VAE",
                 "link": 1725
               },
               {
-                "localized_name": "ref_image_0",
-                "name": "ref_images.ref_image_0",
+                "localized_name": "参考素材",
+                "name": "assets",
                 "shape": 7,
-                "type": "IMAGE",
-                "link": 1726
+                "type": "H3_PGS_ASSETS",
+                "link": 1883
               },
               {
-                "localized_name": "ref_video_0",
-                "name": "ref_videos.ref_video_0",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": 1728
-              },
-              {
-                "localized_name": "ref_video_audio_0",
-                "name": "ref_video_audios.ref_video_audio_0",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": null
-              },
-              {
-                "localized_name": "ref_audio_0",
-                "name": "ref_audios.ref_audio_0",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": 1729
-              },
-              {
-                "localized_name": "提示词",
+                "localized_name": "prompt",
                 "name": "prompt",
                 "type": "STRING",
                 "widget": {
@@ -6680,7 +6230,7 @@
                 "link": 1730
               },
               {
-                "localized_name": "宽度",
+                "localized_name": "width",
                 "name": "width",
                 "type": "INT",
                 "widget": {
@@ -6689,7 +6239,7 @@
                 "link": 1827
               },
               {
-                "localized_name": "高度",
+                "localized_name": "height",
                 "name": "height",
                 "type": "INT",
                 "widget": {
@@ -6698,7 +6248,7 @@
                 "link": 1828
               },
               {
-                "localized_name": "视频帧数",
+                "localized_name": "length",
                 "name": "length",
                 "type": "INT",
                 "widget": {
@@ -6707,85 +6257,18 @@
                 "link": 1733
               },
               {
-                "localized_name": "参考图像尺寸",
+                "localized_name": "ref_image_size",
                 "name": "ref_image_size",
                 "type": "COMBO",
                 "widget": {
                   "name": "ref_image_size"
                 },
                 "link": null
-              },
-              {
-                "localized_name": "ref_image_1",
-                "name": "ref_images.ref_image_1",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": 1727
-              },
-              {
-                "localized_name": "ref_image_2",
-                "name": "ref_images.ref_image_2",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "localized_name": "ref_video_1",
-                "name": "ref_videos.ref_video_1",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "localized_name": "ref_video_2",
-                "name": "ref_videos.ref_video_2",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "localized_name": "ref_video_audio_1",
-                "name": "ref_video_audios.ref_video_audio_1",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": null
-              },
-              {
-                "localized_name": "ref_video_audio_2",
-                "name": "ref_video_audios.ref_video_audio_2",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": null
-              },
-              {
-                "localized_name": "ref_audio_1",
-                "name": "ref_audios.ref_audio_1",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": null
-              },
-              {
-                "name": "ref_images.ref_image_3",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "name": "ref_images.ref_image_4",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "name": "ref_audios.ref_audio_2",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": null
               }
             ],
             "outputs": [
               {
-                "localized_name": "正向条件",
+                "localized_name": "positive",
                 "name": "positive",
                 "type": "CONDITIONING",
                 "links": [
@@ -6803,23 +6286,16 @@
                 ]
               }
             ],
-            "title": "首采参考编码 · 半尺寸",
+            "title": "首采参考编码 · 共享素材",
             "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.43.1",
+              "aux_id": "ytton/ComfyUI-yton-nodes",
+              "ver": "e1c9c66ed202244ad69b8afa264282e05ecdf725",
+              "Node name for S&R": "YtonH3ReferenceFromAssets",
               "ue_properties": {
-                "widget_ue_connectable": {
-                  "prompt": true,
-                  "width": true,
-                  "height": true,
-                  "length": true,
-                  "ref_image_size": true
-                },
-                "version": "8.0",
-                "input_ue_unconnectable": {}
+                "widget_ue_connectable": {},
+                "input_ue_unconnectable": {},
+                "version": "8.0"
               },
-              "Node name for S&R": "MiniMaxH3ReferenceToVideo",
-              "h3_pgs_key": "550",
               "h3_layout_key": "550"
             },
             "widgets_values": [
@@ -6841,69 +6317,48 @@
           },
           {
             "id": 609,
-            "type": "MiniMaxH3ReferenceToVideo",
+            "type": "YtonH3ReferenceFromAssets",
             "pos": [
               1520,
               150
             ],
             "size": [
               440,
-              600
+              300
             ],
             "flags": {},
             "order": 4,
             "mode": 0,
             "inputs": [
               {
-                "localized_name": "CLIP",
+                "localized_name": "clip",
                 "name": "clip",
                 "type": "CLIP",
                 "link": 1750
               },
               {
-                "localized_name": "VAE",
+                "localized_name": "vae",
                 "name": "vae",
                 "shape": 7,
                 "type": "VAE",
                 "link": 1751
               },
               {
-                "localized_name": "音频 VAE",
+                "localized_name": "audio_vae",
                 "name": "audio_vae",
                 "shape": 7,
                 "type": "VAE",
                 "link": 1752
               },
               {
-                "localized_name": "ref_image_0",
-                "name": "ref_images.ref_image_0",
+                "localized_name": "参考素材",
+                "name": "assets",
                 "shape": 7,
-                "type": "IMAGE",
-                "link": 1753
+                "type": "H3_PGS_ASSETS",
+                "link": 1884
               },
               {
-                "localized_name": "ref_video_0",
-                "name": "ref_videos.ref_video_0",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": 1755
-              },
-              {
-                "localized_name": "ref_video_audio_0",
-                "name": "ref_video_audios.ref_video_audio_0",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": null
-              },
-              {
-                "localized_name": "ref_audio_0",
-                "name": "ref_audios.ref_audio_0",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": 1756
-              },
-              {
-                "localized_name": "提示词",
+                "localized_name": "prompt",
                 "name": "prompt",
                 "type": "STRING",
                 "widget": {
@@ -6912,7 +6367,7 @@
                 "link": 1757
               },
               {
-                "localized_name": "宽度",
+                "localized_name": "width",
                 "name": "width",
                 "type": "INT",
                 "widget": {
@@ -6921,7 +6376,7 @@
                 "link": 1758
               },
               {
-                "localized_name": "高度",
+                "localized_name": "height",
                 "name": "height",
                 "type": "INT",
                 "widget": {
@@ -6930,7 +6385,7 @@
                 "link": 1759
               },
               {
-                "localized_name": "视频帧数",
+                "localized_name": "length",
                 "name": "length",
                 "type": "INT",
                 "widget": {
@@ -6939,67 +6394,18 @@
                 "link": 1760
               },
               {
-                "localized_name": "参考图像尺寸",
+                "localized_name": "ref_image_size",
                 "name": "ref_image_size",
                 "type": "COMBO",
                 "widget": {
                   "name": "ref_image_size"
                 },
                 "link": null
-              },
-              {
-                "localized_name": "ref_image_1",
-                "name": "ref_images.ref_image_1",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": 1754
-              },
-              {
-                "localized_name": "ref_image_2",
-                "name": "ref_images.ref_image_2",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "localized_name": "ref_video_1",
-                "name": "ref_videos.ref_video_1",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "localized_name": "ref_video_2",
-                "name": "ref_videos.ref_video_2",
-                "shape": 7,
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "localized_name": "ref_video_audio_1",
-                "name": "ref_video_audios.ref_video_audio_1",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": null
-              },
-              {
-                "localized_name": "ref_video_audio_2",
-                "name": "ref_video_audios.ref_video_audio_2",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": null
-              },
-              {
-                "localized_name": "ref_audio_1",
-                "name": "ref_audios.ref_audio_1",
-                "shape": 7,
-                "type": "AUDIO",
-                "link": null
               }
             ],
             "outputs": [
               {
-                "localized_name": "正向条件",
+                "localized_name": "positive",
                 "name": "positive",
                 "type": "CONDITIONING",
                 "links": [
@@ -7016,17 +6422,16 @@
                 ]
               }
             ],
-            "title": "二采参考编码 · 最终尺寸",
+            "title": "二采参考编码 · 共享素材",
             "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.43.1",
+              "aux_id": "ytton/ComfyUI-yton-nodes",
+              "ver": "e1c9c66ed202244ad69b8afa264282e05ecdf725",
+              "Node name for S&R": "YtonH3ReferenceFromAssets",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "MiniMaxH3ReferenceToVideo",
-              "h3_pgs_key": "highRef",
               "h3_layout_key": "609"
             },
             "widgets_values": [
@@ -7123,6 +6528,7 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "MiniMaxH3AddGuide",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "frame_idx": true
@@ -7130,7 +6536,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "MiniMaxH3AddGuide",
               "h3_layout_key": "581"
             },
             "widgets_values": [
@@ -7185,6 +6590,7 @@
             "properties": {
               "aux_id": "wjc573/ComfyUI-MiniMax-H3-Audio-Guide-Feather",
               "ver": "043c631d6817e60a0437f1ab4c98b0c923e0e4da",
+              "Node name for S&R": "MiniMaxH3AudioGuideFeather",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "audio_feather_ticks": true
@@ -7192,7 +6598,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "MiniMaxH3AudioGuideFeather",
               "h3_layout_key": "630"
             },
             "widgets_values": [
@@ -7221,14 +6626,12 @@
                 "label": "真",
                 "localized_name": "真",
                 "name": "tt_value",
-                "type": "*",
                 "link": 1793
               },
               {
                 "label": "假",
                 "localized_name": "假",
                 "name": "ff_value",
-                "type": "*",
                 "link": 1794
               },
               {
@@ -7244,10 +6647,9 @@
             ],
             "outputs": [
               {
-                "label": "CONDITIONING",
+                "label": "输出",
                 "localized_name": "输出",
                 "name": "*",
-                "type": "*",
                 "links": [
                   1775
                 ]
@@ -7257,6 +6659,7 @@
             "properties": {
               "cnr_id": "comfyui-impact-pack",
               "ver": "cc015e3223b2172fb4a83510275ed3454f7e34de",
+              "Node name for S&R": "ImpactConditionalBranch",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "cond": true
@@ -7264,7 +6667,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "ImpactConditionalBranch",
               "h3_layout_key": "631"
             },
             "widgets_values": [
@@ -7353,6 +6755,7 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "MiniMaxH3AddGuide",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "frame_idx": true
@@ -7360,7 +6763,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "MiniMaxH3AddGuide",
               "h3_layout_key": "611"
             },
             "widgets_values": [
@@ -7415,6 +6817,7 @@
             "properties": {
               "aux_id": "wjc573/ComfyUI-MiniMax-H3-Audio-Guide-Feather",
               "ver": "043c631d6817e60a0437f1ab4c98b0c923e0e4da",
+              "Node name for S&R": "MiniMaxH3AudioGuideFeather",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "audio_feather_ticks": true
@@ -7422,7 +6825,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "MiniMaxH3AudioGuideFeather",
               "h3_layout_key": "632"
             },
             "widgets_values": [
@@ -7451,14 +6853,12 @@
                 "label": "真",
                 "localized_name": "真",
                 "name": "tt_value",
-                "type": "*",
                 "link": 1803
               },
               {
                 "label": "假",
                 "localized_name": "假",
                 "name": "ff_value",
-                "type": "*",
                 "link": 1804
               },
               {
@@ -7474,10 +6874,9 @@
             ],
             "outputs": [
               {
-                "label": "CONDITIONING",
+                "label": "输出",
                 "localized_name": "输出",
                 "name": "*",
-                "type": "*",
                 "links": [
                   1763,
                   1774
@@ -7488,6 +6887,7 @@
             "properties": {
               "cnr_id": "comfyui-impact-pack",
               "ver": "cc015e3223b2172fb4a83510275ed3454f7e34de",
+              "Node name for S&R": "ImpactConditionalBranch",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "cond": true
@@ -7495,7 +6895,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "ImpactConditionalBranch",
               "h3_layout_key": "633"
             },
             "widgets_values": [
@@ -7553,12 +6952,12 @@
             "properties": {
               "cnr_id": "comfyui-impact-pack",
               "ver": "cc015e3223b2172fb4a83510275ed3454f7e34de",
+              "Node name for S&R": "ImpactExecutionOrderController",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "ImpactExecutionOrderController",
               "h3_layout_key": "622"
             }
           },
@@ -7610,12 +7009,12 @@
             "properties": {
               "cnr_id": "comfyui-mainodes",
               "ver": "f4868b4a08e8a504ce86db54a17961d399ffa2bc",
+              "Node name for S&R": "H3EvictTextEncoder",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "H3EvictTextEncoder",
               "h3_layout_key": "623"
             }
           },
@@ -7662,7 +7061,7 @@
             "origin_id": 460,
             "origin_slot": 0,
             "target_id": 550,
-            "target_slot": 7,
+            "target_slot": 4,
             "type": "STRING"
           },
           {
@@ -7670,7 +7069,7 @@
             "origin_id": 460,
             "origin_slot": 0,
             "target_id": 609,
-            "target_slot": 7,
+            "target_slot": 4,
             "type": "STRING"
           },
           {
@@ -7874,121 +7273,57 @@
             "type": "VAE"
           },
           {
-            "id": 1726,
-            "origin_id": -10,
-            "origin_slot": 4,
-            "target_id": 550,
-            "target_slot": 3,
-            "type": "IMAGE"
-          },
-          {
-            "id": 1753,
-            "origin_id": -10,
-            "origin_slot": 4,
-            "target_id": 609,
-            "target_slot": 3,
-            "type": "IMAGE"
-          },
-          {
-            "id": 1727,
-            "origin_id": -10,
-            "origin_slot": 5,
-            "target_id": 550,
-            "target_slot": 12,
-            "type": "IMAGE"
-          },
-          {
-            "id": 1754,
-            "origin_id": -10,
-            "origin_slot": 5,
-            "target_id": 609,
-            "target_slot": 12,
-            "type": "IMAGE"
-          },
-          {
-            "id": 1728,
-            "origin_id": -10,
-            "origin_slot": 6,
-            "target_id": 550,
-            "target_slot": 4,
-            "type": "IMAGE"
-          },
-          {
-            "id": 1755,
-            "origin_id": -10,
-            "origin_slot": 6,
-            "target_id": 609,
-            "target_slot": 4,
-            "type": "IMAGE"
-          },
-          {
-            "id": 1729,
-            "origin_id": -10,
-            "origin_slot": 7,
-            "target_id": 550,
-            "target_slot": 6,
-            "type": "AUDIO"
-          },
-          {
-            "id": 1756,
-            "origin_id": -10,
-            "origin_slot": 7,
-            "target_id": 609,
-            "target_slot": 6,
-            "type": "AUDIO"
-          },
-          {
             "id": 1827,
             "origin_id": -10,
-            "origin_slot": 8,
+            "origin_slot": 4,
             "target_id": 550,
-            "target_slot": 8,
+            "target_slot": 5,
             "type": "INT"
           },
           {
             "id": 1828,
             "origin_id": -10,
-            "origin_slot": 9,
+            "origin_slot": 5,
             "target_id": 550,
-            "target_slot": 9,
+            "target_slot": 6,
             "type": "INT"
           },
           {
             "id": 1733,
             "origin_id": -10,
-            "origin_slot": 10,
+            "origin_slot": 6,
             "target_id": 550,
-            "target_slot": 10,
+            "target_slot": 7,
             "type": "INT"
           },
           {
             "id": 1760,
             "origin_id": -10,
-            "origin_slot": 10,
+            "origin_slot": 6,
             "target_id": 609,
-            "target_slot": 10,
+            "target_slot": 7,
             "type": "INT"
           },
           {
             "id": 1758,
             "origin_id": -10,
-            "origin_slot": 11,
+            "origin_slot": 7,
             "target_id": 609,
-            "target_slot": 8,
+            "target_slot": 5,
             "type": "INT"
           },
           {
             "id": 1759,
             "origin_id": -10,
-            "origin_slot": 12,
+            "origin_slot": 8,
             "target_id": 609,
-            "target_slot": 9,
+            "target_slot": 6,
             "type": "INT"
           },
           {
             "id": 1816,
             "origin_id": -10,
-            "origin_slot": 13,
+            "origin_slot": 9,
             "target_id": 581,
             "target_slot": 4,
             "type": "IMAGE"
@@ -7996,7 +7331,7 @@
           {
             "id": 1817,
             "origin_id": -10,
-            "origin_slot": 13,
+            "origin_slot": 9,
             "target_id": 611,
             "target_slot": 4,
             "type": "IMAGE"
@@ -8004,7 +7339,7 @@
           {
             "id": 1813,
             "origin_id": -10,
-            "origin_slot": 14,
+            "origin_slot": 10,
             "target_id": 581,
             "target_slot": 5,
             "type": "AUDIO"
@@ -8012,7 +7347,7 @@
           {
             "id": 1814,
             "origin_id": -10,
-            "origin_slot": 14,
+            "origin_slot": 10,
             "target_id": 611,
             "target_slot": 5,
             "type": "AUDIO"
@@ -8020,7 +7355,7 @@
           {
             "id": 1792,
             "origin_id": -10,
-            "origin_slot": 15,
+            "origin_slot": 11,
             "target_id": 631,
             "target_slot": 2,
             "type": "BOOLEAN"
@@ -8028,7 +7363,7 @@
           {
             "id": 1802,
             "origin_id": -10,
-            "origin_slot": 15,
+            "origin_slot": 11,
             "target_id": 633,
             "target_slot": 2,
             "type": "BOOLEAN"
@@ -8056,6 +7391,22 @@
             "target_id": -20,
             "target_slot": 2,
             "type": "CONDITIONING"
+          },
+          {
+            "id": 1883,
+            "origin_id": -10,
+            "origin_slot": 12,
+            "target_id": 550,
+            "target_slot": 3,
+            "type": "H3_PGS_ASSETS"
+          },
+          {
+            "id": 1884,
+            "origin_id": -10,
+            "origin_slot": 12,
+            "target_id": 609,
+            "target_slot": 3,
+            "type": "H3_PGS_ASSETS"
           }
         ],
         "extra": {}
@@ -8065,8 +7416,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
+          "lastNodeId": 646,
+          "lastLinkId": 1891,
           "lastRerouteId": 0
         },
         "revision": 1,
@@ -8271,7 +7622,7 @@
               130
             ],
             "flags": {},
-            "order": 4,
+            "order": 1,
             "mode": 0,
             "inputs": [
               {
@@ -8303,12 +7654,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "LTXVSeparateAVLatent",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "LTXVSeparateAVLatent",
               "h3_pgs_key": "split",
               "h3_layout_key": "606"
             }
@@ -8325,7 +7676,7 @@
               240
             ],
             "flags": {},
-            "order": 5,
+            "order": 2,
             "mode": 0,
             "inputs": [
               {
@@ -8412,12 +7763,12 @@
             "properties": {
               "cnr_id": "comfyui-easy-media",
               "ver": "fb4bf27a8b014946842836f3a0d78c1559b9811b",
+              "Node name for S&R": "easy minimaxH3LatentUpscaler",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "easy minimaxH3LatentUpscaler",
               "h3_pgs_key": "upscale",
               "h3_layout_key": "607"
             },
@@ -8452,7 +7803,7 @@
               130
             ],
             "flags": {},
-            "order": 6,
+            "order": 3,
             "mode": 0,
             "inputs": [
               {
@@ -8482,12 +7833,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "LTXVConcatAVLatent",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "LTXVConcatAVLatent",
               "h3_pgs_key": "av",
               "h3_layout_key": "608"
             }
@@ -8504,7 +7855,7 @@
               130
             ],
             "flags": {},
-            "order": 7,
+            "order": 4,
             "mode": 0,
             "inputs": [
               {
@@ -8547,12 +7898,12 @@
             "properties": {
               "cnr_id": "comfyui-kjnodes",
               "ver": "ab72eda7ffad6280422d71ab7d54d3fb87c0ba18",
+              "Node name for S&R": "MiniMaxChunkFeedForward",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "MiniMaxChunkFeedForward",
               "h3_pgs_key": "highModel",
               "h3_layout_key": "612"
             },
@@ -8577,7 +7928,7 @@
               130
             ],
             "flags": {},
-            "order": 0,
+            "order": 5,
             "mode": 0,
             "inputs": [
               {
@@ -8604,12 +7955,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "RandomNoise",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "RandomNoise",
               "h3_pgs_key": "noise",
               "h3_layout_key": "613"
             },
@@ -8634,7 +7985,7 @@
               130
             ],
             "flags": {},
-            "order": 8,
+            "order": 6,
             "mode": 0,
             "inputs": [
               {
@@ -8664,12 +8015,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "BasicGuider",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "BasicGuider",
               "h3_pgs_key": "guider",
               "h3_layout_key": "614"
             }
@@ -8686,7 +8037,7 @@
               130
             ],
             "flags": {},
-            "order": 1,
+            "order": 7,
             "mode": 0,
             "inputs": [
               {
@@ -8713,12 +8064,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "KSamplerSelect",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "KSamplerSelect",
               "h3_pgs_key": "sampler",
               "h3_layout_key": "615"
             },
@@ -8741,7 +8092,7 @@
               130
             ],
             "flags": {},
-            "order": 2,
+            "order": 8,
             "mode": 0,
             "inputs": [
               {
@@ -8768,12 +8119,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "ManualSigmas",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "ManualSigmas",
               "h3_pgs_key": "sigma",
               "h3_layout_key": "616"
             },
@@ -8850,12 +8201,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "SamplerCustomAdvanced",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "SamplerCustomAdvanced",
               "h3_pgs_key": "second",
               "h3_layout_key": "617"
             }
@@ -8872,7 +8223,7 @@
               300
             ],
             "flags": {},
-            "order": 3,
+            "order": 0,
             "mode": 0,
             "inputs": [],
             "outputs": [],
@@ -9003,38 +8354,6 @@
             "type": "LATENT"
           },
           {
-            "id": 1745,
-            "origin_id": 606,
-            "origin_slot": 0,
-            "target_id": 607,
-            "target_slot": 0,
-            "type": "LATENT"
-          },
-          {
-            "id": 1746,
-            "origin_id": -10,
-            "origin_slot": 1,
-            "target_id": 607,
-            "target_slot": 3,
-            "type": "INT"
-          },
-          {
-            "id": 1747,
-            "origin_id": -10,
-            "origin_slot": 2,
-            "target_id": 607,
-            "target_slot": 4,
-            "type": "INT"
-          },
-          {
-            "id": 1856,
-            "origin_id": -10,
-            "origin_slot": 5,
-            "target_id": 607,
-            "target_slot": 1,
-            "type": "COMBO"
-          },
-          {
             "id": 1857,
             "origin_id": -10,
             "origin_slot": 6,
@@ -9065,6 +8384,38 @@
             "target_id": 616,
             "target_slot": 0,
             "type": "STRING"
+          },
+          {
+            "id": 1745,
+            "origin_id": 606,
+            "origin_slot": 0,
+            "target_id": 607,
+            "target_slot": 0,
+            "type": "LATENT"
+          },
+          {
+            "id": 1856,
+            "origin_id": -10,
+            "origin_slot": 5,
+            "target_id": 607,
+            "target_slot": 1,
+            "type": "COMBO"
+          },
+          {
+            "id": 1746,
+            "origin_id": -10,
+            "origin_slot": 1,
+            "target_id": 607,
+            "target_slot": 3,
+            "type": "INT"
+          },
+          {
+            "id": 1747,
+            "origin_id": -10,
+            "origin_slot": 2,
+            "target_id": 607,
+            "target_slot": 4,
+            "type": "INT"
           }
         ],
         "extra": {}
@@ -9074,8 +8425,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
+          "lastNodeId": 646,
+          "lastLinkId": 1891,
           "lastRerouteId": 0
         },
         "revision": 1,
@@ -9160,21 +8511,6 @@
             ]
           },
           {
-            "id": "b01c7eea-e9da-49dd-af15-c347ab7704cd",
-            "name": "references.参考图 1",
-            "type": "IMAGE",
-            "linkIds": [
-              1773
-            ],
-            "localized_name": "参考图 1",
-            "label": "人物参考图",
-            "shape": 7,
-            "pos": [
-              276,
-              270
-            ]
-          },
-          {
             "id": "444d4162-3230-4a0a-a113-11d241fb101c",
             "name": "enabled",
             "type": "BOOLEAN",
@@ -9184,7 +8520,7 @@
             "label": "开启修脸",
             "pos": [
               276,
-              294
+              270
             ]
           },
           {
@@ -9197,7 +8533,7 @@
             "label": "人物数量",
             "pos": [
               276,
-              318
+              294
             ]
           },
           {
@@ -9210,7 +8546,7 @@
             "label": "修脸 Sigma",
             "pos": [
               276,
-              342
+              318
             ]
           },
           {
@@ -9221,6 +8557,19 @@
               1870
             ],
             "label": "反向修脸",
+            "pos": [
+              276,
+              342
+            ]
+          },
+          {
+            "id": "73597fbb-3593-4106-9cd5-8586cf21d6f5",
+            "name": "assets",
+            "type": "H3_PGS_ASSETS",
+            "linkIds": [
+              1886
+            ],
+            "label": "参考素材集合",
             "pos": [
               276,
               366
@@ -9287,12 +8636,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.28.2",
+              "Node name for S&R": "VAEDecode",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "version": "7.8",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "VAEDecode",
               "h3_pgs_key": "173",
               "h3_layout_key": "173"
             }
@@ -9344,7 +8693,14 @@
                 "name": "references.参考图 1",
                 "shape": 7,
                 "type": "IMAGE",
-                "link": 1773
+                "link": null
+              },
+              {
+                "localized_name": "参考素材集合",
+                "name": "assets",
+                "shape": 7,
+                "type": "H3_PGS_ASSETS",
+                "link": 1886
               },
               {
                 "localized_name": "提示词",
@@ -9413,12 +8769,12 @@
             "properties": {
               "aux_id": "ytton/ComfyUI-yton-nodes",
               "ver": "d003a28858e495b5900847f629d5aa4b9c47ac49",
+              "Node name for S&R": "YtonH3FaceRefine",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "input_ue_unconnectable": {},
                 "version": "8.0"
               },
-              "Node name for S&R": "YtonH3FaceRefine",
               "h3_pgs_key": "face",
               "h3_layout_key": "618"
             },
@@ -9489,14 +8845,6 @@
             "type": "CLIP"
           },
           {
-            "id": 1773,
-            "origin_id": -10,
-            "origin_slot": 4,
-            "target_id": 618,
-            "target_slot": 4,
-            "type": "IMAGE"
-          },
-          {
             "id": 1736,
             "origin_id": 618,
             "origin_slot": 0,
@@ -9507,34 +8855,42 @@
           {
             "id": 1867,
             "origin_id": -10,
-            "origin_slot": 5,
+            "origin_slot": 4,
             "target_id": 618,
-            "target_slot": 6,
+            "target_slot": 7,
             "type": "BOOLEAN"
           },
           {
             "id": 1868,
             "origin_id": -10,
-            "origin_slot": 6,
+            "origin_slot": 5,
             "target_id": 618,
-            "target_slot": 7,
+            "target_slot": 8,
             "type": "INT"
           },
           {
             "id": 1869,
             "origin_id": -10,
-            "origin_slot": 7,
+            "origin_slot": 6,
             "target_id": 618,
-            "target_slot": 8,
+            "target_slot": 9,
             "type": "STRING,SIGMAS"
           },
           {
             "id": 1870,
             "origin_id": -10,
+            "origin_slot": 7,
+            "target_id": 618,
+            "target_slot": 10,
+            "type": "BOOLEAN"
+          },
+          {
+            "id": 1886,
+            "origin_id": -10,
             "origin_slot": 8,
             "target_id": 618,
-            "target_slot": 9,
-            "type": "BOOLEAN"
+            "target_slot": 5,
+            "type": "H3_PGS_ASSETS"
           }
         ],
         "extra": {}
@@ -9544,8 +8900,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 644,
-          "lastLinkId": 1878,
+          "lastNodeId": 646,
+          "lastLinkId": 1891,
           "lastRerouteId": 0
         },
         "revision": 1,
@@ -9715,12 +9071,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.28.2",
+              "Node name for S&R": "VAEDecodeAudio",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "version": "7.8",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "VAEDecodeAudio",
               "h3_pgs_key": "161",
               "h3_layout_key": "161"
             }
@@ -9802,6 +9158,7 @@
             ],
             "title": "裁掉接续重叠 · 同步裁音频",
             "properties": {
+              "Node name for S&R": "H3-ContextTrim-PGS",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "trim_frames": true,
@@ -9811,7 +9168,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "H3-ContextTrim-PGS",
               "h3_pgs_key": "562",
               "h3_layout_key": "562"
             },
@@ -9892,6 +9248,7 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "ComfyMathExpression",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "expression": true
@@ -9899,7 +9256,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "ComfyMathExpression",
               "h3_layout_key": "634"
             },
             "widgets_values": [
@@ -9987,6 +9343,7 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
+              "Node name for S&R": "ColorTransfer",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "method": true,
@@ -9997,7 +9354,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "ColorTransfer",
               "h3_layout_key": "635"
             },
             "widgets_values": [
@@ -10032,14 +9388,12 @@
                 "label": "真",
                 "localized_name": "真",
                 "name": "tt_value",
-                "type": "*",
                 "link": 1809
               },
               {
                 "label": "假",
                 "localized_name": "假",
                 "name": "ff_value",
-                "type": "*",
                 "link": 1810
               },
               {
@@ -10055,10 +9409,9 @@
             ],
             "outputs": [
               {
-                "label": "IMAGE",
+                "label": "输出",
                 "localized_name": "输出",
                 "name": "*",
-                "type": "*",
                 "links": [
                   1706
                 ]
@@ -10068,6 +9421,7 @@
             "properties": {
               "cnr_id": "comfyui-impact-pack",
               "ver": "cc015e3223b2172fb4a83510275ed3454f7e34de",
+              "Node name for S&R": "ImpactConditionalBranch",
               "ue_properties": {
                 "widget_ue_connectable": {
                   "cond": true
@@ -10075,7 +9429,6 @@
                 "version": "8.0",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "ImpactConditionalBranch",
               "h3_layout_key": "636"
             },
             "widgets_values": [
@@ -10167,12 +9520,12 @@
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.28.2",
+              "Node name for S&R": "CreateVideo",
               "ue_properties": {
                 "widget_ue_connectable": {},
                 "version": "7.8",
                 "input_ue_unconnectable": {}
               },
-              "Node name for S&R": "CreateVideo",
               "h3_pgs_key": "172",
               "h3_layout_key": "172"
             },
@@ -10265,14 +9618,6 @@
             "type": "IMAGE"
           },
           {
-            "id": 1805,
-            "origin_id": -10,
-            "origin_slot": 3,
-            "target_id": 634,
-            "target_slot": 0,
-            "type": "BOOLEAN"
-          },
-          {
             "id": 1808,
             "origin_id": -10,
             "origin_slot": 3,
@@ -10287,6 +9632,14 @@
             "target_id": -20,
             "target_slot": 0,
             "type": "VIDEO"
+          },
+          {
+            "id": 1805,
+            "origin_id": -10,
+            "origin_slot": 3,
+            "target_id": 634,
+            "target_slot": 0,
+            "type": "BOOLEAN"
           },
           {
             "id": 1806,
@@ -10341,7 +9694,8 @@
     "VHS_MetadataImage": true,
     "VHS_KeepIntermediate": true,
     "h3_schedule_variant": "dynamic_grouped",
-    "h3_layout": "pgs-modular"
+    "h3_layout": "pgs-modular",
+    "h3_flexible_references": true
   },
   "extensions": {
     "seed_widgets": {

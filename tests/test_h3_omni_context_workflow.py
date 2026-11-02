@@ -13,6 +13,29 @@ BASELINE = PLUGIN / 'examples/H3测试流-传统二采极速-调度优化.json'
 PROMPT_FIXTURE = PLUGIN / 'tests/fixtures/h3_omni_context_prompt.json'
 
 
+def expected_prompt():
+    """Keep the original execution recipe, with the explicitly changed reference/size adapters."""
+    expected = json.loads(PROMPT_FIXTURE.read_text(encoding='utf-8'))
+    for key in ('462', '463', '466'):
+        del expected[key]
+    expected['639'] = {'class_type': 'YtonH3ReferenceAssets', 'inputs': {
+        'images.参考图 1': ['518', 0], 'images.参考图 2': ['495', 0],
+        'video_frames': ['588', 0], 'video_audio': ['588', 1]}}
+    expected['645'] = {'class_type': 'PrimitiveFloat', 'inputs': {'value': .5}}
+    for key in ('550', '609'):
+        node = expected[key]
+        node['class_type'] = 'YtonH3ReferenceFromAssets'
+        node['inputs'] = {k: v for k, v in node['inputs'].items()
+                          if not k.startswith(('ref_images.', 'ref_videos.', 'ref_audios.'))}
+        node['inputs']['assets'] = ['639', 0]
+    expected['618']['inputs'].pop('references.参考图 1')
+    expected['618']['inputs']['assets'] = ['639', 0]
+    expected['524']['inputs']['assets'] = ['639', 0]
+    for key in ('602', '603'):
+        expected[key]['inputs'].update(expression='max(32, floor(a * b / 32) * 32)', **{'values.b': ['645', 0]})
+    return expected
+
+
 class WorkflowView:
     """Resolve native subgraphs and promoted widgets by stable original node identity."""
 
@@ -134,7 +157,7 @@ class OmniContextWorkflowTests(unittest.TestCase):
     def test_sampling_models_and_source_timeline_are_preserved(self):
         baseline = json.loads(BASELINE.read_text(encoding='utf-8'))
         before = {n['id']: n for n in baseline['nodes']}
-        for node_id in (313, 314, 320, 588, 601, 602, 603, 607, 612, 613, 615, 616, 618):
+        for node_id in (313, 314, 320, 588, 601, 607, 612, 613, 615, 616, 618):
             self.assertEqual(self.nodes[node_id].get('widgets_values'), before[node_id].get('widgets_values'), node_id)
         original = {s['id'] for s in baseline['definitions']['subgraphs']}
         self.assertTrue(original.issubset(self.view.definitions))
@@ -146,7 +169,7 @@ class OmniContextWorkflowTests(unittest.TestCase):
         self.assertTrue({421, 561, 605}.isdisjoint(self.nodes))
 
     def test_graph_has_no_dependency_cycles_and_links_match_both_sockets(self):
-        expected = json.loads(PROMPT_FIXTURE.read_text(encoding='utf-8'))
+        expected = expected_prompt()
         prompt = self.view.prompt(expected)
         visited, visiting = set(), set()
         def visit(node_id):
@@ -184,7 +207,7 @@ class OmniContextWorkflowTests(unittest.TestCase):
                         self.assertEqual(links[link_id][:2], (str(node['id']), slot))
 
     def test_packaging_preserves_every_executable_input_and_exposes_controls(self):
-        expected = json.loads(PROMPT_FIXTURE.read_text(encoding='utf-8'))
+        expected = expected_prompt()
         # Fixture was exported from the original graph by native graphToPrompt.
         actual = self.view.prompt(expected)
         # JSON uses string node identifiers; graph source resolution preserves original ints.
@@ -200,7 +223,7 @@ class OmniContextWorkflowTests(unittest.TestCase):
             widgets = {p['name'] for p in host['inputs'] if p.get('widget')}
             self.assertTrue(names.issubset(widgets))
             self.assertIn(host['type'], self.view.definitions)
-        self.assertEqual(len(self.workflow['nodes']), 19)
+        self.assertEqual(len(self.workflow['nodes']), 20)
         for module, labels in {'conditions': {'width': '首采宽度', 'height': '首采高度',
                                               'image': '上段 22 帧', 'audio': '上段音频'},
                                 'face': {'enabled': '开启修脸'},
@@ -208,6 +231,25 @@ class OmniContextWorkflowTests(unittest.TestCase):
             host = modules[module]
             for name, label in labels.items():
                 self.assertEqual(next(p['label'] for p in host['inputs'] if p['name'] == name), label)
+
+    def test_reference_collection_and_first_pass_scale_reach_every_consumer(self):
+        for node_id in (550, 609, 618, 524):
+            self.assertEqual(self.source(node_id, 'assets'), (639, 0))
+        for node_id in (602, 603):
+            self.assertEqual(self.source(node_id, 'values.b'), (645, 0))
+        self.assertEqual(self.source(550, 'width'), (602, 1))
+        self.assertEqual(self.source(550, 'height'), (603, 1))
+        self.assertEqual(self.source(609, 'width'), (601, 0))
+        self.assertEqual(self.source(609, 'height'), (601, 1))
+        self.assertEqual(self.source(607, 'mode.width'), (601, 0))
+        self.assertEqual(self.source(607, 'mode.height'), (601, 1))
+        from math import floor
+        for scale in (.33, .5, .6, .75, 1):
+            for node_id, dimension in ((602, 1920), (603, 1088)):
+                expression = self.nodes[node_id]['widgets_values'][0]
+                size = eval(expression, {'__builtins__': {}, 'max': max, 'floor': floor}, {'a': dimension, 'b': scale})
+                self.assertEqual(size % 32, 0)
+                self.assertLessEqual(abs(size-dimension*scale), 32)
 
     def test_native_loop_skips_absent_video_then_carries_each_previous_result(self):
         from test_h3_video_context import asyncio, execution, torch, InputImpl, Types, Fraction, YtonH3VideoTail

@@ -31,6 +31,8 @@ class YtonH3FaceRefine(io.ComfyNode):
                         io.Image.Input("reference", raw_link=True, lazy=True,
                             tooltip="人物参考图；连线后自动增加下一个入口，按连接顺序对应 <Picture N>。"),
                         names=[f"参考图 {i}" for i in range(1, 10)], min=0)),
+                io.Custom("H3_PGS_ASSETS").Input("assets", display_name="参考素材集合", optional=True, lazy=True,
+                    tooltip="与首采、二采共用图片参考顺序，保留 <Picture N> 的对应关系。"),
                 io.String.Input("prompt", display_name="提示词", default="", multiline=True, raw_link=True, lazy=True,
                     tooltip="可接原提示词，也可填写修脸描述；留空依靠原画面与参考图修复。"),
                 io.Boolean.Input("enabled", display_name="启用修脸", default=True),
@@ -45,11 +47,14 @@ class YtonH3FaceRefine(io.ComfyNode):
 
     @classmethod
     def check_lazy_status(cls, enabled=True, sigmas=None, **inputs):
-        return ["sigmas"] if enabled and sigmas is None else []
+        needed = ["sigmas"] if enabled and sigmas is None else []
+        if enabled and "assets" in inputs and inputs["assets"] is None:
+            needed.append("assets")
+        return needed
 
     @classmethod
     def execute(cls, images, model=None, clip=None, vae=None, prompt="", enabled=True, face_count=1,
-                sigmas="", reverse=False, references=None):
+                sigmas="", reverse=False, references=None, assets=None):
         graph = GraphBuilder()
         if not enabled:
             return io.NodeOutput(images, expand=graph.finalize())
@@ -57,8 +62,9 @@ class YtonH3FaceRefine(io.ComfyNode):
             raise ValueError("启用修脸时，请连接修脸模型、H3 CLIP 和 H3 视频 VAE。")
         if isinstance(sigmas, str):
             sigmas = graph.node("ManualSigmas", id="face_sigmas", sigmas=sigmas).out(0) if sigmas.strip() else None
-        ref_images = {f"ref_image_{i}": link for i, link in enumerate(
-            value for value in (references or {}).values() if value is not None)}
+        pictures = list((assets or {}).get("images", []))
+        pictures.extend(value for value in (references or {}).values() if value is not None)
+        ref_images = {f"ref_image_{i}": value for i, value in enumerate(pictures)}
         frames = add_face_refinement(
             graph, images, None, model, clip, vae, None, None, prompt, "match",
             face_count, 4, 0.4, "bbox\\face_yolov8m.pt", reverse, 42, sigmas, 0.35, "none",
