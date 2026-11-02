@@ -5,7 +5,7 @@ import json
 from comfy_api.latest import io, ui
 
 from ..llm_connection import LLMConnection
-from .media import image_tensors, input_path, plan_for, reference_images, segment_video
+from .media import image_tensors, input_path, inspect, output_size, plan_for, reference_images, segment_video
 from .prompts import optimize, prompt_slot, resolve_references, signature, source_prompt
 from .save import execution_state, save_segment
 
@@ -54,8 +54,8 @@ class YtonCharacterReplacement(io.ComfyNode):
             outputs=[io.Image.Output(display_name="图片列表", is_output_list=True),
                      io.Video.Output(display_name="视频列表", is_output_list=True),
                      io.String.Output(display_name="提示词"),
-                     io.Int.Output(display_name="宽度", tooltip="当前输出视频的实际宽度，单位为像素。"),
-                     io.Int.Output(display_name="高度", tooltip="当前输出视频的实际高度，单位为像素。"),
+                     io.Int.Output(display_name="宽度", tooltip="生成目标宽度，由节点的分辨率与画面比例决定，独立于参考视频压缩尺寸。"),
+                     io.Int.Output(display_name="高度", tooltip="生成目标高度，由节点的分辨率与画面比例决定，独立于参考视频压缩尺寸。"),
                      io.Int.Output(display_name="长度（帧数）", tooltip="当前输出视频的实际帧数，尾段按剩余长度计算。"),
                      io.Float.Output(display_name="时长（秒）", tooltip="实际帧数除以输出帧率，可连接全模态生成节点的时长。"),
                      io.Int.Output(display_name="片段序号", tooltip="当前索引 + 1，从 1 开始；连接保存器的片段序号。"),
@@ -72,7 +72,7 @@ class YtonCharacterReplacement(io.ComfyNode):
     def execute(cls, index, config, llm=None):
         config = parse_config(config)
         video, plan = segment_video(config, index)
-        width, height = video.get_dimensions()
+        width, height = output_size(config, inspect(config["video"]))
         frames = video.get_frame_count()
         duration = float(frames / video.get_frame_rate())
         images = reference_images(config)

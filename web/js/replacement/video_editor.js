@@ -262,6 +262,9 @@ export function openVideoEditor(node) {
     const commonParams = document.createElement("div");
     commonParams.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;";
     dl.appendChild(commonParams);
+    const compressionLabel = document.createElement("span");
+    compressionLabel.textContent = "参考视频压缩";
+    commonParams.appendChild(compressionLabel);
 
     const resetBtn = document.createElement("button");
     resetBtn.textContent = "重置";
@@ -289,6 +292,8 @@ export function openVideoEditor(node) {
 
     const widthInput = document.createElement("input");
     widthInput.type = "number";
+    widthInput.setAttribute("aria-label", "参考视频压缩宽度");
+    widthInput.title = "只调整参考视频，不影响节点的生成目标宽度。";
     widthInput.step = 8;
     widthInput.value = widgetValue(node, "custom_width", 0);
     widthInput.style.cssText = "width:70px;background:#223744;color:#dce7ee;border:1px solid #3a5363;border-radius:4px;padding:3px 6px;font-size:11px;";
@@ -313,6 +318,8 @@ export function openVideoEditor(node) {
 
     const heightInput = document.createElement("input");
     heightInput.type = "number";
+    heightInput.setAttribute("aria-label", "参考视频压缩高度");
+    heightInput.title = "只调整参考视频，不影响节点的生成目标高度。";
     heightInput.step = 8;
     heightInput.value = widgetValue(node, "custom_height", 0);
     heightInput.style.cssText = "width:70px;background:#223744;color:#dce7ee;border:1px solid #3a5363;border-radius:4px;padding:3px 6px;font-size:11px;";
@@ -694,9 +701,9 @@ export function openVideoEditor(node) {
             const hue = (i * 137.508) % 360;
             btn.style.borderLeft = `3px solid hsl(${hue},70%,60%)`;
             if (showFrames) {
-                btn.innerHTML = `<b>#${i}</b> ${sg.start}→${sg.end}`;
+                btn.innerHTML = `<b>#${i}</b> ${sg.start}→${sg.end}<b>(${sg.end - sg.start})</b>`;
             } else {
-                btn.innerHTML = `<b>#${i}</b> ${(sg.start / H3_FPS).toFixed(2)}→${(sg.end / H3_FPS).toFixed(2)}s`;
+                btn.innerHTML = `<b>#${i}</b> ${(sg.start / H3_FPS).toFixed(2)}→${(sg.end / H3_FPS).toFixed(2)}s<b>(${((sg.end - sg.start) / H3_FPS).toFixed(2)}s)</b>`;
             }
             btn.title = `帧 ${sg.start} ~ ${sg.end}（${sg.end - sg.start} 帧，索引 ${i}）`;
             btn.onclick = () => {
@@ -853,7 +860,7 @@ export function openVideoEditor(node) {
         if (hasCustom) {
             html += arrow + `<span style="color:${C.scale};">缩放</span>`;
         }
-        html += arrow + `<span style="color:${C.out};font-weight:bold;">输出 ${outText}</span>`;
+        html += arrow + `<span style="color:${C.out};font-weight:bold;">参考 ${outText}</span>`;
         html += `<span style="color:${C.arrow};margin-left:6px;">(${Math.round(outW)}×${Math.round(outH)})</span>`;
 
         aspectInfo.innerHTML = html;

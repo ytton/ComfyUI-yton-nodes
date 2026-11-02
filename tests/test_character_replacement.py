@@ -29,7 +29,7 @@ package = types.ModuleType("replacement_test_plugin")
 package.__path__ = [str(PLUGIN)]
 sys.modules[package.__name__] = package
 from replacement_test_plugin.llm_connection import LLMConnection
-from replacement_test_plugin.replacement.media import contact_sheet, encode, ffmpeg, inspect, output_size, reference_images, segment_video
+from replacement_test_plugin.replacement.media import contact_sheet, encode, ffmpeg, inspect, output_size, reference_images, reference_size, segment_video
 from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementVideoSave
 from replacement_test_plugin.replacement.plan import make_plan
 from replacement_test_plugin.replacement.prompts import SYSTEM, load_skill, optimize, save_skill, signature
@@ -115,22 +115,23 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual([tuple(i.shape) for i in output.result[0]],[(1,120,60,3),(1,45,120,3)])
         self.assertEqual(len(output.result[1]),1)
         self.assertEqual(output.result[7:9],(1,2))
-        self.assertEqual(output.result[3:7],(160,96,39,39/24))
+        self.assertEqual(output.result[3:7],(800,480,39,39/24))
+        self.assertEqual(output.result[1][0].get_dimensions(),(160,96))
         self.assertEqual(output.result[9], "video/人物替换/%date:yyyy-MM-dd%/source/")
         config["images"]=[""]*6
         self.assertEqual(self.node().execute(0,json.dumps(config)).result[0],[])
 
-    def test_dimensions_and_length_follow_prepared_segment(self):
+    def test_target_dimensions_and_reference_length(self):
         config=self.config()
         tail=self.node().execute(1,json.dumps(config))
-        self.assertEqual(tail.result[3:7],(160,96,38,38/24))
+        self.assertEqual(tail.result[3:7],(800,480,38,38/24))
         config["crop"]=[.1,0,.8,1]
         config["plan"].update(enabled=False,seconds=1.25)
         config["compression"].update(width=96,height=64,fps=12)
         output=self.node().execute(0,json.dumps(config))
-        self.assertEqual(output.result[3:7],(96,64,15,1.25))
+        self.assertEqual(output.result[3:7],(640,480,15,1.25))
         video=output.result[1][0].get_components()
-        self.assertEqual(output.result[3:6],(video.images.shape[2],video.images.shape[1],video.images.shape[0]))
+        self.assertEqual((video.images.shape[2],video.images.shape[1],video.images.shape[0]),(96,64,15))
 
     def test_original_ratio_resolution_uses_short_edge(self):
         config = self.config()
@@ -148,7 +149,7 @@ class ReplacementTests(unittest.TestCase):
         config["crop"] = [0, 0, .31640625, 1]  # A 9:16 crop from 1920x1080.
         self.assertEqual(output_size(config, {"width": 1920, "height": 1080}), (1088, 1920))
 
-    def test_portrait_1080p_output_matches_prepared_video(self):
+    def test_portrait_1080p_target_keeps_reference_dimensions(self):
         encode(["-f", "lavfi", "-i", "color=c=blue:size=90x160:rate=24:duration=0.25",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", self.root / "input/portrait.mp4"])
         config = self.config()
@@ -161,19 +162,50 @@ class ReplacementTests(unittest.TestCase):
                 self.assertEqual(output.result[3:6], (*size, 6))
                 self.assertEqual((output.ui["replacement_prompt"][0]["width"], output.ui["replacement_prompt"][0]["height"]), size)
                 video = output.result[1][0]
-                self.assertEqual(video.get_dimensions(), size)
-                self.assertEqual(tuple(video.get_components().images.shape), (6, size[1], size[0], 3))
+                self.assertEqual(video.get_dimensions(), (90, 160))
+                self.assertEqual(tuple(video.get_components().images.shape), (6, 160, 90, 3))
 
-    def test_output_size_includes_custom_dimensions_and_max_edge(self):
+    def test_generation_size_is_independent_of_reference_compression(self):
         config = self.config()
         metadata = {"width": 1080, "height": 1918}
         config.update(ratio="9:16", resolution="1080p")
         config["compression"]["max_edge"] = 0
         self.assertEqual(output_size(config, metadata), (1088, 1920))
         config["compression"]["max_edge"] = 160
-        self.assertEqual(output_size(config, metadata), (96, 160))
+        self.assertEqual(output_size(config, metadata), (1088, 1920))
+        self.assertEqual(reference_size(config, metadata), (90, 160))
         config["compression"].update(width=768, height=1024, max_edge=0)
-        self.assertEqual(output_size(config, metadata), (768, 1024))
+        self.assertEqual(output_size(config, metadata), (1088, 1920))
+        self.assertEqual(reference_size(config, metadata), (768, 1024))
+
+    def test_compressed_540p_reference_with_1080p_generation(self):
+        config = self.config()
+        config.update(ratio="9:16", resolution="1080p")
+        config["compression"].update(width=540, height=960, max_edge=0)
+        output = self.node().execute(0, json.dumps(config))
+        video = output.result[1][0]
+        self.assertEqual(video.get_dimensions(), (540, 960))
+        self.assertEqual(output.result[3:7], (1088, 1920, 39, 39/24))
+        self.assertEqual((output.ui["replacement_prompt"][0]["width"], output.ui["replacement_prompt"][0]["height"]), (1088, 1920))
+        config.update(ratio="16:9", resolution="720p")
+        changed = self.node().execute(0, json.dumps(config))
+        self.assertEqual(changed.result[3:5], (1280, 704))
+        self.assertEqual(changed.result[1][0].get_stream_source(), video.get_stream_source())
+
+    def test_reference_dimensions_preserve_source_and_resize_options(self):
+        config = self.config()
+        config["compression"]["max_edge"] = 0
+        metadata = {"width": 1080, "height": 1920}
+        self.assertEqual(reference_size(config, metadata), (1080, 1920))
+        config["compression"].update(width=540, height=0)
+        self.assertEqual(reference_size(config, metadata), (540, 960))
+        config["compression"].update(width=0, height=960)
+        self.assertEqual(reference_size(config, metadata), (540, 960))
+        config["compression"].update(width=540, height=540, resize_method="maintain aspect ratio")
+        self.assertEqual(reference_size(config, metadata), (304, 540))
+        config["compression"].update(width=0, height=0)
+        config["crop"] = [0, 0, 1, .5]
+        self.assertEqual(reference_size(config, metadata), (1080, 960))
 
     def test_project_directory_uses_source_video_name_for_every_segment(self):
         source = self.root / "input/引用视频/舞蹈参考.v1.mp4"

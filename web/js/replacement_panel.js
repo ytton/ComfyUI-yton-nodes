@@ -236,7 +236,7 @@ export async function setupReplacementPanel(node) {
     controls.replaceChildren();
     const optionRow=(label,children)=>{const row=el("div","yr-option-row");const options=el("div","yr-options");options.append(...children);row.append(el("span","yr-label",label),options);return row;};
     const choice=(label,value,selected,change,refresh=false)=>{const control=button(label,()=>{change(value);commit({invalidate:true});renderControls();if(refresh)void updatePlan();});control.setAttribute("aria-pressed",String(selected===value));return control;};
-    const resolution=optionRow("分辨率",["480p","720p","1080p"].map(v=>choice(v,v,config.resolution,value=>{config.resolution=value;config.compression.width=0;config.compression.height=0;},true)));
+    const resolution=optionRow("分辨率",["480p","720p","1080p"].map(v=>choice(v,v,config.resolution,value=>{config.resolution=value;},true)));
     const duration=el("div","yr-option-row yr-duration");
     if(config.plan.enabled) {
       duration.append(el("span","yr-label","本段帧数"),button(segment ? `${segment.end-segment.start} 帧 · ${((segment.end-segment.start)/24).toFixed(3)} 秒` : "由分段计划控制",()=>videoSlot.querySelector("button").click(),"时长由分段计划决定，点击编辑计划"));
@@ -247,7 +247,7 @@ export async function setupReplacementPanel(node) {
       duration.append(el("span","yr-label","每段时长"),options);
     }
     const ratio=optionRow("画面比例",["原视频","9:16","16:9"].map(v=>{
-      const control=choice(v==="原视频" ? "原比例" : v,v,config.ratio,value=>{config.ratio=value;config.compression.width=0;config.compression.height=0;},true);
+      const control=choice(v==="原视频" ? "原比例" : v,v,config.ratio,value=>{config.ratio=value;},true);
       control.prepend(el("span",`yr-ratio ${v==="9:16" ? "tall" : ""}`));return control;
     }));
     const scale=optionRow("图片缩放",[select([{value:.5,label:"0.5× · 最长边等比缩放"},{value:.75,label:"0.75× · 最长边等比缩放"},{value:1,label:"1× · 原尺寸"}],config.image_scale,v=>{config.image_scale=Number(v);commit({invalidate:true});},"六张图片按各自最长边等比缩放")]);

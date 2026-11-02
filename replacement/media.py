@@ -67,27 +67,31 @@ def output_size(config, metadata):
     ratio = config.get("ratio", "原视频")
     crop = config.get("crop") or (0, 0, 1, 1)
     source_ratio = metadata["width"] * crop[2] / (metadata["height"] * crop[3])
-    compression = config["compression"]
-    custom_width, custom_height = int(compression.get("width", 0)), int(compression.get("height", 0))
-    if custom_width > 0 or custom_height > 0:
-        width = custom_width or round(custom_height * source_ratio)
-        height = custom_height or round(custom_width / source_ratio)
-        if compression.get("resize_method") == "maintain aspect ratio":
-            factor = min(width / (metadata["width"] * crop[2]), height / (metadata["height"] * crop[3]))
-            width, height = metadata["width"] * crop[2] * factor, metadata["height"] * crop[3] * factor
-    elif ratio == "原视频":
+    if ratio == "原视频":
         short_edge = int(config.get("resolution", "480p").removesuffix("p"))
         width, height = ((short_edge * source_ratio, short_edge) if source_ratio >= 1
                          else (short_edge, short_edge / source_ratio))
     else:
         width, height, *_ = YtonResolutionSelector().get_resolution(
             "MiniMax H3 (Video)", ratio, config.get("resolution", "480p"))
-    width, height = [max(32, round(side / 32) * 32) for side in (width, height)]
-    edge = int(compression.get("max_edge", 0))
+    return tuple(max(32, round(side / 32) * 32) for side in (width, height))
+
+
+def reference_size(config, metadata):
+    crop = config.get("crop") or (0, 0, 1, 1)
+    source_width, source_height = metadata["width"] * crop[2], metadata["height"] * crop[3]
+    settings = config["compression"]
+    custom_width, custom_height = int(settings.get("width", 0)), int(settings.get("height", 0))
+    width = custom_width or (custom_height * source_width / source_height if custom_height else source_width)
+    height = custom_height or (custom_width * source_height / source_width if custom_width else source_height)
+    if settings.get("resize_method") == "maintain aspect ratio":
+        scale = min(width / source_width, height / source_height)
+        width, height = source_width * scale, source_height * scale
+    edge = int(settings.get("max_edge", 0))
     if edge > 0 and max(width, height) > edge:
         scale = edge / max(width, height)
-        width, height = [max(32, round(side * scale / 32) * 32) for side in (width, height)]
-    return width, height
+        width, height = width * scale, height * scale
+    return tuple(max(2, round(side / 2) * 2) for side in (width, height))
 
 
 _encode_lock = threading.Lock()
@@ -99,7 +103,7 @@ def segment_video(config, index):
         raise ValueError(f"当前索引 {index} 超出范围（0–{len(plan['segments']) - 1}）。")
     segment = plan["segments"][index]
     source = input_path(config["video"])
-    width, height = output_size(config, metadata)
+    width, height = reference_size(config, metadata)
     settings = config.get("compression", {})
     fps = FPS if config["plan"]["enabled"] else int(settings.get("fps", FPS))
     if fps <= 0:

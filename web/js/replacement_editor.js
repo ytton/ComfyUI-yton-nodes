@@ -8,7 +8,7 @@ export async function openReplacementEditor(config, onApply) {
   const draft=structuredClone(config), plan=draft.plan, compression=draft.compression;
   const fps=plan.enabled ? 24 : compression.fps;
   const [cx,cy,cw,ch]=draft.crop || [0,0,1,1];
-  const values={filename:draft.video,display_mode:plan.enabled ? "frames" : "seconds",
+  const values={filename:draft.video,display_mode:"seconds",
     start_time:plan.start,end_time:plan.end,duration:plan.end ? plan.end-plan.start : 0,
     start_frame:Math.round(plan.start*fps),end_frame:Math.round(plan.end*fps),
     duration_frames:plan.end ? Math.round((plan.end-plan.start)*fps) : 0,
