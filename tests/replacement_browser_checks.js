@@ -115,12 +115,35 @@ async (basePage) => {
       document.dispatchEvent(new ClipboardEvent("paste",{bubbles:true,cancelable:true,clipboardData:transfer}));
     },bytes);
     await page.waitForFunction(()=>JSON.parse(window.replacementTest.node.widgets.find(w=>w.name==="config").value).video.endsWith("video-paste.mp4"));
+    phase="video drag feedback";
+    const dragFeedback=await page.locator(".yr-video-slot").evaluate(element=>{
+      const root=element.closest(".yton-replacement-panel");
+      const transfer=new DataTransfer();transfer.items.add(new File(["video"],"hover.mp4",{type:"video/mp4"}));
+      const over=target=>target.dispatchEvent(new DragEvent("dragover",{bubbles:true,cancelable:true,dataTransfer:transfer}));
+      over(root.querySelector(".yr-prompt"));
+      const entered=element.classList.contains("drag-over") && getComputedStyle(element.querySelector(".yr-video-drop-hint")).display==="flex";
+      element.dispatchEvent(new DragEvent("dragleave",{bubbles:true,relatedTarget:element.querySelector("video")}));
+      const childMove=element.classList.contains("drag-over");
+      root.dispatchEvent(new DragEvent("dragleave",{bubbles:true,relatedTarget:document.body}));
+      const exited=!element.classList.contains("drag-over") && !root.classList.contains("yr-drag-over");
+      over(element);
+      document.dispatchEvent(new DragEvent("dragend",{bubbles:true}));
+      const cancelled=!element.classList.contains("drag-over");
+      const text=new DataTransfer();text.setData("text/plain","not a file");
+      root.dispatchEvent(new DragEvent("dragover",{bubbles:true,cancelable:true,dataTransfer:text}));
+      const textIgnored=!element.classList.contains("drag-over");
+      return {entered,childMove,exited,cancelled,textIgnored,label:element.querySelector(".yr-video-drop-hint strong").textContent};
+    });
+    check(dragFeedback.entered && dragFeedback.childMove,"video drag highlights destination across the panel without flickering between children");
+    check(dragFeedback.exited && dragFeedback.cancelled && dragFeedback.textIgnored,"video drag feedback clears on exit and cancellation and ignores text");
+    check(dragFeedback.label==="松开替换视频","drop hint describes replacement of an existing video");
     phase="video drag upload";
     await page.locator(".yr-video-slot").evaluate((element,bytes)=>{
       const transfer=new DataTransfer();transfer.items.add(new File([Uint8Array.from(atob(bytes),c=>c.charCodeAt(0))],"video-drop.mp4",{type:"video/mp4"}));
       element.dispatchEvent(new DragEvent("drop",{bubbles:true,cancelable:true,dataTransfer:transfer}));
     },bytes);
     await page.waitForFunction(()=>JSON.parse(window.replacementTest.node.widgets.find(w=>w.name==="config").value).video.endsWith("video-drop.mp4"));
+    check(await page.locator(".yr-video-slot.drag-over").count()===0,"drop clears video drag highlight");
     phase="merged playback";
     const saved=await(await page.request.get("http://127.0.0.1:8190/saved")).json();
     await page.evaluate(saved=>window.replacementTest.save.onExecuted({replacement_saved:[saved]}),saved);
@@ -151,7 +174,7 @@ async (basePage) => {
     check(await page.locator(".yr-save").evaluate(panel=>getComputedStyle(panel.parentElement).overflow)==="hidden","save panel shell has no stray scrollbar");
     await page.screenshot({path:"C:/Users/YuanTong/AppData/Local/Temp/replacement-implemented.png"});
     check(!errors.length,errors.join("; "));
-    return {checks:"uploads via picker, drop and paste; PGS aliases; shared prompts; optimization; frame plans; serialized settings; playable merge; segment-only cards and return to complete preview",playback,geometry,screenshot:"C:/Users/YuanTong/AppData/Local/Temp/replacement-implemented.png"};
+    return {checks:"uploads via picker, drop and paste; video drag feedback and cleanup; PGS aliases; shared prompts; optimization; frame plans; serialized settings; playable merge; segment-only cards and return to complete preview",playback,geometry,screenshot:"C:/Users/YuanTong/AppData/Local/Temp/replacement-implemented.png"};
   } catch(error) {
     const details=await page.evaluate(()=>({panels:document.querySelectorAll(".yton-replacement-panel").length,paste:window.replacementPasteDebug,status:[...document.querySelectorAll(".yr-status")].map(e=>e.textContent),body:document.body.innerText.slice(-1200)}));
     throw new Error(`${phase}: ${error.message}\n${JSON.stringify(details)}`);

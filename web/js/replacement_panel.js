@@ -150,6 +150,10 @@ export async function setupReplacementPanel(node) {
     const filename=el("span","yr-muted",config.video.split("/").at(-1) || "未选择视频");filename.title=config.video;
     fileRow.append(filename,button("上传 / 替换",()=>choose("video/*",files=>upload(files)),"选择视频文件"));
     videoSlot.append(fileRow);
+    const dropHint=el("div","yr-video-drop-hint");
+    dropHint.setAttribute("aria-hidden","true");
+    dropHint.append(el("span","","↓"),el("strong","",config.video ? "松开替换视频" : "松开上传视频"));
+    videoSlot.append(dropHint);
     let nativeIndex=0;
     config.images.forEach((filename,i)=>{
       const card=el("div",`yr-image-slot${activeImage===i ? " selected" : ""}`);
@@ -169,7 +173,7 @@ export async function setupReplacementPanel(node) {
       if (filename) toolbar.append(button("×",()=>{config.images[i]="";commit({invalidate:true});renderMedia();renderEditor();},`移除图片 ${i+1}`));
       card.append(toolbar);
       card.addEventListener("dragover",event=>{event.preventDefault();card.classList.add("drag-over");});
-      card.addEventListener("dragleave",()=>card.classList.remove("drag-over"));
+      card.addEventListener("dragleave",event=>{if(!card.contains(event.relatedTarget))card.classList.remove("drag-over");});
       card.addEventListener("drop",event=>{event.preventDefault();event.stopPropagation();card.classList.remove("drag-over");void upload(Array.from(event.dataTransfer.files),i);});
       imageGrid.append(card);
     });
@@ -278,7 +282,22 @@ export async function setupReplacementPanel(node) {
     finally {busy=false;optimizeButton.disabled=false;renderPosition();}
   }
   function renderAll() {renderMedia();renderSwitches();renderPosition();renderEditor();}
-  root.addEventListener("dragover",event=>event.preventDefault());
+  function clearVideoDrag() {
+    root.classList.remove("yr-drag-over");videoSlot.classList.remove("drag-over");
+  }
+  function dragOver(event) {
+    event.preventDefault();event.stopPropagation();
+    const transfer=event.dataTransfer;
+    const video=Array.from(transfer?.items || []).some(item=>item.kind==="file" && item.type.startsWith("video/"))
+      || Array.from(transfer?.files || []).some(file=>kind(file)==="video");
+    root.classList.toggle("yr-drag-over",video);videoSlot.classList.toggle("drag-over",video);
+    if(transfer) transfer.dropEffect="copy";
+  }
+  root.addEventListener("dragenter",dragOver);
+  root.addEventListener("dragover",dragOver);
+  root.addEventListener("dragleave",event=>{if(!root.contains(event.relatedTarget))clearVideoDrag();});
+  document.addEventListener("drop",clearVideoDrag,{capture:true,signal:lifetime.signal});
+  document.addEventListener("dragend",clearVideoDrag,{signal:lifetime.signal});
   root.addEventListener("drop",event=>{event.preventDefault();event.stopPropagation();void upload(Array.from(event.dataTransfer.files),activeImage);});
   document.addEventListener("paste",event=>{
     if(event.defaultPrevented || removed || node.graph!==app.canvas?.graph) return;

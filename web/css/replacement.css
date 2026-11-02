@@ -20,6 +20,10 @@
 .yr-toggle{display:flex;gap:5px;align-items:center;font-size:12px;cursor:pointer;white-space:nowrap}
 .yr-toggle input{accent-color:var(--yr-accent);margin:0}
 .yr-video-slot{position:relative;border:1px solid var(--yr-line);border-radius:6px;overflow:hidden;background:color-mix(in srgb,var(--yr-bg) 90%,black);height:270px;display:flex;flex-direction:column}
+.yton-replacement-panel.yr-drag-over{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--yr-accent) 65%,transparent)}
+.yr-video-slot.drag-over{border-color:var(--yr-accent)}
+.yr-video-drop-hint{display:none;position:absolute;inset:6px;z-index:1;pointer-events:none;border:2px dashed var(--yr-accent);border-radius:5px;background:color-mix(in srgb,var(--yr-bg) 88%,transparent);color:var(--yr-accent);align-items:center;justify-content:center;flex-direction:column;gap:8px}
+.yr-video-slot.drag-over .yr-video-drop-hint{display:flex}.yr-video-drop-hint span{font-size:36px;line-height:1}.yr-video-drop-hint strong{font-size:14px;font-weight:500}
 .yr-slot-toolbar{padding:6px;background:var(--yr-bg);flex-shrink:0}
 .yr-slot-toolbar b{flex:1;font-size:12px}
 .yr-slot-toolbar button{font-size:11px;padding:3px 7px}
