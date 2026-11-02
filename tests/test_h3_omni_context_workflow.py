@@ -31,8 +31,19 @@ def expected_prompt():
     expected['618']['inputs'].pop('references.参考图 1')
     expected['618']['inputs']['assets'] = ['639', 0]
     expected['524']['inputs']['assets'] = ['639', 1]
+    expected['647'] = {'class_type': 'PrimitiveBoolean', 'inputs': {'value': True}}
     for key in ('602', '603'):
-        expected[key]['inputs'].update(expression='max(32, floor(a * b / 32) * 32)', **{'values.b': ['645', 0]})
+        expected[key]['inputs'].update(expression='max(32, floor(a * b / 32) * 32) if c else a',
+                                      **{'values.b': ['645', 0], 'values.c': ['647', 0]})
+    for key, true_source, false_source in [('648', ['633', 0], ['631', 0]),
+                                           ('649', ['617', 1], ['320:317', 1]),
+                                           ('650', ['612', 0], ['314:590', 0])]:
+        expected[key] = {'class_type': 'ImpactConditionalBranch', 'inputs': {
+            'tt_value': true_source, 'ff_value': false_source, 'cond': ['647', 0]}}
+    expected['622']['inputs']['signal'] = ['648', 0]
+    for key in ('173', '161'):
+        expected[key]['inputs']['samples'] = ['649', 0]
+    expected['618']['inputs']['model'] = ['650', 0]
     return expected
 
 
@@ -161,7 +172,7 @@ class OmniContextWorkflowTests(unittest.TestCase):
             self.assertEqual(self.nodes[node_id].get('widgets_values'), before[node_id].get('widgets_values'), node_id)
         original = {s['id'] for s in baseline['definitions']['subgraphs']}
         self.assertTrue(original.issubset(self.view.definitions))
-        self.assertEqual(self.source(622, 'signal'), (633, 0))
+        self.assertEqual(self.source(622, 'signal'), (648, 0))
         self.assertEqual(self.source(622, 'value'), (631, 0))
         self.assertEqual(self.source(623, 'conditioning'), (622, 1))
         self.assertEqual(self.source(320, 'conditioning'), (623, 0))
@@ -223,7 +234,7 @@ class OmniContextWorkflowTests(unittest.TestCase):
             widgets = {p['name'] for p in host['inputs'] if p.get('widget')}
             self.assertTrue(names.issubset(widgets))
             self.assertIn(host['type'], self.view.definitions)
-        self.assertEqual(len(self.workflow['nodes']), 20)
+        self.assertEqual(len(self.workflow['nodes']), 21)
         for module, labels in {'conditions': {'width': '首采宽度', 'height': '首采高度',
                                               'image': '上段 22 帧', 'audio': '上段音频'},
                                 'face': {'enabled': '开启修脸'},
@@ -239,19 +250,142 @@ class OmniContextWorkflowTests(unittest.TestCase):
         self.assertEqual([p['type'] for p in self.nodes[639]['outputs']], ['H3_REFERENCE_ASSETS', 'H3_PGS_ASSETS'])
         for node_id in (602, 603):
             self.assertEqual(self.source(node_id, 'values.b'), (645, 0))
+            self.assertEqual(self.source(node_id, 'values.c'), (647, 0))
         self.assertEqual(self.source(550, 'width'), (602, 1))
         self.assertEqual(self.source(550, 'height'), (603, 1))
         self.assertEqual(self.source(609, 'width'), (601, 0))
         self.assertEqual(self.source(609, 'height'), (601, 1))
         self.assertEqual(self.source(607, 'mode.width'), (601, 0))
         self.assertEqual(self.source(607, 'mode.height'), (601, 1))
-        from math import floor
+        from test_h3_video_context import execution
+        from comfy_extras.nodes_math import MathExpressionNode
         for scale in (.33, .5, .6, .75, 1):
             for node_id, dimension in ((602, 1920), (603, 1088)):
                 expression = self.nodes[node_id]['widgets_values'][0]
-                size = eval(expression, {'__builtins__': {}, 'max': max, 'floor': floor}, {'a': dimension, 'b': scale})
+                size = MathExpressionNode.execute(expression, {'a': dimension, 'b': scale, 'c': True}).result[1]
                 self.assertEqual(size % 32, 0)
                 self.assertLessEqual(abs(size-dimension*scale), 32)
+                direct = MathExpressionNode.execute(expression, {'a': dimension, 'b': scale, 'c': False}).result[1]
+                self.assertEqual(direct, dimension)
+
+    def test_second_pass_switch_routes_the_latent_and_face_model(self):
+        for branch in (648, 649, 650):
+            self.assertEqual(self.source(branch, 'cond'), (647, 0))
+        self.assertEqual(self.source(648, 'tt_value'), (633, 0))
+        self.assertEqual(self.source(648, 'ff_value'), (631, 0))
+        self.assertEqual(self.source(649, 'tt_value'), (617, 1))
+        self.assertEqual(self.source(649, 'ff_value'), ('320:317', 1))
+        self.assertEqual(self.source(650, 'tt_value'), (612, 0))
+        self.assertEqual(self.source(650, 'ff_value'), ('314:590', 0))
+        for decoder in (173, 161):
+            self.assertEqual(self.source(decoder, 'samples'), (649, 0))
+        self.assertEqual(self.source(618, 'model'), (650, 0))
+
+    def test_native_executor_skips_second_pass_work_and_samples_at_final_size(self):
+        from test_h3_video_context import asyncio, execution
+        import nodes
+        from comfy_extras.nodes_math import MathExpressionNode
+        from comfy_extras.nodes_primitive import Boolean, Float
+        from server import PromptServer
+
+        impact_source = PLUGIN.parent / 'ComfyUI-Impact-Pack/modules/impact/logics.py'
+        definitions = [n for n in ast.parse(impact_source.read_text(encoding='utf-8')).body
+                       if isinstance(n, ast.ClassDef) and n.name in
+                       ('ImpactConditionalBranch', 'ImpactExecutionOrderController')]
+        namespace = {'any_typ': '*'}
+        exec(compile(ast.Module(body=definitions, type_ignores=[]), str(impact_source), 'exec'), namespace)
+        native = {name: namespace[name] for name in ('ImpactConditionalBranch', 'ImpactExecutionOrderController')}
+        native.update(ComfyMathExpression=MathExpressionNode, PrimitiveBoolean=Boolean, PrimitiveFloat=Float)
+        template = json.loads(json.dumps(self.view.prompt(expected_prompt())))
+        for node in template.values():
+            for name, value in node['inputs'].items():
+                if isinstance(value, list) and len(value) == 2 and str(value[0]) in template:
+                    node['inputs'][name] = [str(value[0]), value[1]]
+
+        # Replace GPU boundaries; keep the saved graph's routing and execution-order nodes.
+        for key, inputs in {'601': (), '314:590': (), '550': ('width', 'height'),
+                            '609': ('width', 'height'), '581': ('positive',), '611': ('positive',)}.items():
+            template[key]['inputs'] = {name: template[key]['inputs'][name] for name in inputs}
+
+        class Output:
+            @classmethod
+            def INPUT_TYPES(cls):
+                return {'required': {'latent': ('*',), 'model': ('*',)}}
+            RETURN_TYPES = ()
+            FUNCTION = 'run'
+            OUTPUT_NODE = True
+            def run(self, latent, model):
+                selected.append((latent, model))
+                return ()
+
+        def stage(key, input_names):
+            def run(self, **values):
+                calls.append((key, values))
+                if key == '601':
+                    return 1920, 1088
+                if key == '314:590':
+                    return ('main-model',)
+                if key == '612':
+                    return ('second-model',)
+                if key in ('550', '609'):
+                    return key, (values['width'], values['height'])
+                if key in ('630', '632'):
+                    return (values['positive'],)
+                if key == '320:317':
+                    return 'raw-first', ('first', *values['latent_image'])
+                if key == '617':
+                    return 'raw-second', ('second', 1920, 1088)
+                return (key,) * 2
+            return type('TestStage' + key, (), {
+                'INPUT_TYPES': classmethod(lambda cls: {'required': {name: ('*',) for name in input_names}}),
+                'RETURN_TYPES': ('*', '*'), 'FUNCTION': 'run', 'run': run})
+
+        for enabled in (False, True):
+            for first_segment in (False, True):
+                with self.subTest(second_pass=enabled, first_segment=first_segment):
+                    calls, selected = [], []
+                    prompt, mapping = {}, {**native, 'TestOmniSwitchOutput': Output}
+                    template['647']['inputs']['value'] = enabled
+                    for key in ('631', '633'):
+                        template[key]['inputs']['cond'] = first_segment
+
+                    def collect(key):
+                        if key in prompt:
+                            return
+                        prompt[key] = json.loads(json.dumps(template[key]))
+                        if prompt[key]['class_type'] not in native:
+                            name = 'TestOmniStage' + key
+                            mapping[name] = stage(key, prompt[key]['inputs'])
+                            prompt[key]['class_type'] = name
+                        for value in prompt[key]['inputs'].values():
+                            if isinstance(value, list) and len(value) == 2 and value[0] in template:
+                                collect(value[0])
+
+                    collect('649')
+                    collect('650')
+                    prompt['out'] = {'class_type': 'TestOmniSwitchOutput', 'inputs': {
+                        'latent': ['649', 0], 'model': ['650', 0]}}
+                    server = Mock(client_id=None, last_node_id=None)
+                    with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, 'instance', server, create=True):
+                        valid, errors, outputs, node_errors = asyncio.run(execution.validate_prompt('omni-switch', prompt, None))
+                        self.assertTrue(valid, (errors, node_errors))
+                        executor = execution.PromptExecutor(server, cache_type=execution.CacheType.CLASSIC,
+                                                            cache_args={'ram': 0, 'ram_inactive': 0})
+                        asyncio.run(executor.execute_async(prompt, 'omni-switch', execute_outputs=outputs))
+                        self.assertTrue(executor.success, executor.status_messages)
+                    executed = [key for key, _ in calls]
+                    values = dict(calls)
+                    self.assertEqual(values['550'], {'width': 960 if enabled else 1920, 'height': 544 if enabled else 1088})
+                    for key in ('609', '606', '607', '608', '612', '617'):
+                        self.assertEqual(key in executed, enabled, key)
+                    self.assertEqual('630' in executed, not first_segment)
+                    self.assertEqual('632' in executed, enabled and not first_segment)
+                    self.assertEqual(selected, [(('second' if enabled else 'first', 1920, 1088),
+                                                 'second-model' if enabled else 'main-model')])
+                    self.assertLess(executed.index('550'), executed.index('623'))
+                    self.assertLess(executed.index('623'), executed.index('320:317'))
+                    if enabled:
+                        self.assertLess(executed.index('609'), executed.index('623'))
 
     def test_native_loop_skips_absent_video_then_carries_each_previous_result(self):
         from test_h3_video_context import asyncio, execution, torch, InputImpl, Types, Fraction, YtonH3VideoTail

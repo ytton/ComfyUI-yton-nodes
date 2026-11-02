@@ -1,8 +1,8 @@
 {
   "id": "9db20753-f81d-4a30-a878-2389a693b443",
   "revision": 1,
-  "last_node_id": 646,
-  "last_link_id": 1891,
+  "last_node_id": 650,
+  "last_link_id": 1905,
   "nodes": [
     {
       "id": 313,
@@ -1627,10 +1627,10 @@
         "h3_layout_key": "619"
       },
       "widgets_values": [
-        "# 灵活参考素材与首采比例\n\n参考图按【参考素材集合】的入口顺序对应 <Picture N>，不固定人物或场景用途。连接一张后自动出现下一个入口；没有场景替换就不接场景图。\n\n可复制下方任意参考图加载器，连接到集合的新入口。首采、二采、修脸和提示词编辑共用同一顺序；增删参考后同步检查提示词里的编号。\n\n首采比例在分辨率下方调整，0.5 代表首采宽高各取最终尺寸的一半；尺寸按 32 对齐，最终输出分辨率保持由分辨率控件决定。\n\n修脸人数独立控制需要修复的检测目标数，不代表参考图片数量。双击生成子流仍可替换内部节点。"
+        "# 灵活参考素材与首采比例\n\n参考图按【参考素材集合】的入口顺序对应 <Picture N>，不固定人物或场景用途。连接一张后自动出现下一个入口；没有场景替换就不接场景图。\n\n可复制下方任意参考图加载器，连接到集合的新入口。首采、二采、修脸和提示词编辑共用同一顺序；增删参考后同步检查提示词里的编号。\n\n首采比例在分辨率下方调整，0.5 代表首采宽高各取最终尺寸的一半；尺寸按 32 对齐，最终输出分辨率保持由分辨率控件决定。\n\n修脸人数独立控制需要修复的检测目标数，不代表参考图片数量。双击生成子流仍可替换内部节点。\n\n【启用二采】位于最终分辨率下方。开启时使用首采比例；关闭时忽略该比例，一采直接按最终分辨率生成，跳过二采编码、放大和二采采样。小脸修复仍由其自身开关控制。"
       ],
       "widgets_values_named": {
-        "text": "# 灵活参考素材与首采比例\n\n参考图按【参考素材集合】的入口顺序对应 <Picture N>，不固定人物或场景用途。连接一张后自动出现下一个入口；没有场景替换就不接场景图。\n\n可复制下方任意参考图加载器，连接到集合的新入口。首采、二采、修脸和提示词编辑共用同一顺序；增删参考后同步检查提示词里的编号。\n\n首采比例在分辨率下方调整，0.5 代表首采宽高各取最终尺寸的一半；尺寸按 32 对齐，最终输出分辨率保持由分辨率控件决定。\n\n修脸人数独立控制需要修复的检测目标数，不代表参考图片数量。双击生成子流仍可替换内部节点。"
+        "text": "# 灵活参考素材与首采比例\n\n参考图按【参考素材集合】的入口顺序对应 <Picture N>，不固定人物或场景用途。连接一张后自动出现下一个入口；没有场景替换就不接场景图。\n\n可复制下方任意参考图加载器，连接到集合的新入口。首采、二采、修脸和提示词编辑共用同一顺序；增删参考后同步检查提示词里的编号。\n\n首采比例在分辨率下方调整，0.5 代表首采宽高各取最终尺寸的一半；尺寸按 32 对齐，最终输出分辨率保持由分辨率控件决定。\n\n修脸人数独立控制需要修复的检测目标数，不代表参考图片数量。双击生成子流仍可替换内部节点。\n\n【启用二采】位于最终分辨率下方。开启时使用首采比例；关闭时忽略该比例，一采直接按最终分辨率生成，跳过二采编码、放大和二采采样。小脸修复仍由其自身开关控制。"
       },
       "color": "#432",
       "bgcolor": "#653"
@@ -1823,11 +1823,11 @@
       "type": "b421be3a-c165-4435-a59f-72e1a0f0ac16",
       "pos": [
         1130,
-        1770
+        1810
       ],
       "size": [
         330,
-        155
+        175
       ],
       "flags": {},
       "order": 10,
@@ -1853,6 +1853,12 @@
           "shape": 7,
           "type": "FLOAT",
           "link": 1890
+        },
+        {
+          "name": "enable_second_pass",
+          "label": "启用二采",
+          "type": "BOOLEAN",
+          "link": 1892
         }
       ],
       "outputs": [
@@ -1887,7 +1893,8 @@
         "previewExposures": []
       },
       "color": "#322",
-      "bgcolor": "#533"
+      "bgcolor": "#533",
+      "title": "首采尺寸 · 单采使用最终宽高"
     },
     {
       "id": 641,
@@ -2016,6 +2023,12 @@
           "shape": 7,
           "type": "H3_REFERENCE_ASSETS",
           "link": 1885
+        },
+        {
+          "name": "enable_second_pass",
+          "label": "启用二采",
+          "type": "BOOLEAN",
+          "link": 1897
         }
       ],
       "outputs": [
@@ -2177,6 +2190,12 @@
             "name": "sigmas"
           },
           "link": null
+        },
+        {
+          "name": "enable_second_pass",
+          "label": "启用二采",
+          "type": "BOOLEAN",
+          "link": 1903
         }
       ],
       "outputs": [
@@ -2190,7 +2209,7 @@
           ]
         },
         {
-          "label": "精修模型",
+          "label": "最终 AV Latent",
           "localized_name": "降噪Latent",
           "name": "denoised_output",
           "type": "LATENT",
@@ -2248,7 +2267,7 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "二采 AV Latent",
+          "label": "最终 AV Latent",
           "localized_name": "Latent",
           "name": "samples",
           "type": "LATENT",
@@ -2374,7 +2393,7 @@
       "mode": 0,
       "inputs": [
         {
-          "label": "二采 AV Latent",
+          "label": "最终 AV Latent",
           "localized_name": "Latent",
           "name": "samples",
           "type": "LATENT",
@@ -2428,8 +2447,8 @@
           "name": "VIDEO",
           "type": "VIDEO",
           "links": [
-            1876,
-            1877
+            1877,
+            1876
           ]
         }
       ],
@@ -2460,7 +2479,7 @@
       "type": "PrimitiveFloat",
       "pos": [
         1130,
-        1600
+        1670
       ],
       "size": [
         330,
@@ -2490,7 +2509,7 @@
           ]
         }
       ],
-      "title": "首采比例 · 宽高缩放",
+      "title": "首采比例 · 仅启用二采时生效",
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.43.1",
@@ -2508,6 +2527,56 @@
       ],
       "widgets_values_named": {
         "value": 0.5
+      }
+    },
+    {
+      "type": "PrimitiveBoolean",
+      "pos": [
+        1130,
+        1570
+      ],
+      "size": [
+        330,
+        80
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "title": "启用二采 · 关闭使用最终分辨率直采",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "value"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "BOOLEAN",
+          "type": "BOOLEAN",
+          "links": [
+            1892,
+            1897,
+            1903
+          ]
+        }
+      ],
+      "widgets_values": [
+        true
+      ],
+      "widgets_values_named": {
+        "value": true
+      },
+      "color": "#232",
+      "bgcolor": "#353",
+      "id": 647,
+      "properties": {
+        "Node name for S&R": "PrimitiveBoolean",
+        "h3_layout_key": "647",
+        "h3_layout_module": "second_pass_switch"
       }
     }
   ],
@@ -2871,6 +2940,30 @@
       639,
       3,
       "IMAGE"
+    ],
+    [
+      1892,
+      647,
+      0,
+      640,
+      3,
+      "BOOLEAN"
+    ],
+    [
+      1897,
+      647,
+      0,
+      641,
+      13,
+      "BOOLEAN"
+    ],
+    [
+      1903,
+      647,
+      0,
+      642,
+      10,
+      "BOOLEAN"
     ]
   ],
   "groups": [
@@ -2960,8 +3053,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 646,
-          "lastLinkId": 1891,
+          "lastNodeId": 650,
+          "lastLinkId": 1905,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -3423,8 +3516,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 646,
-          "lastLinkId": 1891,
+          "lastNodeId": 650,
+          "lastLinkId": 1905,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -4175,8 +4268,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 646,
-          "lastLinkId": 1891,
+          "lastNodeId": 650,
+          "lastLinkId": 1905,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -4794,8 +4887,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 646,
-          "lastLinkId": 1891,
+          "lastNodeId": 650,
+          "lastLinkId": 1905,
           "lastRerouteId": 0
         },
         "revision": 1,
@@ -5525,13 +5618,13 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 646,
-          "lastLinkId": 1891,
+          "lastNodeId": 650,
+          "lastLinkId": 1905,
           "lastRerouteId": 0
         },
         "revision": 1,
         "config": {},
-        "name": "首采尺寸 · 根据比例计算",
+        "name": "首采尺寸 · 单采使用最终宽高",
         "inputNode": {
           "id": -10,
           "bounding": [
@@ -5591,6 +5684,20 @@
             "pos": [
               276,
               222
+            ]
+          },
+          {
+            "id": "b23e39cc-7815-455c-b832-0c48453ead08",
+            "name": "enable_second_pass",
+            "label": "启用二采",
+            "type": "BOOLEAN",
+            "linkIds": [
+              1893,
+              1894
+            ],
+            "pos": [
+              276,
+              246
             ]
           }
         ],
@@ -5659,7 +5766,7 @@
                 "name": "values.c",
                 "shape": 7,
                 "type": "FLOAT,INT,BOOLEAN",
-                "link": null
+                "link": 1893
               },
               {
                 "localized_name": "表达式",
@@ -5693,7 +5800,7 @@
                 "links": []
               }
             ],
-            "title": "首采宽度 · 最终宽度 × 首采比例",
+            "title": "首采宽度 · 二采缩放 / 单采原宽",
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
@@ -5707,10 +5814,10 @@
               "h3_layout_key": "602"
             },
             "widgets_values": [
-              "max(32, floor(a * b / 32) * 32)"
+              "max(32, floor(a * b / 32) * 32) if c else a"
             ],
             "widgets_values_named": {
-              "expression": "max(32, floor(a * b / 32) * 32)"
+              "expression": "max(32, floor(a * b / 32) * 32) if c else a"
             }
           },
           {
@@ -5746,7 +5853,7 @@
                 "name": "values.c",
                 "shape": 7,
                 "type": "FLOAT,INT,BOOLEAN",
-                "link": null
+                "link": 1894
               },
               {
                 "localized_name": "表达式",
@@ -5780,7 +5887,7 @@
                 "links": []
               }
             ],
-            "title": "首采高度 · 最终高度 × 首采比例",
+            "title": "首采高度 · 二采缩放 / 单采原高",
             "properties": {
               "cnr_id": "comfy-core",
               "ver": "0.43.1",
@@ -5794,10 +5901,10 @@
               "h3_layout_key": "603"
             },
             "widgets_values": [
-              "max(32, floor(a * b / 32) * 32)"
+              "max(32, floor(a * b / 32) * 32) if c else a"
             ],
             "widgets_values_named": {
-              "expression": "max(32, floor(a * b / 32) * 32)"
+              "expression": "max(32, floor(a * b / 32) * 32) if c else a"
             }
           }
         ],
@@ -5850,6 +5957,22 @@
             "target_id": 603,
             "target_slot": 1,
             "type": "FLOAT"
+          },
+          {
+            "id": 1893,
+            "origin_id": -10,
+            "origin_slot": 3,
+            "target_id": 602,
+            "target_slot": 2,
+            "type": "BOOLEAN"
+          },
+          {
+            "id": 1894,
+            "origin_id": -10,
+            "origin_slot": 3,
+            "target_id": 603,
+            "target_slot": 2,
+            "type": "BOOLEAN"
           }
         ],
         "extra": {}
@@ -5859,8 +5982,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 646,
-          "lastLinkId": 1891,
+          "lastNodeId": 650,
+          "lastLinkId": 1905,
           "lastRerouteId": 0
         },
         "revision": 1,
@@ -6082,6 +6205,19 @@
               276,
               462
             ]
+          },
+          {
+            "id": "7ebf3650-2004-49ad-8813-09ae559487bb",
+            "name": "enable_second_pass",
+            "label": "启用二采",
+            "type": "BOOLEAN",
+            "linkIds": [
+              1898
+            ],
+            "pos": [
+              276,
+              486
+            ]
           }
         ],
         "outputs": [
@@ -6295,8 +6431,8 @@
                 "name": "LATENT",
                 "type": "LATENT",
                 "links": [
-                  1717,
-                  1786
+                  1786,
+                  1717
                 ]
               }
             ],
@@ -6665,7 +6801,8 @@
                 "localized_name": "输出",
                 "name": "*",
                 "links": [
-                  1775
+                  1775,
+                  1896
                 ]
               }
             ],
@@ -6893,7 +7030,7 @@
                 "name": "*",
                 "links": [
                   1763,
-                  1774
+                  1895
                 ]
               }
             ],
@@ -6922,7 +7059,7 @@
             "id": 622,
             "type": "ImpactExecutionOrderController",
             "pos": [
-              400,
+              960,
               1610
             ],
             "size": [
@@ -6962,7 +7099,7 @@
                 ]
               }
             ],
-            "title": "等待两套参考编码全部完成",
+            "title": "等待当前模式所需的参考编码",
             "properties": {
               "cnr_id": "comfyui-impact-pack",
               "ver": "cc015e3223b2172fb4a83510275ed3454f7e34de",
@@ -6979,7 +7116,7 @@
             "id": 623,
             "type": "H3EvictTextEncoder",
             "pos": [
-              960,
+              1520,
               1610
             ],
             "size": [
@@ -7059,13 +7196,74 @@
               "h3_layout_key": "620"
             },
             "widgets_values": [
-              "# 编码后释放 TE\n\n两套参考与上下文先编码完成，再释放 TE，随后进行首采、放大和二采。\n\n循环直接把最终 VIDEO 传给下一段，包含修脸、裁重叠和颜色匹配后的实际画面与音频。"
+              "# 编码后释放 TE\n\n二采开启时等待两套参考与上下文编码；关闭时只执行首采编码。随后释放 TE，再进入采样。\n\n循环传递最终 VIDEO，包含修脸、裁重叠和颜色匹配后的画面与音频。"
             ],
             "widgets_values_named": {
-              "text": "# 编码后释放 TE\n\n两套参考与上下文先编码完成，再释放 TE，随后进行首采、放大和二采。\n\n循环直接把最终 VIDEO 传给下一段，包含修脸、裁重叠和颜色匹配后的实际画面与音频。"
+              "text": "# 编码后释放 TE\n\n二采开启时等待两套参考与上下文编码；关闭时只执行首采编码。随后释放 TE，再进入采样。\n\n循环传递最终 VIDEO，包含修脸、裁重叠和颜色匹配后的画面与音频。"
             },
             "color": "#432",
             "bgcolor": "#653"
+          },
+          {
+            "id": 648,
+            "type": "ImpactConditionalBranch",
+            "pos": [
+              400,
+              1610
+            ],
+            "size": [
+              440,
+              140
+            ],
+            "flags": {},
+            "order": 11,
+            "mode": 0,
+            "inputs": [
+              {
+                "label": "真",
+                "localized_name": "真",
+                "name": "tt_value",
+                "link": 1895
+              },
+              {
+                "label": "假",
+                "localized_name": "假",
+                "name": "ff_value",
+                "link": 1896
+              },
+              {
+                "label": "条件",
+                "localized_name": "条件",
+                "name": "cond",
+                "type": "BOOLEAN",
+                "widget": {
+                  "name": "cond"
+                },
+                "link": 1898
+              }
+            ],
+            "outputs": [
+              {
+                "label": "输出",
+                "localized_name": "输出",
+                "name": "*",
+                "links": [
+                  1774
+                ]
+              }
+            ],
+            "title": "编码等待 · 单采只等待首采条件",
+            "properties": {
+              "Node name for S&R": "ImpactConditionalBranch",
+              "h3_layout_key": "648",
+              "h3_layout_module": "编码等待 · 单采只等待首采条件"
+            },
+            "widgets_values": [
+              true
+            ],
+            "widgets_values_named": {
+              "cond": true
+            }
           }
         ],
         "groups": [],
@@ -7168,7 +7366,7 @@
           },
           {
             "id": 1774,
-            "origin_id": 633,
+            "origin_id": 648,
             "origin_slot": 0,
             "target_id": 622,
             "target_slot": 0,
@@ -7421,6 +7619,30 @@
             "target_id": 609,
             "target_slot": 3,
             "type": "H3_REFERENCE_ASSETS"
+          },
+          {
+            "id": 1895,
+            "origin_id": 633,
+            "origin_slot": 0,
+            "target_id": 648,
+            "target_slot": 0,
+            "type": "CONDITIONING"
+          },
+          {
+            "id": 1896,
+            "origin_id": 631,
+            "origin_slot": 0,
+            "target_id": 648,
+            "target_slot": 1,
+            "type": "CONDITIONING"
+          },
+          {
+            "id": 1898,
+            "origin_id": -10,
+            "origin_slot": 13,
+            "target_id": 648,
+            "target_slot": 2,
+            "type": "BOOLEAN"
           }
         ],
         "extra": {}
@@ -7430,13 +7652,13 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 646,
-          "lastLinkId": 1891,
+          "lastNodeId": 650,
+          "lastLinkId": 1905,
           "lastRerouteId": 0
         },
         "revision": 1,
         "config": {},
-        "name": "05 传统放大与二采",
+        "name": "05 传统二采 · 可关闭直出",
         "inputNode": {
           "id": -10,
           "bounding": [
@@ -7449,7 +7671,7 @@
         "outputNode": {
           "id": -20,
           "bounding": [
-            2110,
+            2670,
             150,
             270,
             150
@@ -7461,7 +7683,8 @@
             "name": "av_latent",
             "type": "LATENT",
             "linkIds": [
-              1744
+              1744,
+              1900
             ],
             "localized_name": "音视频潜空间",
             "label": "首采 AV Latent",
@@ -7503,7 +7726,8 @@
             "name": "model",
             "type": "MODEL",
             "linkIds": [
-              1761
+              1761,
+              1902
             ],
             "localized_name": "model",
             "label": "主模型",
@@ -7590,6 +7814,20 @@
               276,
               390
             ]
+          },
+          {
+            "id": "40bf0784-5a99-4764-af85-47e9e1cf7c66",
+            "name": "enable_second_pass",
+            "label": "启用二采",
+            "type": "BOOLEAN",
+            "linkIds": [
+              1904,
+              1905
+            ],
+            "pos": [
+              276,
+              414
+            ]
           }
         ],
         "outputs": [
@@ -7615,7 +7853,7 @@
               1700
             ],
             "localized_name": "降噪Latent",
-            "label": "精修模型",
+            "label": "最终 AV Latent",
             "pos": [
               2134,
               198
@@ -7904,7 +8142,7 @@
                 "type": "MODEL",
                 "links": [
                   1762,
-                  1770
+                  1901
                 ]
               }
             ],
@@ -8207,7 +8445,7 @@
                 "name": "denoised_output",
                 "type": "LATENT",
                 "links": [
-                  1700
+                  1899
                 ]
               }
             ],
@@ -8252,13 +8490,135 @@
               "h3_layout_key": "621"
             },
             "widgets_values": [
-              "# 传统二采与修脸\n\n传统 3D Latent 放大 → SA Solver；Sigma：0.631578922 → 0.3158 → 0，共 2 步。\n\n两次采样都使用同一份上一段视频尾部，经各自分辨率的 VAE 编码为 Add Guide；二采不把旧 Latent 写回前缀。\n\n小脸修复、模型和最终分辨率沿用原流。"
+              "# 传统二采与单采直出\n\n启用二采：传统 3D Latent 放大 → SA Solver；Sigma：0.631578922 → 0.3158 → 0，共 2 步。\n\n关闭二采：直接输出首采 AV Latent，跳过放大、二采采样与二采模型分块；后方修脸使用主模型。首采尺寸由总开关切换为最终宽高。"
             ],
             "widgets_values_named": {
-              "text": "# 传统二采与修脸\n\n传统 3D Latent 放大 → SA Solver；Sigma：0.631578922 → 0.3158 → 0，共 2 步。\n\n两次采样都使用同一份上一段视频尾部，经各自分辨率的 VAE 编码为 Add Guide；二采不把旧 Latent 写回前缀。\n\n小脸修复、模型和最终分辨率沿用原流。"
+              "text": "# 传统二采与单采直出\n\n启用二采：传统 3D Latent 放大 → SA Solver；Sigma：0.631578922 → 0.3158 → 0，共 2 步。\n\n关闭二采：直接输出首采 AV Latent，跳过放大、二采采样与二采模型分块；后方修脸使用主模型。首采尺寸由总开关切换为最终宽高。"
             },
             "color": "#432",
             "bgcolor": "#653"
+          },
+          {
+            "id": 649,
+            "type": "ImpactConditionalBranch",
+            "pos": [
+              2080,
+              800
+            ],
+            "size": [
+              440,
+              140
+            ],
+            "flags": {},
+            "order": 11,
+            "mode": 0,
+            "inputs": [
+              {
+                "label": "真",
+                "localized_name": "真",
+                "name": "tt_value",
+                "link": 1899
+              },
+              {
+                "label": "假",
+                "localized_name": "假",
+                "name": "ff_value",
+                "link": 1900
+              },
+              {
+                "label": "条件",
+                "localized_name": "条件",
+                "name": "cond",
+                "type": "BOOLEAN",
+                "widget": {
+                  "name": "cond"
+                },
+                "link": 1904
+              }
+            ],
+            "outputs": [
+              {
+                "label": "输出",
+                "localized_name": "输出",
+                "name": "*",
+                "links": [
+                  1700
+                ]
+              }
+            ],
+            "title": "采样结果 · 二采 / 一采直出",
+            "properties": {
+              "Node name for S&R": "ImpactConditionalBranch",
+              "h3_layout_key": "649",
+              "h3_layout_module": "采样结果 · 二采 / 一采直出"
+            },
+            "widgets_values": [
+              true
+            ],
+            "widgets_values_named": {
+              "cond": true
+            }
+          },
+          {
+            "id": 650,
+            "type": "ImpactConditionalBranch",
+            "pos": [
+              2080,
+              530
+            ],
+            "size": [
+              440,
+              140
+            ],
+            "flags": {},
+            "order": 11,
+            "mode": 0,
+            "inputs": [
+              {
+                "label": "真",
+                "localized_name": "真",
+                "name": "tt_value",
+                "link": 1901
+              },
+              {
+                "label": "假",
+                "localized_name": "假",
+                "name": "ff_value",
+                "link": 1902
+              },
+              {
+                "label": "条件",
+                "localized_name": "条件",
+                "name": "cond",
+                "type": "BOOLEAN",
+                "widget": {
+                  "name": "cond"
+                },
+                "link": 1905
+              }
+            ],
+            "outputs": [
+              {
+                "label": "输出",
+                "localized_name": "输出",
+                "name": "*",
+                "links": [
+                  1770
+                ]
+              }
+            ],
+            "title": "修脸模型 · 二采模型 / 主模型",
+            "properties": {
+              "Node name for S&R": "ImpactConditionalBranch",
+              "h3_layout_key": "650",
+              "h3_layout_module": "修脸模型 · 二采模型 / 主模型"
+            },
+            "widgets_values": [
+              true
+            ],
+            "widgets_values_named": {
+              "cond": true
+            }
           }
         ],
         "groups": [],
@@ -8353,7 +8713,7 @@
           },
           {
             "id": 1770,
-            "origin_id": 612,
+            "origin_id": 650,
             "origin_slot": 0,
             "target_id": -20,
             "target_slot": 0,
@@ -8361,8 +8721,8 @@
           },
           {
             "id": 1700,
-            "origin_id": 617,
-            "origin_slot": 1,
+            "origin_id": 649,
+            "origin_slot": 0,
             "target_id": -20,
             "target_slot": 1,
             "type": "LATENT"
@@ -8430,6 +8790,54 @@
             "target_id": 607,
             "target_slot": 4,
             "type": "INT"
+          },
+          {
+            "id": 1899,
+            "origin_id": 617,
+            "origin_slot": 1,
+            "target_id": 649,
+            "target_slot": 0,
+            "type": "LATENT"
+          },
+          {
+            "id": 1900,
+            "origin_id": -10,
+            "origin_slot": 0,
+            "target_id": 649,
+            "target_slot": 1,
+            "type": "LATENT"
+          },
+          {
+            "id": 1901,
+            "origin_id": 612,
+            "origin_slot": 0,
+            "target_id": 650,
+            "target_slot": 0,
+            "type": "MODEL"
+          },
+          {
+            "id": 1902,
+            "origin_id": -10,
+            "origin_slot": 3,
+            "target_id": 650,
+            "target_slot": 1,
+            "type": "MODEL"
+          },
+          {
+            "id": 1904,
+            "origin_id": -10,
+            "origin_slot": 10,
+            "target_id": 649,
+            "target_slot": 2,
+            "type": "BOOLEAN"
+          },
+          {
+            "id": 1905,
+            "origin_id": -10,
+            "origin_slot": 10,
+            "target_id": 650,
+            "target_slot": 2,
+            "type": "BOOLEAN"
           }
         ],
         "extra": {}
@@ -8439,8 +8847,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 646,
-          "lastLinkId": 1891,
+          "lastNodeId": 650,
+          "lastLinkId": 1905,
           "lastRerouteId": 0
         },
         "revision": 1,
@@ -8473,7 +8881,7 @@
               1855
             ],
             "localized_name": "Latent",
-            "label": "二采 AV Latent",
+            "label": "最终 AV Latent",
             "pos": [
               276,
               174
@@ -8914,8 +9322,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 30,
-          "lastNodeId": 646,
-          "lastLinkId": 1891,
+          "lastNodeId": 650,
+          "lastLinkId": 1905,
           "lastRerouteId": 0
         },
         "revision": 1,
@@ -8948,7 +9356,7 @@
               1854
             ],
             "localized_name": "Latent",
-            "label": "二采 AV Latent",
+            "label": "最终 AV Latent",
             "pos": [
               276,
               174
@@ -8987,8 +9395,8 @@
             "name": "values.a",
             "type": "FLOAT,INT,BOOLEAN",
             "linkIds": [
-              1805,
-              1808
+              1808,
+              1805
             ],
             "localized_name": "a",
             "label": "是否首段",
@@ -9157,8 +9565,8 @@
                 "name": "images",
                 "type": "IMAGE",
                 "links": [
-                  1806,
-                  1809
+                  1809,
+                  1806
                 ]
               },
               {
