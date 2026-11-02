@@ -12,8 +12,6 @@ const common = {
   seed: 1, control_after_generate: 'fixed', enable_context: false,
   context_noise_strength: 0.1, context_color_strength: 0.75,
   face_refine: false, face_count: 1, face_sigmas: '', face_reverse: false, second_ff_chunks: '8',
-  vae_decode_mode: '标准解码', vae_tile_size: 256, vae_tile_overlap: 64,
-  reference_detail_strength: 1,
 }
 const second = { second_sampler: 'euler', second_sigma_values: '', second_steps: 4, second_sigma_start: 0.4, second_rho: 7 }
 const plans = {
@@ -58,7 +56,7 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   assert.equal(widgets.get('h3_context_length').value, 22)
   assert.equal(widgets.get('h3_context_length').serialize, false)
   const contextStart = node.widgets.findIndex(w => w.name === 'h3_section_分段上下文')
-  const contextEnd = node.widgets.findIndex(w => w.name === 'h3_section_视频解码')
+  const contextEnd = node.widgets.length
   assert.ok(node.widgets.slice(contextStart, contextEnd).includes(widgets.get('previous_video')))
   assert.equal(widgets.has('clip_index'), false)
   node.inputs.push({ name: 'undeclared_model', label: '主模型', type: 'MODEL' },
@@ -72,26 +70,8 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
     change(name, 0.23)
     assert.equal(widgets.get(name).value, 0.23)
   }
-  assert.equal(widgets.has('x2_vae_name'), false)
-  assert.ok(widgets.get('vae_tile_size').hidden)
-  assert.ok(widgets.get('reference_detail_strength').hidden)
-  change('vae_decode_mode', 'X2 VAE 解码')
-  assert.equal(widgets.get('vae_tile_size').hidden, false)
-  assert.equal(widgets.get('width').label, '采样画布宽度（成片 ×2）')
-  assert.equal(widgets.get('width').value, 1344)
-  assert.equal(widgets.get('height').value, 768)
-  assert.equal(widgets.get('sampling_mode').value, '二采')
-  assert.ok(widgets.get('reference_detail_strength').hidden)
-  change('vae_decode_mode', 'X2 VAE 解码 + 参考图增强')
-  assert.equal(widgets.get('reference_detail_strength').hidden, false)
-  assert.equal(widgets.get('reference_detail_strength').value, 1)
-  assert.equal(widgets.get('width').value, 1344)
-  assert.equal(widgets.get('height').value, 768)
-  assert.equal(widgets.get('sampling_mode').value, '二采')
-  change('vae_decode_mode', '标准解码')
   assert.equal(widgets.get('width').label, '最终宽度')
-  assert.ok(widgets.get('vae_tile_size').hidden)
-  assert.ok(widgets.get('reference_detail_strength').hidden)
+  assert.equal(widgets.get('height').label, '最终高度')
   assert.equal(node.widgets.filter(w => w.name.startsWith('face_') && w.type !== 'h3_input').map(w => w.name).join(','),
     'face_refine,face_count,face_sigmas,face_reverse')
   change('face_refine', true)

@@ -7,7 +7,6 @@ import folder_paths
 
 from .omni_video_context_graph import build_video_context_graph
 from .omni_sampling import FILM_MODEL, UPSCALE_MODEL
-from .omni_decode import DECODE_MODES
 
 if "h3_latent_upscalers" not in folder_paths.folder_names_and_paths:
     folder_paths.add_model_folder_path("h3_latent_upscalers", os.path.join(folder_paths.models_dir, "h3_latent_upscalers"))
@@ -49,7 +48,7 @@ class H3OmniGenerate:
             "model": ("MODEL", {"rawLink": True, "tooltip": "H3 主模型，可连接标准模型加载器及 LoRA 加载器的 MODEL 输出。"}),
             "clip": ("CLIP", {"rawLink": True, "tooltip": "H3 文本编码器，连接 CLIP 输出。"}),
             "vae": ("VAE", {"rawLink": True,
-                "tooltip": "普通 H3 视频 VAE，用于参考编码、上下文、SelfLift 校正和修脸。X2 Detail 最终解码权重由下方解码模式单独加载。"}),
+                "tooltip": "H3 视频 VAE，用于参考编码、上下文、SelfLift 校正、修脸和最终视频解码。"}),
             "audio_vae": ("VAE", {"rawLink": True, "tooltip": "H3 音频 VAE，用于音频参考编码和最终音频解码。"}),
             "prompt": ("STRING", {"default": "", "multiline": True}),
             "width": ("INT", {"default": 1344, "min": 32, "max": 16384, "step": 32}),
@@ -178,16 +177,6 @@ class H3OmniGenerate:
             required["selflift_w_max"] = ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05})
             required["selflift_highres_tiling"] = ("BOOLEAN", {"default": False})
             required["selflift_highres_tiles"] = (["auto", "2", "4", "8"], {"default": "auto"})
-        for name in ("width", "height"):
-            required[name][1]["tooltip"] += " X2 VAE 模式下，此值为解码前采样画布尺寸，成片对应边长为其 2 倍；切换模式不会改写此值。"
-        required["vae_decode_mode"] = (DECODE_MODES, {"default": "标准解码",
-            "tooltip": "标准解码沿用原流程；X2 VAE 解码是作者模式一；X2 VAE 解码 + 参考图增强是模式二，逐张增强图片参考后生成，最后 X2 fast 解码。X2 权重已内置，视频 VAE 输入仍应连接普通 H3 视频 VAE，供小脸修复等内部处理使用。两种 X2 模式均输出宽高各 2 倍，不改变采样宽高。未提供图片时跳过参考图增强。"})
-        required["vae_tile_size"] = ("INT", {"default": 256, "min": 256, "max": 4096, "step": 16,
-            "tooltip": "专用解码器的空间分块大小。作者基线 256；调大可能更快，但增加显存占用。"})
-        required["vae_tile_overlap"] = ("INT", {"default": 64, "min": 16, "max": 1024, "step": 16,
-            "tooltip": "作者基线 64；专用解码器自动保证至少 tile_size/4 的重叠，减少空间接缝。输出放在 CPU，时间分块关闭。"})
-        required["reference_detail_strength"] = ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.5, "step": 0.05,
-            "tooltip": "模式二的参考图细节增强强度，作者基线 1.0。每张图片先通过 Detailed Upscale，再按原顺序作为参考；不是对生成视频追加锐化。"})
         schema["hidden"] = {"dynprompt": "DYNPROMPT", "unique_id": "UNIQUE_ID"}
         return schema
 

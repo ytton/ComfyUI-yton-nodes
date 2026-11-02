@@ -73,6 +73,25 @@ class OmniVariantTests(unittest.TestCase):
             self.assertEqual(graph["sound"]["inputs"]["vae"],["audio_vae",0])
             self.assertEqual(graph["face_0_denoise"]["inputs"]["model"],["model",0])
 
+    def test_final_video_decode_uses_input_vae_and_keeps_references_for_face_refinement(self):
+        for cls in VARIANTS.values():
+            for sampling_mode in ("单采", "二采"):
+                with self.subTest(plan=cls.SAMPLING_PLAN, sampling=sampling_mode):
+                    graph = expanded(cls, sampling_mode=sampling_mode, width=1920, height=1088,
+                                     image=["images", 0], face_refine=True, face_count=2,
+                                     enable_context=True, previous_video=["prior", 0])
+                    decode = graph["frames"]
+                    self.assertEqual(decode["class_type"], "VAEDecode")
+                    self.assertEqual(decode["inputs"]["vae"], ["video_vae", 0])
+                    final = "high_sample" if sampling_mode == "二采" and cls.SAMPLING_PLAN != "selflift" else "main"
+                    self.assertTrue(decode["inputs"]["samples"][0].endswith(final))
+                    self.assertEqual(decode["inputs"]["samples"][1], 0)
+                    self.assertEqual(graph["sound"]["inputs"]["samples"], decode["inputs"]["samples"])
+                    self.assertTrue(graph["face_0_crop"]["inputs"]["images"][0].endswith("frames"))
+                    for name in ("reference", "face_0_reference", "face_1_reference"):
+                        self.assertEqual(graph[name]["inputs"]["image"], ["images", 0])
+                    self.assertEqual(graph["face_0_decode"]["inputs"]["vae"], ["video_vae", 0])
+
     def test_normal_mode_passes_complete_video_and_audio_references_in_every_plan(self):
         for cls in VARIANTS.values():
             for sampling_mode in ("单采", "二采"):

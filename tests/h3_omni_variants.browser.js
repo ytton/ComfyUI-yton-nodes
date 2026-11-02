@@ -69,9 +69,7 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         change('enable_context', true)
         change('context_noise_strength', 0.23)
         change('context_color_strength', 0.42)
-        const contextControls = node.widgets.slice(
-          node.widgets.findIndex(w => w.name === 'h3_section_分段上下文'),
-          node.widgets.findIndex(w => w.name === 'h3_section_视频解码'))
+        const contextControls = node.widgets.slice(node.widgets.findIndex(w => w.name === 'h3_section_分段上下文'))
         assert(contextControls.includes(w('context_noise_strength')) && contextControls.includes(w('context_color_strength')),
           'both controls appear in the context section')
         change('face_refine', true)

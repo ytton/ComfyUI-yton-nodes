@@ -5,7 +5,6 @@ import math
 from comfy_execution.graph_utils import GraphBuilder
 
 from .omni_face import add_face_refinement
-from .omni_decode import add_reference_detail, add_video_decode
 from .omni_sampling import FILM_MODEL, UPSCALE_MODEL, sampling_dimensions
 
 CONTEXT_FRAMES = 22
@@ -58,15 +57,12 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
                               sampling_plan="tr", first_pass_scale=0.5, upscale_model=UPSCALE_MODEL,
                               second_sampler="euler", second_sigma_values="",
                               selflift_transition_step=2, selflift_rho=0.0, selflift_w_min=0.5, selflift_w_max=1.0,
-                              selflift_highres_tiling=False, selflift_highres_tiles="auto",
-                              vae_decode_mode="标准解码",
-                              vae_tile_size=256, vae_tile_overlap=64, reference_detail_strength=1.0):
+                              selflift_highres_tiling=False, selflift_highres_tiles="auto"):
     width, height, main_width, main_height = sampling_dimensions(
         width, height, sampling_mode, sampling_plan, first_pass_scale)
     if not enable_context:
         previous_video = None
     graph = GraphBuilder()
-    image = add_reference_detail(graph, image, vae_decode_mode, reference_detail_strength)
     two_pass = sampling_mode == "二采"
     overlap = CONTEXT_FRAMES if previous_video is not None else 0
 
@@ -197,8 +193,7 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
                            guider=high_guider.out(0), sampler=high_sampler.out(0), sigmas=high_schedule,
                            latent_image=latent).out(0)
 
-    frames = add_video_decode(graph, final, vae, vae_decode_mode,
-                              vae_tile_size, vae_tile_overlap)
+    frames = graph.node("VAEDecode", id="frames", samples=final, vae=vae).out(0)
     sound = graph.node("VAEDecodeAudio", id="sound", samples=final, vae=audio_vae).out(0)
     if face_refine:
         if isinstance(face_sigmas, str):
