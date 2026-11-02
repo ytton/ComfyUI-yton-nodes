@@ -65,6 +65,7 @@ async (page) => {
     // Saved autogrow sockets are reconstructed by name when the frontend loads.
     assets.inputs.push({name:'images.参考图 1',type:'IMAGE',link:null},{name:'images.参考图 2',type:'IMAGE',link:null});
     data.nodes[data.nodes.indexOf(oldAssets)]=assets;
+    for(const l of data.links){if(Number(l[1])===Number(assets.id)&&Number(l[3])===524){l[2]=1;l[5]='H3_PGS_ASSETS';}}
     data.links=data.links.filter(l=>Number(l[3])!==Number(assets.id));
     for(const [id,output,name]of [[518,0,'images.参考图 1'],[495,0,'images.参考图 2'],[588,0,'video_frames'],[588,1,'video_audio']]){
       link(data,id,output,assets.id,assets.inputs.findIndex(i=>i.name===name),name==='video_audio'?'AUDIO':'IMAGE');
@@ -84,17 +85,17 @@ async (page) => {
       });
       conditions.nodes[conditions.nodes.indexOf(old)]=replacement;
     }
-    addInput(conditionHost,conditions,'assets','参考素材集合','H3_PGS_ASSETS',[[550,'assets'],[609,'assets']]);
+    addInput(conditionHost,conditions,'assets','参考素材集合','H3_REFERENCE_ASSETS',[[550,'assets'],[609,'assets']]);
     const conditionSlot=pruneInputs(conditionHost,conditions);
-    link(data,assets.id,0,conditionHost.id,conditionSlot,'H3_PGS_ASSETS');
+    link(data,assets.id,0,conditionHost.id,conditionSlot,'H3_REFERENCE_ASSETS');
     const faceHost=module('face'),faceGraph=definitions.get(faceHost.type);
     const face=faceGraph.nodes.find(n=>Number(n.id)===618);
     const oldRef=face.inputs.findIndex(i=>i.name.startsWith('references.'));
     faceGraph.links=faceGraph.links.filter(l=>Number(l.target_id)!==618||l.target_slot!==oldRef);
-    face.inputs.push({name:'assets',type:'H3_PGS_ASSETS',link:null});
-    addInput(faceHost,faceGraph,'assets','参考素材集合','H3_PGS_ASSETS',[[618,'assets']]);
+    face.inputs.push({name:'assets',type:'H3_REFERENCE_ASSETS',link:null});
+    addInput(faceHost,faceGraph,'assets','参考素材集合','H3_REFERENCE_ASSETS',[[618,'assets']]);
     const faceSlot=pruneInputs(faceHost,faceGraph);
-    link(data,assets.id,0,faceHost.id,faceSlot,'H3_PGS_ASSETS');
+    link(data,assets.id,0,faceHost.id,faceSlot,'H3_REFERENCE_ASSETS');
     // Share one FLOAT value between both 32-aligned dimension expressions.
     const sizeHost=module('size'),sizeGraph=definitions.get(sizeHost.type);
     for(const n of sizeGraph.nodes){

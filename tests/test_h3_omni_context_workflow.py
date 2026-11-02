@@ -30,7 +30,7 @@ def expected_prompt():
         node['inputs']['assets'] = ['639', 0]
     expected['618']['inputs'].pop('references.参考图 1')
     expected['618']['inputs']['assets'] = ['639', 0]
-    expected['524']['inputs']['assets'] = ['639', 0]
+    expected['524']['inputs']['assets'] = ['639', 1]
     for key in ('602', '603'):
         expected[key]['inputs'].update(expression='max(32, floor(a * b / 32) * 32)', **{'values.b': ['645', 0]})
     return expected
@@ -233,8 +233,10 @@ class OmniContextWorkflowTests(unittest.TestCase):
                 self.assertEqual(next(p['label'] for p in host['inputs'] if p['name'] == name), label)
 
     def test_reference_collection_and_first_pass_scale_reach_every_consumer(self):
-        for node_id in (550, 609, 618, 524):
+        for node_id in (550, 609, 618):
             self.assertEqual(self.source(node_id, 'assets'), (639, 0))
+        self.assertEqual(self.source(524, 'assets'), (639, 1))
+        self.assertEqual([p['type'] for p in self.nodes[639]['outputs']], ['H3_REFERENCE_ASSETS', 'H3_PGS_ASSETS'])
         for node_id in (602, 603):
             self.assertEqual(self.source(node_id, 'values.b'), (645, 0))
         self.assertEqual(self.source(550, 'width'), (602, 1))

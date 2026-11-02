@@ -31,13 +31,13 @@ class ReferenceAssetsTests(unittest.TestCase):
             result = YtonH3ReferenceAssets.execute(
                 images={f'参考图 {i+1}': image for i, image in enumerate(pictures)},
                 video_frames=frames, video_audio=audio)
-        return result.result[0], pictures
+        return result.result[0], result.result[1], pictures
 
     def test_zero_one_three_and_twelve_references_remain_independent_and_keep_pgs_labels(self):
         for count in (0, 1, 3, 12):
             with self.subTest(count=count):
-                assets, pictures = self.collection(count, video=True)
-                labels = [a['nativeLabel'] for a in assets['assets']]
+                assets, schedule, pictures = self.collection(count, video=True)
+                labels = [a['nativeLabel'] for a in schedule['assets']]
                 self.assertEqual(labels, [f'<Picture {i+1}>' for i in range(count)] + ['<Video 1>', '<Audio 1>'])
                 self.assertEqual(len(assets['images']), count)
                 for actual, expected in zip(assets['images'], pictures):
@@ -55,8 +55,8 @@ class ReferenceAssetsTests(unittest.TestCase):
 
     def test_absent_scene_and_empty_collection_do_not_create_dummy_references(self):
         for count in (0, 1, 3):
-            assets, pictures = self.collection(count)
-            self.assertEqual(len(assets['assets']), count)
+            assets, schedule, pictures = self.collection(count)
+            self.assertEqual(len(schedule['assets']), count)
             with patch.object(MiniMaxH3ReferenceToVideo, 'execute', return_value=io.NodeOutput(None, None)) as encode:
                 YtonH3ReferenceFromAssets.execute(clip=object(), prompt='', width=32, height=32, length=22, assets=assets)
             self.assertEqual(encode.call_args.kwargs['ref_videos'], {})
@@ -66,21 +66,34 @@ class ReferenceAssetsTests(unittest.TestCase):
         self.assertEqual(inputs['optional']['images'][1]['template']['min'], 0)
         self.assertGreater(len(inputs['optional']['images'][1]['template']['names']), 9)
 
+    def test_separate_outputs_match_native_pgs_schedule_without_generation_tensors(self):
+        references, schedule, _ = self.collection(3, video=True)
+        self.assertEqual(set(references), {'images', 'video_frames', 'video_audio'})
+        self.assertEqual(set(schedule), {'assets'})
+        info = YtonH3ReferenceAssets.GET_NODE_INFO_V1()
+        self.assertEqual(info['output'], ['H3_REFERENCE_ASSETS', 'H3_PGS_ASSETS'])
+        self.assertEqual(info['output_name'], ['参考素材', 'PGS schedule'])
+        editor = self.mapping['MiniMaxH3RefPGSScenePromptEditor']()
+        result = asyncio.run(editor.passthrough(
+            prompt='@Picture_1 与 @Picture_3 参考 @Video_1 和 @Video_1_audio', assets=schedule))
+        self.assertEqual(result['result'][0]['shots'][0]['prompt'],
+                         '<Picture 1> 与 <Picture 3> 参考 <Video 1> 和 <Audio 1>')
+
     def test_pgs_markers_supply_real_images_and_aliases_to_every_consumer(self):
         images = [torch.full((1, 32, 32, 3), i/10) for i in range(1, 5)]
         with patch.dict(nodes.NODE_CLASS_MAPPINGS, self.mapping):
             register = self.mapping['MiniMaxH3RefPGSPictureAsset']()
             marked, _ = register.register(images[0], 'Hero', '人物')
             marked, _ = register.register(images[1], 'Scene', '场景', previous=marked)
-            collection = YtonH3ReferenceAssets.execute(pgs_images=marked,
-                images={'参考图 4': images[3], '参考图 3': images[2]}).result[0]
-        self.assertEqual([a['alias'] for a in collection['assets']], ['Hero', 'Scene', 'Picture_3', 'Picture_4'])
-        self.assertEqual([a['nativeLabel'] for a in collection['assets']], [f'<Picture {i}>' for i in range(1, 5)])
+            collection, schedule = YtonH3ReferenceAssets.execute(pgs_images=marked,
+                images={'参考图 4': images[3], '参考图 3': images[2]}).result
+        self.assertEqual([a['alias'] for a in schedule['assets']], ['Hero', 'Scene', 'Picture_3', 'Picture_4'])
+        self.assertEqual([a['nativeLabel'] for a in schedule['assets']], [f'<Picture {i}>' for i in range(1, 5)])
         for actual, expected in zip(collection['images'], images):
             self.assertIs(actual, expected)
         # Exercise the same resolver used by the PGS prompt editor at execution time.
         resolver = register.register.__globals__['_resolve_aliases_to_native']
-        self.assertEqual(resolver('@Hero 与 @Scene、@Picture_3、@Picture_4', collection['assets']),
+        self.assertEqual(resolver('@Hero 与 @Scene、@Picture_3、@Picture_4', schedule['assets']),
                          '<Picture 1> 与 <Picture 2>、<Picture 3>、<Picture 4>')
         for width in (960, 1920):
             with patch.object(MiniMaxH3ReferenceToVideo, 'execute', return_value=io.NodeOutput(None, None)) as encode:
@@ -105,12 +118,12 @@ class ReferenceAssetsTests(unittest.TestCase):
         marked, _ = self.mapping['MiniMaxH3RefPGSPictureAsset']().register(image, 'Hero', '人物')
         marked, _ = self.mapping['MiniMaxH3RefPGSVideoAsset']().register(image, 'Video', '视频', previous=marked)
         marked, _ = self.mapping['MiniMaxH3RefPGSAudioAsset']().register({}, 'Voice', '声音', previous=marked)
-        collection = YtonH3ReferenceAssets.execute(pgs_images=marked).result[0]
-        self.assertEqual([a['alias'] for a in collection['assets']], ['Hero'])
+        collection, schedule = YtonH3ReferenceAssets.execute(pgs_images=marked).result
+        self.assertEqual([a['alias'] for a in schedule['assets']], ['Hero'])
         self.assertIs(collection['images'][0], image)
 
     def test_every_face_uses_the_same_picture_numbering_as_both_sampling_passes(self):
-        assets, pictures = self.collection(4)
+        assets, schedule, pictures = self.collection(4)
         result = YtonH3FaceRefine.execute(images=['frames', 0], model=['model', 0], clip=['clip', 0],
                                          vae=['vae', 0], assets=assets, face_count=3)
         graph = {key.split('.')[-1]: value for key, value in result.expand.items()}
@@ -133,7 +146,7 @@ class ReferenceAssetsTests(unittest.TestCase):
                 return torch.full((1, 24, 2, frames.shape[1]//16, frames.shape[2]//16), float(frames.mean()))
 
         for count in (0, 3, 12):
-            assets, pictures = self.collection(count)
+            assets, schedule, pictures = self.collection(count)
             clip = Clip()
             result = YtonH3ReferenceFromAssets.execute(
                 clip=clip, vae=Vae(), prompt='每张参考图各自定义其用途', width=32, height=32, length=22, assets=assets)
@@ -145,14 +158,14 @@ class ReferenceAssetsTests(unittest.TestCase):
             self.assertEqual(len(result.result[0][0][1].get('minimax_refs', [])), count)
 
     def test_native_executor_requests_assets_only_when_face_refinement_is_enabled(self):
-        assets, _ = self.collection(3)
+        assets, _, _ = self.collection(3)
         called, expanded = [], []
 
         class Source:
             @classmethod
             def INPUT_TYPES(cls):
                 return {'required': {}}
-            RETURN_TYPES = ('H3_PGS_ASSETS',)
+            RETURN_TYPES = ('H3_REFERENCE_ASSETS',)
             FUNCTION = 'run'
             def run(self):
                 called.append(True)

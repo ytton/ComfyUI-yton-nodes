@@ -1787,11 +1787,18 @@
         {
           "localized_name": "参考素材",
           "name": "参考素材",
-          "type": "H3_PGS_ASSETS",
+          "type": "H3_REFERENCE_ASSETS",
           "links": [
-            1824,
             1885,
             1887
+          ]
+        },
+        {
+          "localized_name": "PGS schedule",
+          "name": "PGS schedule",
+          "type": "H3_PGS_ASSETS",
+          "links": [
+            1824
           ]
         }
       ],
@@ -2007,7 +2014,7 @@
           "label": "参考素材集合",
           "name": "assets",
           "shape": 7,
-          "type": "H3_PGS_ASSETS",
+          "type": "H3_REFERENCE_ASSETS",
           "link": 1885
         }
       ],
@@ -2310,7 +2317,7 @@
           "label": "参考素材集合",
           "name": "assets",
           "shape": 7,
-          "type": "H3_PGS_ASSETS",
+          "type": "H3_REFERENCE_ASSETS",
           "link": 1887
         }
       ],
@@ -2548,7 +2555,7 @@
     [
       1824,
       639,
-      0,
+      1,
       524,
       2,
       "H3_PGS_ASSETS"
@@ -2807,7 +2814,7 @@
       0,
       641,
       12,
-      "H3_PGS_ASSETS"
+      "H3_REFERENCE_ASSETS"
     ],
     [
       1887,
@@ -2815,7 +2822,7 @@
       0,
       643,
       8,
-      "H3_PGS_ASSETS"
+      "H3_REFERENCE_ASSETS"
     ],
     [
       1890,
@@ -6065,7 +6072,7 @@
           {
             "id": "f5fb8270-93f4-48bb-8848-a9b48b48ff97",
             "name": "assets",
-            "type": "H3_PGS_ASSETS",
+            "type": "H3_REFERENCE_ASSETS",
             "linkIds": [
               1883,
               1884
@@ -6224,7 +6231,7 @@
                 "localized_name": "参考素材",
                 "name": "assets",
                 "shape": 7,
-                "type": "H3_PGS_ASSETS",
+                "type": "H3_REFERENCE_ASSETS",
                 "link": 1883
               },
               {
@@ -6361,7 +6368,7 @@
                 "localized_name": "参考素材",
                 "name": "assets",
                 "shape": 7,
-                "type": "H3_PGS_ASSETS",
+                "type": "H3_REFERENCE_ASSETS",
                 "link": 1884
               },
               {
@@ -7405,7 +7412,7 @@
             "origin_slot": 12,
             "target_id": 550,
             "target_slot": 3,
-            "type": "H3_PGS_ASSETS"
+            "type": "H3_REFERENCE_ASSETS"
           },
           {
             "id": 1884,
@@ -7413,7 +7420,7 @@
             "origin_slot": 12,
             "target_id": 609,
             "target_slot": 3,
-            "type": "H3_PGS_ASSETS"
+            "type": "H3_REFERENCE_ASSETS"
           }
         ],
         "extra": {}
@@ -8572,7 +8579,7 @@
           {
             "id": "73597fbb-3593-4106-9cd5-8586cf21d6f5",
             "name": "assets",
-            "type": "H3_PGS_ASSETS",
+            "type": "H3_REFERENCE_ASSETS",
             "linkIds": [
               1886
             ],
@@ -8706,7 +8713,7 @@
                 "localized_name": "参考素材集合",
                 "name": "assets",
                 "shape": 7,
-                "type": "H3_PGS_ASSETS",
+                "type": "H3_REFERENCE_ASSETS",
                 "link": 1886
               },
               {
@@ -8897,7 +8904,7 @@
             "origin_slot": 8,
             "target_id": 618,
             "target_slot": 5,
-            "type": "H3_PGS_ASSETS"
+            "type": "H3_REFERENCE_ASSETS"
           }
         ],
         "extra": {}

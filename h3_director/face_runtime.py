@@ -31,7 +31,7 @@ class YtonH3FaceRefine(io.ComfyNode):
                         io.Image.Input("reference", raw_link=True, lazy=True,
                             tooltip="人物参考图；连线后自动增加下一个入口，按连接顺序对应 <Picture N>。"),
                         names=[f"参考图 {i}" for i in range(1, 10)], min=0)),
-                io.Custom("H3_PGS_ASSETS").Input("assets", display_name="参考素材集合", optional=True, lazy=True,
+                io.Custom("H3_REFERENCE_ASSETS").Input("assets", display_name="参考素材集合", optional=True, lazy=True,
                     tooltip="与首采、二采共用图片参考顺序，保留 <Picture N> 的对应关系。"),
                 io.String.Input("prompt", display_name="提示词", default="", multiline=True, raw_link=True, lazy=True,
                     tooltip="可接原提示词，也可填写修脸描述；留空依靠原画面与参考图修复。"),

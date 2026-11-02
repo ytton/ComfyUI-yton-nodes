@@ -5,7 +5,8 @@ from comfy_api.latest import io
 from comfy_extras.nodes_minimax_h3 import MiniMaxH3ReferenceToVideo
 
 
-ASSETS = io.Custom("H3_PGS_ASSETS")
+ASSETS = io.Custom("H3_REFERENCE_ASSETS")
+PGS_SCHEDULE = io.Custom("H3_PGS_ASSETS")
 
 
 class YtonH3ReferenceAssets(io.ComfyNode):
@@ -18,7 +19,7 @@ class YtonH3ReferenceAssets(io.ComfyNode):
             description=("参考图按入口顺序对应 <Picture N>；人物、场景、服装等用途由提示词决定。"
                          "连接后自动增加下一个入口，未连接的参考图不参与生成。"
                          "可把 PGS 图片标记链接到“PGS 图片标记”，保留自定义别名和图片顺序。"
-                         "素材集合同时供提示词编辑、首采、二采和修脸使用。"),
+                         "“参考素材”连接生成与修脸；“PGS schedule”连接提示词编辑器的 assets。"),
             inputs=[
                 io.Autogrow.Input("images", optional=True, display_name="参考图",
                     template=io.Autogrow.TemplateNames(
@@ -26,9 +27,10 @@ class YtonH3ReferenceAssets(io.ComfyNode):
                         names=[f"参考图 {i}" for i in range(1, io.Autogrow._MaxNames + 1)], min=0)),
                 io.Image.Input("video_frames", optional=True, display_name="源视频画面"),
                 io.Audio.Input("video_audio", optional=True, display_name="源视频音频"),
-                ASSETS.Input("pgs_images", optional=True, display_name="PGS 图片标记"),
+                PGS_SCHEDULE.Input("pgs_images", optional=True, display_name="PGS 图片标记"),
             ],
-            outputs=[ASSETS.Output(display_name="参考素材")],
+            outputs=[ASSETS.Output(display_name="参考素材"),
+                     PGS_SCHEDULE.Output(display_name="PGS schedule")],
         )
 
     @classmethod
@@ -50,8 +52,8 @@ class YtonH3ReferenceAssets(io.ComfyNode):
             register = nodes.NODE_CLASS_MAPPINGS["MiniMaxH3RefPGSVideoAsset"]()
             schedule, _ = register.register(video_frames, "Video_1", "源视频", previous=schedule,
                                              audio_input=video_audio)
-        schedule.update(images=pictures, video_frames=video_frames, video_audio=video_audio)
-        return io.NodeOutput(schedule)
+        references = {"images": pictures, "video_frames": video_frames, "video_audio": video_audio}
+        return io.NodeOutput(references, {"assets": schedule["assets"]})
 
 
 class YtonH3ReferenceFromAssets(MiniMaxH3ReferenceToVideo):

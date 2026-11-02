@@ -2,6 +2,13 @@ export async function checkPgsReferenceEditor(page) {
   const assert = (value, message) => { if (!value) throw Error(message); };
   const rich = page.locator(".pgs-rich-editor");
   const items = page.locator(".pgs-alias-menu .pgs-alias-item");
+  const outputs = await page.evaluate(async () => {
+    const { app, editor, collection } = window.pgsTest;
+    const { output } = await app.graphToPrompt();
+    return { types: collection.outputs.map(o => o.type), promptSource: output[editor.id].inputs.assets };
+  });
+  assert(outputs.types.join(",") === "H3_REFERENCE_ASSETS,H3_PGS_ASSETS", "generation and PGS have separate typed outputs");
+  assert(outputs.promptSource[1] === 1, "the prompt editor uses the PGS schedule output");
   await rich.fill("@");
   await items.first().waitFor();
   assert(await items.count() === 4, "two images, video and audio appear in the @ menu");
