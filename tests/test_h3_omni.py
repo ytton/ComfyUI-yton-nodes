@@ -37,11 +37,43 @@ class SegmentPlanningTests(unittest.TestCase):
         video = InputImpl.VideoFromComponents(Types.VideoComponents(
             images=torch.zeros(125, 4, 4, 3), frame_rate=Fraction(24)))
         for overlap in (0, 22):
-            length, head, tail = omni_runtime.YtonH3ReplicaPlan().plan([video], [overlap])
+            length, head, tail = omni_runtime.YtonH3ReplicaPlan().plan([video], [overlap], [True])
             self.assertEqual(length % 17, 5)
             self.assertEqual(head, overlap)
             self.assertGreaterEqual(tail, 0)
             self.assertEqual(length - head - tail, 125)
+
+    def test_included_context_preserves_the_source_timeline_across_all_four_segments(self):
+        source = torch.arange(455, dtype=torch.float32).reshape(455, 1, 1, 1)
+        output, sounds = [], []
+        for start, end in ((0, 141), (119, 260), (238, 379), (357, 455)):
+            video = InputImpl.VideoFromComponents(Types.VideoComponents(
+                images=source[start:end], frame_rate=Fraction(24)))
+            length, head, tail = omni_runtime.YtonH3ReplicaPlan().plan(
+                [video], [0 if start == 0 else 22], [False])
+            if start:
+                self.assertEqual(head, 22)
+            self.assertEqual(length, 107 if end == 455 else 141)
+            sampled = torch.cat((source[start:end], source[end - 1:end].expand(tail, -1, -1, -1)))
+            audio = {"waveform": sampled[:, 0, 0, 0].reshape(1, 1, -1), "sample_rate": 24}
+            images, sound = omni_runtime.YtonH3SegmentTrim().trim(sampled, head, tail, audio)
+            output.append(images)
+            sounds.append(sound["waveform"])
+        torch.testing.assert_close(torch.cat(output), source)
+        torch.testing.assert_close(torch.cat(sounds, dim=-1).flatten(), source.flatten())
+
+    def test_context_length_switch_only_counts_an_active_context_once(self):
+        for target, context, extend, expected in (
+            (141, 22, True, (175, 22, 12)),
+            (141, 22, False, (141, 22, 0)),
+            (141, 0, False, (141, 0, 0)),
+            (32, 22, True, (56, 22, 2)),
+            (98, 22, False, (107, 22, 9)),
+        ):
+            with self.subTest(target=target, context=context, extend=extend):
+                self.assertEqual(omni_runtime.plan_context_length(target, context, extend), expected)
+        with self.assertRaisesRegex(ValueError, "总帧数必须大于上下文帧数"):
+            omni_runtime.plan_context_length(22, 22, False)
 
     def test_segment_plan_keeps_context_at_head_and_alignment_surplus_at_tail(self):
         plan = omni_runtime.YtonH3SegmentPlan().plan(10.0, 2, 22)

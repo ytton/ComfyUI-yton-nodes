@@ -32,6 +32,34 @@ def expanded(cls, **overrides):
 
 
 class OmniVariantTests(unittest.TestCase):
+    def test_included_context_keeps_the_guide_without_extending_the_target_length(self):
+        for cls in VARIANTS.values():
+            self.assertTrue(cls.INPUT_TYPES()["required"]["context_auto_extend"][1]["default"])
+            for sampling_mode in ("单采", "二采"):
+                for mode in ("普通模式", "复刻模式"):
+                    with self.subTest(plan=cls.SAMPLING_PLAN, sampling=sampling_mode, mode=mode):
+                        graph = expanded(cls, mode=mode, sampling_mode=sampling_mode, duration=141 / 24,
+                                         video=["source", 0], enable_context=True,
+                                         previous_video=["previous", 0], context_auto_extend=False)
+                        self.assertIn("main_context_add_guide", graph)
+                        self.assertIn("seamless_color_match", graph)
+                        if mode == "复刻模式":
+                            self.assertFalse(graph["replica"]["inputs"]["context_auto_extend"])
+                            self.assertEqual(graph["replica"]["inputs"]["context_frames"], 22)
+                        else:
+                            self.assertEqual(graph["reference"]["inputs"]["length"], 141)
+                            self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 22)
+                            self.assertEqual(graph["trim"]["inputs"]["tail_trim_frames"], 0)
+                        if "high_reference" in graph:
+                            self.assertEqual(graph["high_reference"]["inputs"]["length"],
+                                             graph["reference"]["inputs"]["length"])
+                for enabled, previous in ((True, None), (False, ["previous", 0])):
+                    graph = expanded(cls, sampling_mode=sampling_mode, duration=141 / 24,
+                                     enable_context=enabled, previous_video=previous, context_auto_extend=False)
+                    self.assertEqual(graph["reference"]["inputs"]["length"], 141)
+                    self.assertEqual(graph["trim"]["inputs"]["head_trim_frames"], 0)
+                    self.assertNotIn("main_context_add_guide", graph)
+
     def test_registration_contains_exactly_three_current_generators(self):
         self.assertEqual({NODE_DISPLAY_NAME_MAPPINGS[name] for name in VARIANTS},
                          {"H3 全模态生成 · TR", "H3 全模态生成 · SelfLift", "H3 全模态生成"})

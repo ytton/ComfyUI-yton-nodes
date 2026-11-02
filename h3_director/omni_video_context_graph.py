@@ -5,6 +5,7 @@ import math
 from comfy_execution.graph_utils import GraphBuilder
 
 from .omni_face import add_face_refinement
+from .omni_runtime import plan_context_length
 from .omni_sampling import FILM_MODEL, UPSCALE_MODEL, sampling_dimensions
 
 CONTEXT_FRAMES = 22
@@ -50,6 +51,7 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
                               face_refine, face_count, face_reverse, image=None, video=None, audio=None,
                               sigmas=None, previous_video=None, second_model=None,
                               face_model=None, face_sigmas=None, enable_context=False,
+                              context_auto_extend=True,
                               context_noise_strength=0.1, context_color_strength=0.75,
                               film_model=FILM_MODEL, film_method="learned model",
                               film_audio_denoise=0.0, film_noise_resample="independent", film_match_stats=0.0,
@@ -69,14 +71,14 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
     if mode == "复刻模式":
         if video is None:
             raise ValueError("复刻模式需要传入至少一个视频，时长取第一个视频。")
-        plan = graph.node("YtonH3ReplicaPlan", id="replica", video=video, context_frames=overlap)
+        plan = graph.node("YtonH3ReplicaPlan", id="replica", video=video, context_frames=overlap,
+                          context_auto_extend=context_auto_extend)
         length = plan.out(0)
         head_trim_frames, tail_trim_frames = plan.out(1), plan.out(2)
     elif mode == "普通模式":
         visible_frames = max(1, math.floor(float(duration) * 24 + 0.5))
-        length = 5 + 17 * max(0, math.ceil((visible_frames + overlap - 5) / 17))
-        length = max(39 if overlap else 5, length)
-        head_trim_frames, tail_trim_frames = overlap, length - visible_frames - overlap
+        length, head_trim_frames, tail_trim_frames = plan_context_length(
+            visible_frames, overlap, context_auto_extend)
     else:
         raise ValueError("请选择普通模式或复刻模式。")
 

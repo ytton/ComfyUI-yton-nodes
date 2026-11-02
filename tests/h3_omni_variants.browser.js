@@ -67,11 +67,15 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         media.connect(1, node, node.findInputSlot('previous_video'))
         assert(w('enable_context').value === false, 'previous video does not enable context automatically')
         change('enable_context', true)
+        change('context_auto_extend', false)
+        assert(w('context_auto_extend').label === '自动增加22帧时长' && !w('context_auto_extend').disabled,
+          'context extension can be turned off while retaining the context guide')
         change('context_noise_strength', 0.23)
         change('context_color_strength', 0.42)
         const contextControls = node.widgets.slice(node.widgets.findIndex(w => w.name === 'h3_section_分段上下文'))
         assert(contextControls.includes(w('context_noise_strength')) && contextControls.includes(w('context_color_strength')),
           'both controls appear in the context section')
+        assert(contextControls.includes(w('context_auto_extend')), 'extension switch appears in the context section')
         change('face_refine', true)
         app.graph.getNodeById(12).connect(0, node, node.findInputSlot('second_model'))
         const twoPassHeight = node.size[1]
@@ -112,6 +116,7 @@ export async function runH3OmniVariants(page, definitions, examples, baseURL = '
         assert(Array.isArray(prompt.inputs.prompt), 'prompt link survives reload')
         assert(prompt.inputs.context_noise_strength === 0.23 && prompt.inputs.context_color_strength === 0.42,
           'context noise and colour strengths survive reload and reach the API')
+        assert(prompt.inputs.context_auto_extend === false, 'disabled extension survives reload and reaches the API')
         assert(!('sampling_plan' in prompt.inputs) && !('h3_context_length' in prompt.inputs), 'display fields are not submitted')
         if (tr) assert(!('first_pass_scale' in prompt.inputs), 'TR fixed scale is not submitted')
         else assert(prompt.inputs.first_pass_scale === 0.5, 'editable scale is submitted')

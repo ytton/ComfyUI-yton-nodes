@@ -56,7 +56,7 @@ class H3OmniGenerate:
             "mode": (["普通模式", "复刻模式"], {"default": "普通模式",
                 "tooltip": "普通模式使用填写时长；复刻模式按第一个视频的实际时长生成。"}),
             "duration": ("FLOAT", {"default": 5.0, "min": 0.21, "max": 149.66, "step": 0.1,
-                "tooltip": "普通模式成片时长。开启上下文后自动补 22 帧，并在输出时裁除。"}),
+                "tooltip": "普通模式目标时长。开启自动增加上下文时长时，填写新增内容时长；关闭时，填写包含上下文的片段总时长。"}),
             "ref_image_size": (["match", "max"], {"default": "match"}),
             "sampling_mode": (["单采", "二采"], {"default": "二采",
                 "tooltip": "单采直接按最终宽高生成；二采采用此节点对应的升分辨率方案。"}),
@@ -130,6 +130,10 @@ class H3OmniGenerate:
         schema["required"]["enable_context"] = ("BOOLEAN", {
             "default": False,
             "tooltip": "仅开启并接入上一段视频时，才提取尾部 22 帧与音频接续；关闭时忽略上一段视频，按独立片段生成。",
+        })
+        required["context_auto_extend"] = ("BOOLEAN", {
+            "default": True,
+            "tooltip": "开启：在目标时长或参考视频长度上额外增加 22 帧上下文。关闭：输入长度已包含上下文，不再额外增加；仍保留上下文引导，并裁掉前 22 帧。配合编辑器的含上下文片段时关闭。没有上一段视频时不影响长度。尾部仍按 H3 帧数规则补齐并裁除。",
         })
         required["context_noise_strength"] = ("FLOAT", {
             "default": 0.1, "min": 0.0, "max": 1.0, "step": 0.01, "round": False,

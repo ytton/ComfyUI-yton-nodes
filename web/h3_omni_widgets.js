@@ -6,7 +6,7 @@ const sections = [
   ["二采方案", ["sampling_plan", "first_pass_scale", "upscale_model", "second_model", "film_method", "film_model", "second_sampler", "second_steps", "second_sigma_start", "second_rho", "second_sigma_values", "second_ff_chunks", "film_audio_denoise", "film_noise_resample", "film_match_stats", "selflift_transition_step", "selflift_rho", "selflift_w_min", "selflift_w_max", "selflift_highres_tiling", "selflift_highres_tiles"]],
   ["小脸修复", ["face_model", "face_refine", "face_count", "face_sigmas", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
-  ["分段上下文", ["enable_context", "previous_video", "h3_context_length", "context_noise_strength", "context_color_strength"]],
+  ["分段上下文", ["enable_context", "previous_video", "h3_context_length", "context_auto_extend", "context_noise_strength", "context_color_strength"]],
 ];
 const labels = {
   prompt: "提示词", width: "最终宽度", height: "最终高度", duration: "成片目标时长 / 秒",
@@ -14,6 +14,7 @@ const labels = {
   ref_image_size: "参考图尺寸", steps: "调度步数", sampler_name: "采样器",
   scheduler: "调度器", denoise: "调度降噪", seed: "随机种子",
   enable_context: "启用上下文",
+  context_auto_extend: "自动增加22帧时长",
   context_noise_strength: "前 21 帧噪声强度",
   context_color_strength: "接续调色强度",
   first_pass_scale: "首采宽高比例", upscale_model: "潜空间放大模型",
@@ -197,6 +198,10 @@ function setupSections(node) {
       widgets.get(name).disabled = custom;
     }
     widgets.get("duration").disabled = widgets.get("mode").value === "复刻模式";
+    const contextEnabled = widgets.get("enable_context").value;
+    widgets.get("context_auto_extend").disabled = !contextEnabled;
+    widgets.get("duration").label = contextEnabled && !widgets.get("context_auto_extend").value
+      ? "片段总时长（含上下文） / 秒" : labels.duration;
     const twoPass = widgets.get("sampling_mode").value === "二采";
     showSecondPass(twoPass);
     const scale = widgets.get("first_pass_scale");
@@ -232,7 +237,7 @@ function setupSections(node) {
     widgets.get("face_sigmas").disabled = !widgets.get("face_refine").value;
     node.setDirtyCanvas(true, true);
   }
-  for (const name of ["mode", "sampling_mode", "face_refine", "first_pass_scale", "face_sigmas", "film_method", "second_sigma_values"]) {
+  for (const name of ["mode", "sampling_mode", "enable_context", "context_auto_extend", "face_refine", "first_pass_scale", "face_sigmas", "film_method", "second_sigma_values"]) {
     const widget = widgets.get(name);
     if (!widget) continue;
     const callback = widget.callback;

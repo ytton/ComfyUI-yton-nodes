@@ -1,5 +1,7 @@
 """Media-loader list inputs for the official MiniMax H3 reference node."""
 
+import torch
+
 from comfy_api.latest import io
 from comfy_extras.nodes_minimax_h3 import MiniMaxH3ReferenceToVideo
 
@@ -34,6 +36,10 @@ class YtonMiniMaxH3ReferenceToVideo(io.ComfyNode):
         parser = YtonVideoParser()
         for index, item in enumerate(video or [], 1):
             frames, _, soundtrack, _ = parser.parse_video(item, force_rate=24)
+            if frames is not None:
+                padding = (5 - len(frames)) % 17
+                if padding:
+                    frames = torch.cat((frames, frames[-1:].expand(padding, -1, -1, -1)))
             ref_videos[f"ref_video_{index}"] = frames
             ref_video_audios[f"ref_video_audio_{index}"] = soundtrack
         ref_audios = {f"ref_audio_{index}": item for index, item in enumerate(audio or [], 1)}

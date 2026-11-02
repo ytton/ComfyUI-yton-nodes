@@ -105,11 +105,27 @@ class ReferenceNodeTests(unittest.TestCase):
         self.assertIsNone(inputs["ref_images"]["ref_image_2"])
         self.assertIs(inputs["ref_images"]["ref_image_3"], second)
         self.assertIsNone(inputs["ref_videos"]["ref_video_1"])
-        self.assertEqual(inputs["ref_videos"]["ref_video_2"].shape[0], 48)
+        self.assertEqual(inputs["ref_videos"]["ref_video_2"].shape[0], 56)
         self.assertIs(inputs["ref_video_audios"]["ref_video_audio_2"], soundtrack)
         self.assertIsNone(inputs["ref_video_audios"]["ref_video_audio_3"])
         self.assertIsNone(inputs["ref_audios"]["ref_audio_1"])
         self.assertIs(inputs["ref_audios"]["ref_audio_2"], standalone)
+
+    def test_short_tail_reference_is_padded_before_official_encoding_without_losing_frames(self):
+        class RecordingVae(VideoVae):
+            def encode(self, frames):
+                self.frames = frames
+                return super().encode(frames)
+
+        for count, padded in ((32, 39), (98, 107), (141, 141)):
+            with self.subTest(count=count):
+                frames = torch.linspace(0, 1, count).reshape(count, 1, 1, 1).expand(count, 32, 32, 3)
+                source = InputImpl.VideoFromComponents(Types.VideoComponents(images=frames, frame_rate=Fraction(24)))
+                vae = RecordingVae()
+                ReferenceNode.execute(**self.inputs(video=[source], vae=[vae], length=[padded]))
+                self.assertEqual(vae.frames.shape[0], padded)
+                torch.testing.assert_close(vae.frames[:count], frames, atol=1 / 255 + 1e-6, rtol=0)
+                torch.testing.assert_close(vae.frames[count:], frames[-1:].expand(padded - count, -1, -1, -1))
 
     def test_actual_official_conditioning_and_latent_match(self):
         first, second = torch.zeros(1, 64, 32, 3), torch.ones(1, 32, 64, 3)

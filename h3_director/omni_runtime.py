@@ -4,12 +4,23 @@ import math
 import torch
 
 
+def plan_context_length(target_frames, context_frames, context_auto_extend):
+    requested = target_frames + (context_frames if context_auto_extend else 0)
+    if requested <= context_frames:
+        raise ValueError("关闭自动增加上下文时长时，片段总帧数必须大于上下文帧数。")
+    length = 5 + 17 * max(0, math.ceil((requested - 5) / 17))
+    if length > 3592:
+        raise ValueError("当前片段加上上下文后超出H3最大采样帧数3592，请先拆分视频。")
+    return length, context_frames, length - requested
+
+
 class YtonH3ReplicaPlan:
     @classmethod
     def INPUT_TYPES(cls):
         return {"required": {
             "video": ("VIDEO",),
             "context_frames": ("INT", {"default": 0, "min": 0, "max": 56}),
+            "context_auto_extend": ("BOOLEAN", {"default": True}),
         }}
 
     INPUT_IS_LIST = True
@@ -19,7 +30,7 @@ class YtonH3ReplicaPlan:
     CATEGORY = "yton-nodes/MiniMax H3"
     DESCRIPTION = "全模态复刻模式内部时长规划：只读取第一个视频，补足上下文与H3帧格。"
 
-    def plan(self, video, context_frames):
+    def plan(self, video, context_frames, context_auto_extend):
         if not video or video[0] is None:
             raise ValueError("复刻模式需要传入至少一个视频，时长取第一个视频。")
         duration = float(video[0].get_duration())
@@ -27,13 +38,7 @@ class YtonH3ReplicaPlan:
             raise ValueError("复刻模式的第一个视频时长无效。")
         target = max(1, math.floor(duration * 24 + 0.5))
         overlap = int(context_frames[0])
-        length = 5 + 17 * max(0, math.ceil((target + overlap - 5) / 17))
-        if length > 3592:
-            raise ValueError("复刻视频加上上下文后超出H3最大采样帧数3592，请先拆分视频。")
-        # The context prefix is removed from the head. H3 frame-grid surplus
-        # belongs at the tail; removing it from the head would shift the
-        # visible source timeline and create a discontinuity at the seam.
-        return length, overlap, length - target - overlap
+        return plan_context_length(target, overlap, context_auto_extend[0])
 
 
 class YtonH3SegmentPlan:
