@@ -61,8 +61,9 @@ def save_segment(video, index, total, *, run, prefix, container="mp4", fps=24, c
             with av.open(str(source)) as opened:
                 has_audio = bool(opened.streams.audio)
             audio_source = [] if has_audio else ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"]
+            # FFmpeg 7.1 can drop the last frame when fps follows spatial filters.
             encode(["-i", source, *audio_source, "-map", "0:v:0", "-map", "0:a:0" if has_audio else "1:a:0",
-                    "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,fps={fps},setsar=1",
+                    "-vf", f"fps={fps},scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1",
                     "-c:v", "libx264", "-preset", "fast", "-crf", crf, "-pix_fmt", "yuv420p",
                     "-c:a", "aac", "-ar", "48000", "-ac", "2", "-af", "apad", "-shortest",
                     *(["-movflags", "+faststart"] if container == "mp4" else []), staging])

@@ -29,7 +29,7 @@ package = types.ModuleType("replacement_test_plugin")
 package.__path__ = [str(PLUGIN)]
 sys.modules[package.__name__] = package
 from replacement_test_plugin.llm_connection import LLMConnection
-from replacement_test_plugin.replacement.media import contact_sheet, encode, inspect, reference_images, segment_video
+from replacement_test_plugin.replacement.media import contact_sheet, encode, ffmpeg, inspect, reference_images, segment_video
 from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementVideoSave
 from replacement_test_plugin.replacement.plan import make_plan
 from replacement_test_plugin.replacement.prompts import SYSTEM, load_skill, optimize, save_skill, signature
@@ -393,6 +393,35 @@ class ReplacementTests(unittest.TestCase):
         self.assertLess(float(components.images[0].mean()),.05)
         self.assertGreater(float(components.images[-1].mean()),.95)
         self.assertIsNotNone(components.audio)
+
+    def test_save_preserves_h3_segment_frames_and_final_frame(self):
+        executables = {ffmpeg()}
+        if importlib.util.find_spec("imageio_ffmpeg") is not None:
+            executables.add(importlib.import_module("imageio_ffmpeg").get_ffmpeg_exe())
+        for executable in executables:
+            for container in ("mp4", "mkv"):
+                for with_audio in (False, True):
+                    with self.subTest(ffmpeg=executable, container=container, audio=with_audio):
+                        options = dict(run=uuid.uuid4().hex, prefix="replacement/frame-count", container=container)
+                        for index, count in enumerate((124, 79), 1):
+                            frames = torch.zeros((count, 32, 48, 3))
+                            frames[-1] = 1
+                            audio = ({"waveform": torch.zeros((1, 2, round(count * 32000 / 24))),
+                                      "sample_rate": 32000} if with_audio else None)
+                            video = InputImpl.VideoFromComponents(Types.VideoComponents(
+                                images=frames, audio=audio, frame_rate=Fraction(24)))
+                            with patch("replacement_test_plugin.replacement.media.ffmpeg", return_value=executable):
+                                result = save_segment(video, index, 2, **options)
+                            saved = self.root / "output" / result["saved_segment"]["subfolder"] / result["saved_segment"]["filename"]
+                            images = InputImpl.VideoFromFile(str(saved)).get_components().images
+                            self.assertEqual(len(images), count)
+                            self.assertGreater(float(images[-1].mean()), .95)
+                        merged = self.root / "output" / result["merged"]["subfolder"] / result["merged"]["filename"]
+                        images = InputImpl.VideoFromFile(str(merged)).get_components().images
+                        self.assertEqual(len(images), 203)
+                        self.assertGreater(float(images[123].mean()), .95)
+                        self.assertLess(float(images[124].mean()), .05)
+                        self.assertGreater(float(images[-1].mean()), .95)
 
     def test_llm_request_includes_task_owned_images(self):
         with patch("replacement_test_plugin.llm_connection.get_store") as store, patch("replacement_test_plugin.llm_connection.resolve_model",return_value=({},"vision")), patch("replacement_test_plugin.llm_connection.request_json",return_value={"choices":[{"message":{"content":"done"}}]}) as request:
