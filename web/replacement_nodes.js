@@ -66,6 +66,41 @@ function setupSave(node) {
   const widgets=new Map(node.widgets.map(w=>[w.name,w]));
   const prefix=widgets.get("filename_prefix");
   prefix.serializeValue=()=>applyTextReplacements(app,prefix.value);
+  node.convertWidgetToInput(prefix);
+  let prefixControl;
+  function prefixSocket() {
+    const socket=node.inputs.find(input=>input.name==="filename_prefix");
+    delete socket.widget;
+    socket.label=" ";
+    return socket;
+  }
+  prefixSocket();
+  const connectionPos=node.getConnectionPos;
+  node.getConnectionPos=function(isInput,index,out) {
+    const position=connectionPos.call(this,isInput,index,out);
+    if(isInput && this.inputs[index]?.name==="filename_prefix" && !this.flags.collapsed && prefixControl?.isConnected) {
+      const rect=prefixControl.getBoundingClientRect(), canvas=app.canvas;
+      if(rect.height && canvas) {
+        position[0]=this.pos[0];
+        position[1]=(rect.top+rect.height/2-canvas.canvas.getBoundingClientRect().top)/canvas.ds.scale-canvas.ds.offset[1];
+      }
+    }
+    return position;
+  };
+  const inputPos=node.getInputPos;
+  node.getInputPos=function(index) {
+    return this.inputs[index]?.name==="filename_prefix" ? this.getConnectionPos(true,index) : inputPos.call(this,index);
+  };
+  const measureSlots=node._measureSlots;
+  node._measureSlots=function() {
+    const bounds=measureSlots.apply(this,arguments);
+    if(bounds) {
+      // The directory socket belongs inside the panel; it must not push the panel below itself.
+      const topSlots=[...this._concreteInputs.filter(slot=>slot.name!=="filename_prefix" && !slot.widget),...this._concreteOutputs];
+      bounds[3]=Math.max(...topSlots.map(slot=>slot.boundingRect[1]+slot.boundingRect[3]))-bounds[1];
+    }
+    return bounds;
+  };
   for(const name of ["filename_prefix","container","fps","crf","save_full"]) hideWidget(widgets.get(name));
   function change(name,value) {widgets.get(name).value=value;node.setDirtyCanvas(true,true);}
   function renderControls() {
@@ -73,7 +108,13 @@ function setupSave(node) {
     row.append(field("格式 · H.264",select(["mp4","mkv"],widgets.get("container").value,v=>change("container",v),"保存视频格式")),
       field("帧率",input(widgets.get("fps").value,v=>change("fps",v),{min:1,max:120,step:1,label:"保存视频帧率"})),
       field("质量 CRF",input(widgets.get("crf").value,v=>change("crf",v),{min:0,max:51,step:1,label:"保存视频质量 CRF"})));
-    controls.replaceChildren(field("保存目录 / 前缀",input(widgets.get("filename_prefix").value,v=>change("filename_prefix",v),{type:"text",label:"保存目录与前缀"})),row,
+    prefixControl=input(prefix.value,v=>change("filename_prefix",v),{type:"text",label:"保存目录与前缀"});
+    prefixControl.disabled=prefixSocket().link!=null;
+    if(prefixControl.disabled) {
+      prefixControl.value="由连线提供保存目录";
+      prefixControl.title="断开连线后可手动填写保存目录 / 前缀";
+    }
+    controls.replaceChildren(field("保存目录 / 前缀",prefixControl),row,
       toggle("保存完整视频",widgets.get("save_full").value,v=>change("save_full",v)));
   }
   root.append(video,heading,clips,controls);renderControls();
@@ -93,6 +134,8 @@ function setupSave(node) {
   node.onExecuted=function(data){executed?.apply(this,arguments);const saved=data.replacement_saved?.[0];if(saved){node.properties.replacementPreview=saved;render(saved);}};
   const configured=node.onConfigure;
   node.onConfigure=function(){configured?.apply(this,arguments);renderControls();if(node.properties.replacementPreview)render(node.properties.replacementPreview);};
+  const connectionsChanged=node.onConnectionsChange;
+  node.onConnectionsChange=function(){connectionsChanged?.apply(this,arguments);renderControls();node.setDirtyCanvas(true,true);};
   const removed=node.onRemoved;
   node.onRemoved=function(){root.querySelectorAll("video").forEach(v=>{v.pause();v.removeAttribute("src");v.load();});return removed?.apply(this,arguments);};
 }

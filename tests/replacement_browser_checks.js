@@ -216,11 +216,33 @@ async (basePage) => {
     check(await page.locator(".yr-save>video").evaluate(v=>new URL(v.src).searchParams.get("filename"))===saved.segments[0].filename,"clicking segment changes main preview");
     await page.locator(".yr-save-heading").getByRole("button",{name:"返回完整视频",exact:true}).click();
     check(await page.locator(".yr-save>video").evaluate(v=>new URL(v.src).searchParams.get("filename"))===saved.merged.filename,"heading return icon restores complete video");
+    const socketPositions=await page.evaluate(()=>{
+      const {app}=window.comfyAPI.app, {node,save}=window.replacementTest;
+      app.canvas.draw(true,true);
+      const bounds=app.canvas.canvas.getBoundingClientRect(), {scale,offset}=app.canvas.ds;
+      const screen=point=>({x:bounds.left+(point[0]+offset[0])*scale,y:bounds.top+(point[1]+offset[1])*scale});
+      return {source:screen(node.getConnectionPos(false,9)),target:screen(save.getInputPos(save.findInputSlot("filename_prefix")))};
+    });
+    await page.mouse.move(socketPositions.source.x,socketPositions.source.y);
+    await page.mouse.down();
+    await page.mouse.move(socketPositions.target.x,socketPositions.target.y,{steps:12});
+    await page.mouse.up();
+    await page.waitForFunction(()=>{
+      const {save}=window.replacementTest;
+      return save.inputs[save.findInputSlot("filename_prefix")].link!=null;
+    });
     const serial=await page.evaluate(async()=>{
       const {app}=window.comfyAPI.app;
       const {node,save}=window.replacementTest;
       const directorySlot=save.findInputSlot("filename_prefix");
+      if(directorySlot<0 || save.inputs[directorySlot].widget)throw new Error("save directory has a visible native STRING socket");
+      const rect=document.querySelector('.yr-save [aria-label="保存目录与前缀"]').getBoundingClientRect();
+      const position=save.getInputPos(directorySlot), connection=save.getConnectionPos(true,directorySlot);
+      const screenY=app.canvas.canvas.getBoundingClientRect().top+(position[1]+app.canvas.ds.offset[1])*app.canvas.ds.scale;
+      if(Math.abs(screenY-(rect.top+rect.height/2))>2)throw new Error("save directory socket aligns with the text input");
+      if(Math.abs(position[1]-connection[1])>1)throw new Error("save directory drawing and link positions agree");
       node.connect(9,save,directorySlot);
+      if(!document.querySelector('.yr-save [aria-label="保存目录与前缀"]').disabled)throw new Error("linked save directory disables manual editing");
       let prefix=(await app.graphToPrompt()).output[save.id].inputs.filename_prefix;
       if(prefix[0]!==String(node.id)||prefix[1]!==9)throw new Error("media configurator project directory reaches save node");
       const parser=LiteGraph.createNode("YtonReplacementSegment");
@@ -231,6 +253,10 @@ async (basePage) => {
       const graph=app.graph.serialize();
       await app.loadGraphData(graph);
       if(app.graph.getNodeById(save.id).inputs[directorySlot].link==null)throw new Error("project directory link survives workflow reload");
+      const restored=app.graph.getNodeById(save.id);
+      restored.disconnectInput(directorySlot);
+      if(document.querySelector('.yr-save [aria-label="保存目录与前缀"]').disabled)throw new Error("disconnecting restores manual directory editing");
+      app.graph.getNodeById(parser.id).connect(9,restored,directorySlot);
       return graph;
     });
     await page.locator(".yr-image-slot img").nth(4).waitFor();
