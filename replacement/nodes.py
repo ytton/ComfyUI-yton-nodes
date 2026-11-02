@@ -1,0 +1,117 @@
+"""Native V3 nodes for replacement configuration and loop output."""
+
+import json
+
+from comfy_api.latest import io
+
+from ..llm_connection import LLMConnection
+from .media import image_tensors, reference_images, segment_video
+from .prompts import optimize, prompt_slot, resolve_references, signature, source_prompt
+from .save import execution_state, save_segment
+
+
+DEFAULT_CONFIG = {
+    "video": "", "images": [""] * 6, "original": "将 <Video 1> 中的主体替换为 <Picture 1> 中的角色，动作与镜头沿用原视频。",
+    "prompts": {}, "optimized": {}, "shared": False, "auto": False,
+    "ratio": "原视频", "resolution": "480p", "image_scale": 1,
+    "plan": {"enabled": False, "mode": "MiniMax H3", "frames": 175, "seconds": 5,
+             "overlap": 22, "output": "完整片段", "start": 0, "end": 0},
+    "crop": None, "compression": {"fps": 24, "crf": 18, "max_edge": 0,
+                                    "width": 0, "height": 0, "resize_method": "pad"},
+}
+
+
+def parse_config(text):
+    value = json.loads(text)
+    if not isinstance(value, dict) or len(value["images"]) != 6:
+        raise ValueError("人物替换配置需要一个视频和六个图片槽位。")
+    return value
+
+
+class YtonLLMConnector(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="YtonLLMConnector", display_name="LLM 通用连接器", category="yton-nodes/AI",
+            description="配置服务、模型和通用调用参数；任务指令由连接它的节点提供。",
+            inputs=[io.String.Input("model_ref", default="", socketless=True),
+                    io.Float.Input("temperature", default=0.7, min=0, max=2, step=0.05),
+                    io.Int.Input("max_tokens", default=4096, min=128, max=131072, step=128)],
+            outputs=[io.Custom("YTON_LLM").Output(display_name="LLM")])
+
+    @classmethod
+    def execute(cls, model_ref, temperature, max_tokens):
+        return io.NodeOutput(LLMConnection(model_ref, temperature, max_tokens))
+
+
+class YtonCharacterReplacement(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="YtonCharacterReplacement", display_name="人物替换配置器", category="yton-nodes/媒体",
+            description="一个视频、六张参考图；按 0 起始索引输出当前片段。启用分段计划后，时长随计划显示为帧数。",
+            inputs=[io.Int.Input("index", default=0, min=0, force_input=True, display_name="当前索引"),
+                    io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
+                    io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
+            outputs=[io.String.Output(display_name="提示词"), io.Video.Output(display_name="视频列表", is_output_list=True),
+                     io.Image.Output(display_name="图片列表", is_output_list=True),
+                     io.Int.Output(display_name="当前视频"), io.Int.Output(display_name="视频总段数")],
+            hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
+
+    @classmethod
+    def fingerprint_inputs(cls, **inputs):
+        # Auto optimization runs once per queued execution, not once per browser session.
+        return float("nan")
+
+    @classmethod
+    def execute(cls, index, config, llm=None):
+        config = parse_config(config)
+        video, plan = segment_video(config, index)
+        images = reference_images(config)
+        slot = prompt_slot(config, index)
+        source_signature = signature(config, index)
+        if config["auto"]:
+            if llm is None:
+                raise ValueError("自动优化已开启，请连接【LLM 通用连接器】。")
+            cache = execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)["prompts"]
+            key = (slot, source_signature, llm)
+            if key not in cache:
+                cache[key] = optimize(llm, config, index, video, images)
+            text = cache[key]
+        else:
+            result = config["optimized"].get(slot, {})
+            text = result["text"] if result.get("signature") == source_signature else source_prompt(config, index)
+        text = resolve_references(text, config)
+        return io.NodeOutput(text, [video], image_tensors(images), index + 1, len(plan["segments"]),
+                             ui={"replacement_prompt": [{"index": index, "slot": slot, "text": text,
+                                  "signature": source_signature, "frames": plan["segments"][index]["end"] - plan["segments"][index]["start"],
+                                  "total": len(plan["segments"])}]})
+
+
+class YtonReplacementVideoSave(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(node_id="YtonReplacementVideoSave", display_name="人物替换 · 循环视频保存", category="yton-nodes/媒体",
+            description="每轮保存片段；全部片段完成后按序合并。关闭完整视频保存时，合并视频仅放临时目录供预览。",
+            inputs=[io.Video.Input("video", display_name="本段视频"),
+                    io.Int.Input("current", default=1, min=1, force_input=True, display_name="当前视频"),
+                    io.Int.Input("total", default=1, min=1, force_input=True, display_name="视频总段数"),
+                    io.String.Input("filename_prefix", default="replacement/video", display_name="保存目录 / 前缀"),
+                    io.Combo.Input("container", options=["mp4", "mkv"], default="mp4", display_name="格式 · H.264"),
+                    io.Int.Input("fps", default=24, min=1, max=120, display_name="保存帧率"),
+                    io.Int.Input("crf", default=18, min=0, max=51, display_name="质量 CRF"),
+                    io.Boolean.Input("save_full", default=True, display_name="保存完整视频")],
+            outputs=[io.Video.Output(display_name="本段视频", tooltip="保存完成后输出本段视频，可接循环结束节点，确保每轮先完成保存。")],
+            is_output_node=True, hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
+
+    @classmethod
+    def fingerprint_inputs(cls, **inputs):
+        return float("nan")
+
+    @classmethod
+    def execute(cls, video, current, total, filename_prefix, container, fps, crf, save_full):
+        state = execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)
+        result = save_segment(video, current, total, run=state["run"], prefix=filename_prefix,
+                              container=container, fps=fps, crf=crf, save_full=save_full)
+        return io.NodeOutput(video, ui={"replacement_saved": [result]})
+
+
+CLASSES = [YtonLLMConnector, YtonCharacterReplacement, YtonReplacementVideoSave]

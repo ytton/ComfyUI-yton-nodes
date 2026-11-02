@@ -1,0 +1,739 @@
+{
+  "id": "9020f8ef-84d2-47be-b72e-15deb32043bf",
+  "revision": 0,
+  "last_node_id": 8,
+  "last_link_id": 13,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "PrimitiveInt",
+      "pos": [
+        30,
+        90
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "数值",
+          "name": "value",
+          "type": "INT",
+          "widget": {
+            "name": "value"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "整数",
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "title": "初始索引 · 从 0 开始",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.43.1",
+        "Node name for S&R": "PrimitiveInt"
+      },
+      "widgets_values": [
+        0,
+        "fixed"
+      ],
+      "widgets_values_named": {
+        "value": 0,
+        "control_after_generate": "fixed"
+      }
+    },
+    {
+      "id": 2,
+      "type": "WhileLoopStartPGS",
+      "pos": [
+        30,
+        260
+      ],
+      "size": [
+        276.3150390625,
+        98
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "initial_value0",
+          "name": "initial_value0",
+          "shape": 7,
+          "type": "*",
+          "link": 1
+        },
+        {
+          "localized_name": "condition",
+          "name": "condition",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "condition"
+          },
+          "link": null
+        },
+        {
+          "name": "initial_value1",
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "flow",
+          "name": "flow",
+          "shape": 5,
+          "type": "FLOW_CONTROL",
+          "links": [
+            9
+          ]
+        },
+        {
+          "localized_name": "value0",
+          "name": "value0",
+          "type": "*",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "value1",
+          "type": "*",
+          "links": null
+        }
+      ],
+      "title": "外部循环 · 开始",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "WhileLoopStartPGS"
+      },
+      "widgets_values": [
+        true
+      ],
+      "widgets_values_named": {
+        "condition": true
+      },
+      "color": "#7C3AED",
+      "bgcolor": "#1a1225"
+    },
+    {
+      "id": 3,
+      "type": "YtonLLMConnector",
+      "pos": [
+        30,
+        900
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "model_ref",
+          "name": "model_ref",
+          "type": "STRING",
+          "widget": {
+            "name": "model_ref"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "temperature",
+          "name": "temperature",
+          "type": "FLOAT",
+          "widget": {
+            "name": "temperature"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "max_tokens",
+          "name": "max_tokens",
+          "type": "INT",
+          "widget": {
+            "name": "max_tokens"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "LLM",
+          "name": "LLM",
+          "type": "YTON_LLM",
+          "links": [
+            3
+          ]
+        }
+      ],
+      "title": "LLM 通用连接器 · 优化时使用",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ver": "658bb0321a1d0a50bddf286b39836401cc0e6ce2",
+        "Node name for S&R": "YtonLLMConnector"
+      },
+      "widgets_values": [
+        "",
+        0.7,
+        4096
+      ],
+      "widgets_values_named": {
+        "model_ref": "",
+        "temperature": 0.7,
+        "max_tokens": 4096
+      }
+    },
+    {
+      "id": 4,
+      "type": "YtonCharacterReplacement",
+      "pos": [
+        430,
+        90
+      ],
+      "size": [
+        270,
+        138
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "当前索引",
+          "name": "index",
+          "type": "INT",
+          "link": 2
+        },
+        {
+          "localized_name": "LLM 连接器",
+          "name": "llm",
+          "shape": 7,
+          "type": "YTON_LLM",
+          "link": 3
+        },
+        {
+          "localized_name": "config",
+          "name": "config",
+          "type": "STRING",
+          "widget": {
+            "name": "config"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "提示词",
+          "name": "提示词",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "localized_name": "视频列表",
+          "name": "视频列表",
+          "shape": 6,
+          "type": "VIDEO",
+          "links": [
+            4
+          ]
+        },
+        {
+          "localized_name": "图片列表",
+          "name": "图片列表",
+          "shape": 6,
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "当前视频",
+          "name": "当前视频",
+          "type": "INT",
+          "links": [
+            5,
+            7,
+            11
+          ]
+        },
+        {
+          "localized_name": "视频总段数",
+          "name": "视频总段数",
+          "type": "INT",
+          "links": [
+            6,
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ver": "658bb0321a1d0a50bddf286b39836401cc0e6ce2",
+        "Node name for S&R": "YtonCharacterReplacement"
+      },
+      "widgets_values": [
+        "{\"video\":\"\",\"images\":[\"\",\"\",\"\",\"\",\"\",\"\"],\"original\":\"将 <Video 1> 中的主体替换为 <Picture 1> 中的角色，动作与镜头沿用原视频。\",\"prompts\":{},\"optimized\":{},\"shared\":false,\"auto\":false,\"ratio\":\"原视频\",\"resolution\":\"480p\",\"image_scale\":1,\"plan\":{\"enabled\":true,\"mode\":\"MiniMax H3\",\"frames\":175,\"seconds\":5,\"overlap\":22,\"output\":\"仅新增片段\",\"start\":0,\"end\":0},\"crop\":null,\"compression\":{\"fps\":24,\"crf\":18,\"max_edge\":0,\"width\":0,\"height\":0,\"resize_method\":\"pad\"}}"
+      ],
+      "widgets_values_named": {
+        "config": "{\"video\":\"\",\"images\":[\"\",\"\",\"\",\"\",\"\",\"\"],\"original\":\"将 <Video 1> 中的主体替换为 <Picture 1> 中的角色，动作与镜头沿用原视频。\",\"prompts\":{},\"optimized\":{},\"shared\":false,\"auto\":false,\"ratio\":\"原视频\",\"resolution\":\"480p\",\"image_scale\":1,\"plan\":{\"enabled\":true,\"mode\":\"MiniMax H3\",\"frames\":175,\"seconds\":5,\"overlap\":22,\"output\":\"仅新增片段\",\"start\":0,\"end\":0},\"crop\":null,\"compression\":{\"fps\":24,\"crf\":18,\"max_edge\":0,\"width\":0,\"height\":0,\"resize_method\":\"pad\"}}"
+      }
+    },
+    {
+      "id": 5,
+      "type": "YtonReplacementVideoSave",
+      "pos": [
+        1290,
+        90
+      ],
+      "size": [
+        270,
+        194
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "本段视频",
+          "name": "video",
+          "type": "VIDEO",
+          "link": 4
+        },
+        {
+          "localized_name": "当前视频",
+          "name": "current",
+          "type": "INT",
+          "link": 5
+        },
+        {
+          "localized_name": "视频总段数",
+          "name": "total",
+          "type": "INT",
+          "link": 6
+        },
+        {
+          "localized_name": "保存目录 / 前缀",
+          "name": "filename_prefix",
+          "type": "STRING",
+          "widget": {
+            "name": "filename_prefix"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "格式 · H.264",
+          "name": "container",
+          "type": "COMBO",
+          "widget": {
+            "name": "container"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "保存帧率",
+          "name": "fps",
+          "type": "INT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "质量 CRF",
+          "name": "crf",
+          "type": "INT",
+          "widget": {
+            "name": "crf"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "保存完整视频",
+          "name": "save_full",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "save_full"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "本段视频",
+          "name": "本段视频",
+          "type": "VIDEO",
+          "links": [
+            12
+          ]
+        }
+      ],
+      "title": "逐段保存 · 完成后合并",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "aux_id": "ytton/ComfyUI-yton-nodes",
+        "ver": "658bb0321a1d0a50bddf286b39836401cc0e6ce2",
+        "Node name for S&R": "YtonReplacementVideoSave"
+      },
+      "widgets_values": [
+        "replacement/video",
+        "mp4",
+        24,
+        18,
+        true
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "replacement/video",
+        "container": "mp4",
+        "fps": 24,
+        "crf": 18,
+        "save_full": true
+      }
+    },
+    {
+      "id": 6,
+      "type": "ComparePGS",
+      "pos": [
+        1290,
+        760
+      ],
+      "size": [
+        270,
+        78
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "a",
+          "name": "a",
+          "shape": 7,
+          "type": "*",
+          "link": 7
+        },
+        {
+          "localized_name": "b",
+          "name": "b",
+          "shape": 7,
+          "type": "*",
+          "link": 8
+        },
+        {
+          "localized_name": "comparison",
+          "name": "comparison",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "comparison"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "boolean",
+          "name": "boolean",
+          "type": "BOOLEAN",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "title": "还有下一段？",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "ComparePGS"
+      },
+      "widgets_values": [
+        "a < b"
+      ],
+      "widgets_values_named": {
+        "comparison": "a < b"
+      },
+      "color": "#7C3AED",
+      "bgcolor": "#1a1225"
+    },
+    {
+      "id": 7,
+      "type": "WhileLoopEndPGS",
+      "pos": [
+        1810,
+        90
+      ],
+      "size": [
+        276.3150390625,
+        118
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "flow",
+          "name": "flow",
+          "shape": 5,
+          "type": "FLOW_CONTROL",
+          "link": 9
+        },
+        {
+          "localized_name": "initial_value0",
+          "name": "initial_value0",
+          "shape": 7,
+          "type": "*",
+          "link": 11
+        },
+        {
+          "localized_name": "condition",
+          "name": "condition",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "condition"
+          },
+          "link": 10
+        },
+        {
+          "name": "initial_value1",
+          "type": "*",
+          "link": 12
+        },
+        {
+          "name": "initial_value2",
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "value0",
+          "name": "value0",
+          "type": "*",
+          "links": [
+            13
+          ]
+        },
+        {
+          "name": "value1",
+          "type": "*",
+          "links": null
+        },
+        {
+          "name": "value2",
+          "type": "*",
+          "links": null
+        }
+      ],
+      "title": "外部循环 · 结束",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "WhileLoopEndPGS"
+      },
+      "widgets_values": [
+        false
+      ],
+      "widgets_values_named": {
+        "condition": false
+      },
+      "color": "#7C3AED",
+      "bgcolor": "#1a1225"
+    },
+    {
+      "id": 8,
+      "type": "PreviewAny",
+      "pos": [
+        1810,
+        760
+      ],
+      "size": [
+        210,
+        122
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "源",
+          "name": "source",
+          "type": "*",
+          "link": 13
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "字符串",
+          "name": "STRING",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "循环完成 · 已处理段数",
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "cnr_id": "comfy-core",
+        "ver": "0.43.1",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "INT"
+    ],
+    [
+      2,
+      2,
+      1,
+      4,
+      0,
+      "INT"
+    ],
+    [
+      3,
+      3,
+      0,
+      4,
+      1,
+      "YTON_LLM"
+    ],
+    [
+      4,
+      4,
+      1,
+      5,
+      0,
+      "VIDEO"
+    ],
+    [
+      5,
+      4,
+      3,
+      5,
+      1,
+      "INT"
+    ],
+    [
+      6,
+      4,
+      4,
+      5,
+      2,
+      "INT"
+    ],
+    [
+      7,
+      4,
+      3,
+      6,
+      0,
+      "INT"
+    ],
+    [
+      8,
+      4,
+      4,
+      6,
+      1,
+      "INT"
+    ],
+    [
+      9,
+      2,
+      0,
+      7,
+      0,
+      "FLOW_CONTROL"
+    ],
+    [
+      10,
+      6,
+      0,
+      7,
+      2,
+      "BOOLEAN"
+    ],
+    [
+      11,
+      4,
+      3,
+      7,
+      1,
+      "INT"
+    ],
+    [
+      12,
+      5,
+      0,
+      7,
+      3,
+      "VIDEO"
+    ],
+    [
+      13,
+      7,
+      0,
+      8,
+      0,
+      "*"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.6,
+      "offset": [
+        40,
+        50
+      ]
+    }
+  },
+  "version": 0.4
+}
