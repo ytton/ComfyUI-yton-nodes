@@ -27,6 +27,9 @@ class OmniContextWorkflowTests(unittest.TestCase):
     def test_loop_carries_the_actual_final_video_and_skips_context_on_first_segment(self):
         self.assertEqual(self.source(624, 'video'), (527, 4))
         self.assertEqual(self.source(528, 'next_iteration_value'), (172, 0))
+        self.assertEqual(self.source(528, 'output_value'), (202, 0))
+        self.assertFalse(any(item.get('link') is not None for item in self.nodes[528]['inputs']
+                             if item['name'].startswith('terminations.')))
         for switch, original, continued in [(631, 550, 630), (633, 609, 632), (636, 562, 635)]:
             self.assertEqual(self.nodes[switch]['type'], 'ImpactConditionalBranch')
             self.assertEqual(self.source(switch, 'cond'), (527, 1))
@@ -62,7 +65,7 @@ class OmniContextWorkflowTests(unittest.TestCase):
         self.assertEqual(self.source(172, 'audio'), (562, 1))
         self.assertEqual(self.source(320, 'latent_image'), (550, 1))
         self.assertEqual(self.source(617, 'latent_image'), (608, 0))
-        self.assertFalse(any(n['type'] in ('H3-JoinMatch-PGS', 'H3-ContextBlend-PGS', 'H3-LoadLatent-PGS')
+        self.assertFalse(any(n['type'] in ('H3-JoinMatch-PGS', 'H3-ContextBlend-PGS', 'H3-LoadLatent-PGS', 'H3-SaveLatent-PGS')
                              for n in self.nodes.values()))
 
     def test_sampling_models_and_source_timeline_are_preserved(self):
@@ -76,8 +79,7 @@ class OmniContextWorkflowTests(unittest.TestCase):
         self.assertEqual(self.source(623, 'conditioning'), (622, 1))
         self.assertEqual(self.source(320, 'conditioning'), (623, 0))
         self.assertEqual(self.source(614, 'conditioning'), (633, 0))
-        for node_id in (605, 561):
-            self.assertIn('omni_context/', self.nodes[node_id]['widgets_values'][1])
+        self.assertTrue({421, 561, 605}.isdisjoint(self.nodes))
 
     def test_graph_has_no_dependency_cycles_and_links_match_both_sockets(self):
         visited, visiting = set(), set()

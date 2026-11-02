@@ -1,6 +1,6 @@
 {
   "id": "9db20753-f81d-4a30-a878-2389a693b443",
-  "revision": 0,
+  "revision": 1,
   "last_node_id": 637,
   "last_link_id": 1811,
   "nodes": [
@@ -336,91 +336,6 @@
         "format.codec": "h264",
         "format.codec.encoding": "auto",
         "codec": "auto"
-      }
-    },
-    {
-      "id": 421,
-      "type": "easy mathInt",
-      "pos": [
-        40,
-        1330
-      ],
-      "size": [
-        470,
-        130
-      ],
-      "flags": {},
-      "order": 49,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "a",
-          "localized_name": "a",
-          "name": "a",
-          "type": "INT",
-          "widget": {
-            "name": "a"
-          },
-          "link": 1705
-        },
-        {
-          "label": "b",
-          "localized_name": "b",
-          "name": "b",
-          "type": "INT",
-          "widget": {
-            "name": "b"
-          },
-          "link": null
-        },
-        {
-          "label": "操作",
-          "localized_name": "操作",
-          "name": "operation",
-          "type": "COMBO",
-          "widget": {
-            "name": "operation"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "label": "整数",
-          "localized_name": "整数",
-          "name": "INT",
-          "type": "INT",
-          "links": [
-            1735,
-            1743
-          ]
-        }
-      ],
-      "title": "保存序号 = 当前序号 + 1",
-      "properties": {
-        "cnr_id": "comfyui-easy-use",
-        "ver": "b0b47ca1372117fce575d9e744655344ebff6bef",
-        "Node name for S&R": "easy mathInt",
-        "ue_properties": {
-          "widget_ue_connectable": {
-            "a": true,
-            "b": true,
-            "operation": true
-          },
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        },
-        "h3_pgs_key": "421"
-      },
-      "widgets_values": [
-        0,
-        1,
-        "add"
-      ],
-      "widgets_values_named": {
-        "a": 0,
-        "b": 1,
-        "operation": "add"
       }
     },
     {
@@ -1076,7 +991,6 @@
           "name": "output",
           "type": "LATENT",
           "links": [
-            1742,
             1744
           ]
         },
@@ -1639,7 +1553,6 @@
           "name": "iteration_index",
           "type": "INT",
           "links": [
-            1705,
             1739
           ]
         },
@@ -1740,25 +1653,10 @@
           "link": 1811
         },
         {
-          "localized_name": "termination0",
           "name": "terminations.termination0",
-          "shape": 7,
           "type": "*",
-          "link": 1721
-        },
-        {
-          "localized_name": "termination1",
-          "name": "terminations.termination1",
-          "shape": 7,
-          "type": "*",
-          "link": 1722
-        },
-        {
-          "localized_name": "termination2",
-          "name": "terminations.termination2",
-          "shape": 7,
-          "type": "*",
-          "link": null
+          "link": null,
+          "shape": 7
         },
         {
           "localized_name": "accumulate",
@@ -2032,80 +1930,6 @@
       },
       "color": "#322",
       "bgcolor": "#533"
-    },
-    {
-      "id": 561,
-      "type": "H3-SaveLatent-PGS",
-      "pos": [
-        4700,
-        1930
-      ],
-      "size": [
-        350,
-        150
-      ],
-      "flags": {},
-      "order": 51,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "latent",
-          "name": "latent",
-          "type": "LATENT",
-          "link": 1734
-        },
-        {
-          "localized_name": "clip_index",
-          "name": "clip_index",
-          "type": "INT",
-          "widget": {
-            "name": "clip_index"
-          },
-          "link": 1735
-        },
-        {
-          "localized_name": "latent_dir",
-          "name": "latent_dir",
-          "type": "STRING",
-          "widget": {
-            "name": "latent_dir"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "latent_path",
-          "name": "latent_path",
-          "type": "STRING",
-          "links": [
-            1722
-          ]
-        }
-      ],
-      "title": "保存本段 · 二采 Latent",
-      "properties": {
-        "Node name for S&R": "H3-SaveLatent-PGS",
-        "ue_properties": {
-          "widget_ue_connectable": {
-            "clip_index": true,
-            "latent_dir": true
-          },
-          "version": "8.0",
-          "input_ue_unconnectable": {}
-        },
-        "h3_pgs_key": "561"
-      },
-      "widgets_values": [
-        1,
-        "h3_pgs_traditional_omni_context/high"
-      ],
-      "widgets_values_named": {
-        "clip_index": 1,
-        "latent_dir": "h3_pgs_traditional_omni_context/high"
-      },
-      "color": "#432",
-      "bgcolor": "#653"
     },
     {
       "id": 562,
@@ -2840,75 +2664,6 @@
       ],
       "widgets_values_named": {
         "expression": "max(32, floor(a * 0.5 / 32) * 32)"
-      }
-    },
-    {
-      "id": 605,
-      "type": "H3-SaveLatent-PGS",
-      "pos": [
-        3200,
-        800
-      ],
-      "size": [
-        350,
-        150
-      ],
-      "flags": {},
-      "order": 50,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "latent",
-          "name": "latent",
-          "type": "LATENT",
-          "link": 1742
-        },
-        {
-          "localized_name": "clip_index",
-          "name": "clip_index",
-          "type": "INT",
-          "widget": {
-            "name": "clip_index"
-          },
-          "link": 1743
-        },
-        {
-          "localized_name": "latent_dir",
-          "name": "latent_dir",
-          "type": "STRING",
-          "widget": {
-            "name": "latent_dir"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "latent_path",
-          "name": "latent_path",
-          "type": "STRING",
-          "links": [
-            1721
-          ]
-        }
-      ],
-      "title": "保存本段 · 首采 Latent",
-      "properties": {
-        "Node name for S&R": "H3-SaveLatent-PGS",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "8.0"
-        },
-        "h3_pgs_key": "saveLow"
-      },
-      "widgets_values": [
-        1,
-        "h3_pgs_traditional_omni_context/low"
-      ],
-      "widgets_values_named": {
-        "clip_index": 1,
-        "latent_dir": "h3_pgs_traditional_omni_context/low"
       }
     },
     {
@@ -3691,8 +3446,7 @@
           "type": "LATENT",
           "links": [
             1700,
-            1702,
-            1734
+            1702
           ]
         }
       ],
@@ -3908,7 +3662,7 @@
         }
       },
       "widgets_values": [
-        "# 编码后释放 TE\n\n两套参考与上下文先编码完成，再释放 TE，随后进行首采、放大和二采。\n\n首采与二采不做 Latent 接缝数值对齐；保存各采样器的 Latent 供独立实验使用，接续直接使用最终 VIDEO。\n\n下一段看到的是修脸、裁重叠和颜色匹配后的实际成片。"
+        "# 编码后释放 TE\n\n两套参考与上下文先编码完成，再释放 TE，随后进行首采、放大和二采。\n\n循环直接把最终 VIDEO 传给下一段，包含修脸、裁重叠和颜色匹配后的实际画面与音频。"
       ],
       "widgets_values_named": {
         "text": "# 编码集中完成，再采样\n\n先完成首采与二采两套参考编码，再释放 TE；主模型随后连续完成首采、传统放大和二采。释放 TE 经过 ComfyUI 模型管理器，不清空全部模型。\n\n首采读 low，二采读 high。视频上下文 22 帧 / 音频 18 帧；后续段裁去重叠。高分 Latent 在修脸前保存，修脸输出不回编码进接续缓存。\n\n本副本使用独立缓存目录。开始新视频时，循环序号从 0 开始。"
@@ -4992,14 +4746,6 @@
       "VIDEO"
     ],
     [
-      1705,
-      527,
-      0,
-      421,
-      0,
-      "INT"
-    ],
-    [
       1706,
       636,
       0,
@@ -5120,22 +4866,6 @@
       "VIDEO"
     ],
     [
-      1721,
-      605,
-      0,
-      528,
-      2,
-      "STRING"
-    ],
-    [
-      1722,
-      561,
-      0,
-      528,
-      3,
-      "STRING"
-    ],
-    [
       1723,
       313,
       1,
@@ -5224,22 +4954,6 @@
       "INT"
     ],
     [
-      1734,
-      617,
-      1,
-      561,
-      0,
-      "LATENT"
-    ],
-    [
-      1735,
-      421,
-      0,
-      561,
-      1,
-      "INT"
-    ],
-    [
       1736,
       618,
       0,
@@ -5285,22 +4999,6 @@
       1,
       603,
       0,
-      "INT"
-    ],
-    [
-      1742,
-      320,
-      0,
-      605,
-      0,
-      "LATENT"
-    ],
-    [
-      1743,
-      421,
-      0,
-      605,
-      1,
       "INT"
     ],
     [
@@ -5916,12 +5614,12 @@
     },
     {
       "id": 27,
-      "title": "06 二采与 Latent 保存",
+      "title": "06 二采 · SA Solver / 2 步",
       "bounding": [
         4660,
         300,
         430,
-        1850
+        1550
       ],
       "color": "#665239",
       "flags": {},
