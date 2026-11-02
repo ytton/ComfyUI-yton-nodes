@@ -10,7 +10,7 @@ from aiohttp import web
 
 from ..llm_connection import LLMConnection
 from ..prompt_optimizer import discover_models, get_store
-from .media import contact_sheet, plan_for, reference_images, segment_video
+from .media import contact_sheet, output_size, plan_for, reference_images, segment_video
 from .save import preview
 from .prompts import SYSTEM, load_skill, optimize, save_skill, signature
 
@@ -54,7 +54,8 @@ def install():
         config = await request.json()
         def operation():
             metadata, result = plan_for(config)
-            return {"metadata": metadata, "plan": result}
+            width, height = output_size(config, metadata)
+            return {"metadata": metadata, "plan": result, "output_size": {"width": width, "height": height}}
         return await respond(operation)
 
     @routes.get("/yton/replacement/skill")

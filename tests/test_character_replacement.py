@@ -135,6 +135,7 @@ class ReplacementTests(unittest.TestCase):
     def test_original_ratio_resolution_uses_short_edge(self):
         config = self.config()
         config["ratio"] = "原视频"
+        config["compression"]["max_edge"] = 0
         for resolution, portrait, landscape, square in (
             ("480p", (480, 864), (864, 480), (480, 480)),
             ("720p", (704, 1280), (1280, 704), (704, 704)),
@@ -153,11 +154,25 @@ class ReplacementTests(unittest.TestCase):
         config = self.config()
         config.update(video="portrait.mp4", ratio="原视频", resolution="1080p")
         config["compression"]["max_edge"] = 0
-        output = self.node().execute(0, json.dumps(config))
-        self.assertEqual(output.result[3:6], (1088, 1920, 6))
-        video = output.result[1][0]
-        self.assertEqual(video.get_dimensions(), (1088, 1920))
-        self.assertEqual(tuple(video.get_components().images.shape), (6, 1920, 1088, 3))
+        for ratio, size in (("原视频", (1088, 1920)), ("9:16", (1088, 1920)), ("16:9", (1920, 1088))):
+            with self.subTest(ratio=ratio):
+                config["ratio"] = ratio
+                output = self.node().execute(0, json.dumps(config))
+                self.assertEqual(output.result[3:6], (*size, 6))
+                video = output.result[1][0]
+                self.assertEqual(video.get_dimensions(), size)
+                self.assertEqual(tuple(video.get_components().images.shape), (6, size[1], size[0], 3))
+
+    def test_output_size_includes_custom_dimensions_and_max_edge(self):
+        config = self.config()
+        metadata = {"width": 1080, "height": 1918}
+        config.update(ratio="9:16", resolution="1080p")
+        config["compression"]["max_edge"] = 0
+        self.assertEqual(output_size(config, metadata), (1088, 1920))
+        config["compression"]["max_edge"] = 160
+        self.assertEqual(output_size(config, metadata), (96, 160))
+        config["compression"].update(width=768, height=1024, max_edge=0)
+        self.assertEqual(output_size(config, metadata), (768, 1024))
 
     def test_project_directory_uses_source_video_name_for_every_segment(self):
         source = self.root / "input/引用视频/舞蹈参考.v1.mp4"

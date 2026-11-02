@@ -53,6 +53,27 @@ async (basePage) => {
     check(await page.locator(".yr-image-slot").count()===6,"six image slots");
     check(await page.locator(".yr-image-slot img").first().evaluate(e=>getComputedStyle(e).objectFit)==="contain","reference images use contain");
     check(await page.locator(".yr-duration").innerText().then(t=>t.includes("39 帧")),"H3 duration is read-only frames");
+    await page.evaluate(()=>{
+      const {node}=window.replacementTest,widget=node.widgets.find(w=>w.name==="config");
+      const config=JSON.parse(widget.value);window.replacementSizeConfig=structuredClone(config);
+      config.compression.max_edge=0;config.compression.width=608;config.compression.height=1088;
+      widget.value=JSON.stringify(config);node.onConfigure();
+    });
+    const size=page.getByLabel("输出尺寸",{exact:true});
+    await page.getByRole("button",{name:"1080p",exact:true}).click();
+    await page.getByRole("button",{name:"9:16",exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('.yr-output-size')?.textContent==="宽 1088 × 高 1920");
+    check(await size.innerText()==="宽 1088 × 高 1920","9:16 1080p shows aligned portrait output and clears custom dimensions");
+    await page.getByRole("button",{name:"16:9",exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('.yr-output-size')?.textContent==="宽 1920 × 高 1088");
+    await page.getByRole("button",{name:"720p",exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('.yr-output-size')?.textContent==="宽 1280 × 高 704");
+    check(await page.getByRole("button",{name:"1:1",exact:true}).count()===0,"ratio options are original, portrait and landscape");
+    await page.evaluate(()=>{
+      const {node}=window.replacementTest;
+      node.widgets.find(w=>w.name==="config").value=JSON.stringify(window.replacementSizeConfig);node.onConfigure();
+    });
+    await page.waitForFunction(()=>document.querySelector('.yr-output-size')?.textContent==="宽 160 × 高 96");
     await page.getByRole("button",{name:"设置提示词优化 Skill",exact:true}).click();
     const skill=page.locator(".yr-skill-dialog");
     await page.waitForFunction(()=>document.querySelector('.yr-skill-content')?.value.startsWith("你是视频人物替换提示词编写助手"));

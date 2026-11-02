@@ -75,14 +75,18 @@ def output_size(config, metadata):
         if compression.get("resize_method") == "maintain aspect ratio":
             factor = min(width / (metadata["width"] * crop[2]), height / (metadata["height"] * crop[3]))
             width, height = metadata["width"] * crop[2] * factor, metadata["height"] * crop[3] * factor
-        return tuple(max(32, round(side / 32) * 32) for side in (width, height))
-    if ratio == "原视频":
+    elif ratio == "原视频":
         short_edge = int(config.get("resolution", "480p").removesuffix("p"))
         width, height = ((short_edge * source_ratio, short_edge) if source_ratio >= 1
                          else (short_edge, short_edge / source_ratio))
-        return tuple(max(32, round(side / 32) * 32) for side in (width, height))
-    width, height, *_ = YtonResolutionSelector().get_resolution(
-        "MiniMax H3 (Video)", ratio, config.get("resolution", "480p"))
+    else:
+        width, height, *_ = YtonResolutionSelector().get_resolution(
+            "MiniMax H3 (Video)", ratio, config.get("resolution", "480p"))
+    width, height = [max(32, round(side / 32) * 32) for side in (width, height)]
+    edge = int(compression.get("max_edge", 0))
+    if edge > 0 and max(width, height) > edge:
+        scale = edge / max(width, height)
+        width, height = [max(32, round(side * scale / 32) * 32) for side in (width, height)]
     return width, height
 
 
@@ -100,10 +104,6 @@ def segment_video(config, index):
     fps = FPS if config["plan"]["enabled"] else int(settings.get("fps", FPS))
     if fps <= 0:
         raise ValueError("压缩帧率需要大于 0。")
-    edge = int(settings.get("max_edge", 0))
-    if edge > 0 and max(width, height) > edge:
-        scale = edge / max(width, height)
-        width, height = [max(32, round(side * scale / 32) * 32) for side in (width, height)]
     filters = []
     crop = config.get("crop")
     if crop:
