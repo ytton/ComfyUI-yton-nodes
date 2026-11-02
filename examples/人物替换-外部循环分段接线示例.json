@@ -256,6 +256,13 @@
           "links": null
         },
         {
+          "localized_name": "图片列表",
+          "name": "图片列表",
+          "shape": 6,
+          "type": "IMAGE",
+          "links": null
+        },
+        {
           "localized_name": "视频列表",
           "name": "视频列表",
           "shape": 6,
@@ -263,13 +270,6 @@
           "links": [
             4
           ]
-        },
-        {
-          "localized_name": "图片列表",
-          "name": "图片列表",
-          "shape": 6,
-          "type": "IMAGE",
-          "links": null
         },
         {
           "localized_name": "当前视频",
@@ -646,7 +646,7 @@
     [
       4,
       4,
-      1,
+      2,
       5,
       0,
       "VIDEO"

@@ -110,11 +110,11 @@ class ReplacementTests(unittest.TestCase):
         output=self.node().execute(0,json.dumps(config))
         self.assertEqual(len(output.result),5)
         self.assertIn("<Picture 2>",output.result[0])
-        self.assertEqual(len(output.result[1]),1)
-        self.assertEqual([tuple(i.shape) for i in output.result[2]],[(1,120,60,3),(1,45,120,3)])
+        self.assertEqual([tuple(i.shape) for i in output.result[1]],[(1,120,60,3),(1,45,120,3)])
+        self.assertEqual(len(output.result[2]),1)
         self.assertEqual(output.result[3:],(1,2))
         config["images"]=[""]*6
-        self.assertEqual(self.node().execute(0,json.dumps(config)).result[2],[])
+        self.assertEqual(self.node().execute(0,json.dumps(config)).result[1],[])
 
     def test_auto_shared_once_per_run_and_per_segment(self):
         config=self.config(); config.update(auto=True,shared=True)
@@ -159,7 +159,7 @@ class ReplacementTests(unittest.TestCase):
         prompt={
             "start":{"class_type":"WhileLoopStartPGS","inputs":{"condition":True,"initial_value0":0}},
             "config":{"class_type":"YtonCharacterReplacement","inputs":{"index":["start",1],"config":json.dumps(config)}},
-            "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["config",1],"current":["config",3],"total":["config",4],
+            "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["config",2],"current":["config",3],"total":["config",4],
                     "filename_prefix":"native-loop/video","container":"mp4","fps":24,"crf":18,"save_full":True}},
             "compare":{"class_type":"ComparePGS","inputs":{"a":["config",3],"b":["config",4],"comparison":"a < b"}},
             "end":{"class_type":"WhileLoopEndPGS","inputs":{"flow":["start",0],"condition":["compare",0],

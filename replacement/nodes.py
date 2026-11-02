@@ -51,8 +51,8 @@ class YtonCharacterReplacement(io.ComfyNode):
             inputs=[io.Int.Input("index", default=0, min=0, force_input=True, display_name="当前索引"),
                     io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
                     io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
-            outputs=[io.String.Output(display_name="提示词"), io.Video.Output(display_name="视频列表", is_output_list=True),
-                     io.Image.Output(display_name="图片列表", is_output_list=True),
+            outputs=[io.String.Output(display_name="提示词"), io.Image.Output(display_name="图片列表", is_output_list=True),
+                     io.Video.Output(display_name="视频列表", is_output_list=True),
                      io.Int.Output(display_name="当前视频"), io.Int.Output(display_name="视频总段数")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
 
@@ -80,7 +80,7 @@ class YtonCharacterReplacement(io.ComfyNode):
             result = config["optimized"].get(slot, {})
             text = result["text"] if result.get("signature") == source_signature else source_prompt(config, index)
         text = resolve_references(text, config)
-        return io.NodeOutput(text, [video], image_tensors(images), index + 1, len(plan["segments"]),
+        return io.NodeOutput(text, image_tensors(images), [video], index + 1, len(plan["segments"]),
                              ui={"replacement_prompt": [{"index": index, "slot": slot, "text": text,
                                   "signature": source_signature, "frames": plan["segments"][index]["end"] - plan["segments"][index]["start"],
                                   "total": len(plan["segments"])}]})

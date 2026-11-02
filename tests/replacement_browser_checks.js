@@ -33,7 +33,7 @@ async (basePage) => {
       llm.pos=[20,150];node.pos=[370,150];save.pos=[1160,150];
       node.widgets.find(w=>w.name==="config").value=JSON.stringify(config);node.onConfigure?.();
       llm.connect(0,node,node.inputs.findIndex(i=>i.name==="llm"));
-      for(const [output,input] of [[1,"video"],[3,"current"],[4,"total"]]) node.connect(output,save,save.inputs.findIndex(i=>i.name===input));
+      for(const [output,input] of [[2,"video"],[3,"current"],[4,"total"]]) node.connect(output,save,save.inputs.findIndex(i=>i.name===input));
       app.canvas.ds.scale=.9;app.canvas.ds.offset=[0,10];
       window.replacementTest={llm,node,save};
     },{defs,config});
