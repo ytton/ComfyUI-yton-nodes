@@ -15,6 +15,8 @@ import unittest
 from unittest.mock import patch
 import uuid
 
+import av
+
 PLUGIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN.parents[1]))
 sys.argv = [sys.argv[0], "--cpu"]
@@ -522,6 +524,8 @@ class ReplacementTests(unittest.TestCase):
                             with patch("replacement_test_plugin.replacement.media.ffmpeg", return_value=executable):
                                 result = save_segment(video, index, 2, **options)
                             saved = self.root / "output" / result["saved_segment"]["subfolder"] / result["saved_segment"]["filename"]
+                            with av.open(str(saved)) as opened:
+                                self.assertAlmostEqual(opened.duration / av.time_base, count / 24, delta=.03)
                             images = InputImpl.VideoFromFile(str(saved)).get_components().images
                             self.assertEqual(len(images), count)
                             self.assertGreater(float(images[-1].mean()), .95)
@@ -531,6 +535,27 @@ class ReplacementTests(unittest.TestCase):
                         self.assertGreater(float(images[123].mean()), .95)
                         self.assertLess(float(images[124].mean()), .05)
                         self.assertGreater(float(images[-1].mean()), .95)
+
+    def test_save_trims_long_audio_to_video_duration(self):
+        frames = torch.zeros((124, 32, 48, 3))
+        frames[-1] = 1
+        for audio_seconds in (1, 10):
+            for container in ("mp4", "mkv"):
+                with self.subTest(audio_seconds=audio_seconds, container=container):
+                    video = InputImpl.VideoFromComponents(Types.VideoComponents(images=frames, frame_rate=Fraction(24),
+                        audio={"waveform": torch.zeros((1, 2, 32000 * audio_seconds)), "sample_rate": 32000}))
+                    options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+                                   prefix="replacement/audio-duration", container=container)
+                    result = save_segment(video, 1, 1, **options)
+                    for record in (result["saved_segment"], result["merged"]):
+                        saved = self.root / "output" / record["subfolder"] / record["filename"]
+                        with av.open(str(saved)) as opened:
+                            self.assertAlmostEqual(opened.duration / av.time_base, 124 / 24, delta=.03)
+                            self.assertTrue(opened.streams.audio)
+                        restored = InputImpl.VideoFromFile(str(saved)).get_components()
+                        self.assertEqual(len(restored.images), 124)
+                        self.assertGreater(float(restored.images[-1].mean()), .95)
+                        self.assertAlmostEqual(restored.audio["waveform"].shape[-1] / restored.audio["sample_rate"], 124 / 24, delta=.04)
 
     def test_llm_request_includes_task_owned_images(self):
         with patch("replacement_test_plugin.llm_connection.get_store") as store, patch("replacement_test_plugin.llm_connection.resolve_model",return_value=({},"vision")), patch("replacement_test_plugin.llm_connection.request_json",return_value={"choices":[{"message":{"content":"done"}}]}) as request:
