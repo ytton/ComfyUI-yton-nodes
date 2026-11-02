@@ -165,7 +165,7 @@ async (basePage) => {
       return graph;
     });
     await page.locator(".yr-image-slot img").nth(4).waitFor();
-    check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").outputs.length===5,"exactly five configuration outputs");
+    check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").outputs.length===9,"configuration outputs include width, height, frame count and duration");
     check(!serial.nodes.find(n=>n.type==="YtonCharacterReplacement").widgets_values.includes(0),"index has no editable widget");
     check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").inputs.some(i=>i.name==="index" && i.type==="INT"),"index is a normal INT input");
     const geometry=await page.locator(".yton-replacement-panel:not(.yr-save):not(.yr-connector)").evaluate(panel=>({width:panel.clientWidth,scroll:panel.scrollWidth,overflow:getComputedStyle(panel.parentElement).overflow}));

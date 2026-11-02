@@ -289,6 +289,30 @@
             6,
             8
           ]
+        },
+        {
+          "localized_name": "宽度",
+          "name": "宽度",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "高度",
+          "name": "高度",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "长度（帧数）",
+          "name": "长度（帧数）",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "localized_name": "时长（秒）",
+          "name": "时长（秒）",
+          "type": "FLOAT",
+          "links": null
         }
       ],
       "properties": {
