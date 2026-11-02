@@ -42,7 +42,16 @@ async (basePage) => {
     check(await page.locator(".yr-image-slot").count()===6,"six image slots");
     check(await page.locator(".yr-image-slot img").first().evaluate(e=>getComputedStyle(e).objectFit)==="contain","reference images use contain");
     check(await page.locator(".yr-duration").innerText().then(t=>t.includes("39 帧")),"H3 duration is read-only frames");
-    await page.locator(".yr-row > button").last().click();
+    await page.getByRole("button",{name:"查看提示词优化 Skill",exact:true}).click();
+    const skill=page.locator(".yr-skill-dialog");
+    await page.waitForFunction(()=>document.querySelector('.yr-skill-content')?.value.startsWith("你是视频人物替换提示词编写助手"));
+    const actualSkill=await(await page.request.get("http://127.0.0.1:8190/yton/replacement/skill")).json();
+    check(await skill.getByLabel("实际使用的优化 Skill",{exact:true}).inputValue()===actualSkill.skill,"viewer shows actual backend skill");
+    check((await skill.innerText()).includes("等间隔抽取六帧"),"viewer explains input processing");
+    check(await skill.getByLabel("实际使用的优化 Skill",{exact:true}).evaluate(e=>e.readOnly),"skill is view-only");
+    await page.keyboard.press("Escape");
+    await skill.waitFor({state:"detached"});
+    await page.getByRole("button",{name:"使用当前段抽帧和参考图片优化提示词",exact:true}).click();
     await page.getByText("优化完成",{exact:true}).waitFor();
     check((await page.locator(".yr-pgs-rich-editor").innerText()).includes("【同步要求】"),"manual vision optimization returns prompt");
     await page.getByRole("button",{name:"编辑",exact:true}).click();

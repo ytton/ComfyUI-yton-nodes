@@ -3,6 +3,7 @@ import { api } from "../../../scripts/api.js";
 import { followNodeColours, mountNodePanel } from "./node_panel.js";
 import { button, el, field, hideWidget, input, mediaURL, request, select, toggle } from "./replacement_common.js";
 import { openReplacementEditor } from "./replacement_editor.js";
+import { openReplacementSkill } from "./replacement_skill.js";
 
 const kind = file => file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(file.name) ? "video"
   : file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(file.name) ? "image" : null;
@@ -29,7 +30,9 @@ export async function setupReplacementPanel(node) {
   const previous = button("‹", () => changeIndex(index-1), "上一段");
   const next = button("›", () => changeIndex(index+1), "下一段");
   const optimizeButton = button("✦ 优化", manualOptimize, "使用当前段抽帧和参考图片优化提示词");
-  heading.append(el("strong", "", "片段提示词"), optimizeButton);
+  const promptActions = el("div", "yr-prompt-actions");
+  promptActions.append(button("⚙", () => openReplacementSkill(root), "查看提示词优化 Skill"), optimizeButton);
+  heading.append(el("strong", "", "片段提示词"), promptActions);
   const navigation = el("div", "yr-segment-nav");
   navigation.append(previous, current, next);
   const switches = el("div", "yr-switches");
