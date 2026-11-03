@@ -227,7 +227,6 @@ function setupVideoConfig(node) {
   const widgets = Object.fromEntries(node.widgets.map(widget => [widget.name, widget]));
   widgets.duration.options.round = false;
   const spec = node.constructor.nodeData.input.required;
-  const presets = spec.resolution[1].yton_presets;
   const multipliers = spec.resolution[1].yton_h3_multipliers;
   const ratios = spec.aspect_ratio[1].options.filter(value => value !== "auto");
   for (const widget of node.widgets) {
@@ -336,17 +335,6 @@ function setupVideoConfig(node) {
     button.setAttribute("aria-label", `画面比例 ${ratio}`);
     button.replaceChildren(icon, element("span", "yton-ratio-text", ratio));
   }
-  const sizeInfo = element("div", "yton-h3-size-info");
-  ratioSection.append(sizeInfo);
-
-  const refSection = section("参考图尺寸");
-  refSection.title = "match：按输出像素面积缩小参考图；max：使用原生最大参考尺寸；自定义：输出倍率供下游参考图缩放使用。";
-  const refGroup = segmented("ref_image_size", ["max", "match", "自定义"], refSection);
-  refGroup.classList.add("yton-h3-ref-size");
-  const scaleInput = customChoice(refGroup, "ref_scale", "参考图缩放比例", () => {
-    if (widgets.ref_image_size.value !== "自定义") update("ref_image_size", "自定义");
-  });
-
   const durationSection = section("视频时长");
   const durationGroup = element("div", "yton-h3-segments yton-h3-durations");
   durationSection.append(durationGroup);
@@ -366,10 +354,6 @@ function setupVideoConfig(node) {
   const timeInfo = element("div", "yton-h3-size-info");
   durationSection.append(timeInfo);
 
-  function dimensions() {
-    const ratio = widgets.aspect_ratio.value === "auto" ? "16:9" : widgets.aspect_ratio.value;
-    return presets[`${ratio}|${widgets.resolution.value}`];
-  }
   function refresh() {
     if (refreshing || !panel.isConnected) return;
     refreshing = true;
@@ -381,13 +365,6 @@ function setupVideoConfig(node) {
     const automatic = widgets.aspect_ratio.value === "auto";
     autoRatio.classList.toggle("active", automatic);
     autoRatio.setAttribute("aria-pressed", String(automatic));
-    const customScale = widgets.ref_image_size.value === "自定义";
-    scaleInput.parentElement.classList.toggle("active", customScale);
-    if (document.activeElement !== scaleInput) scaleInput.value = customScale ? widgets.ref_scale.value : "";
-    const [width, height] = dimensions();
-    const output = node._h3VideoConfig;
-    sizeInfo.textContent = automatic && output ? `${output.width} × ${output.height} · ${output.aspect_ratio}` :
-      automatic ? "按连接图片匹配比例" : `${width} × ${height}`;
     const customDuration = node.properties.ytonDurationCustom || !durationOptions.some(([value]) => value === widgets.duration.value);
     durationInput.parentElement.classList.toggle("active", Boolean(customDuration));
     if (document.activeElement !== durationInput) durationInput.value = customDuration ? widgets.duration.value : "";
@@ -396,8 +373,7 @@ function setupVideoConfig(node) {
       button.classList.toggle("active", active); button.setAttribute("aria-pressed", String(active));
     }
     const frames = Math.ceil((Math.max(5, Math.ceil(widgets.duration.value * 24)) - 5) / 17) * 17 + 5;
-    const actualFrames = output?.frames || frames;
-    timeInfo.textContent = `${actualFrames} 帧 · 实际 ${((output?.seconds ?? actualFrames / 24)).toFixed(2)} 秒 · 24 fps`;
+    timeInfo.textContent = `${frames} 帧 · 实际 ${(frames / 24).toFixed(2)} 秒 · 24 fps`;
     node.setDirtyCanvas(true, true);
     refreshing = false;
   }
@@ -406,7 +382,6 @@ function setupVideoConfig(node) {
   const connections = node.onConnectionsChange;
   node.onConnectionsChange = function () {
     const result = connections?.apply(this, arguments);
-    node._h3VideoConfig = null;
     promptStatus.textContent = "";
     refresh();
     return result;
@@ -420,7 +395,6 @@ function setupVideoConfig(node) {
     executed?.apply(this, arguments);
     optimizationPending = false;
     optimizeButton.disabled = false;
-    if (data.h3_video_config?.[0]) node._h3VideoConfig = data.h3_video_config[0];
     const output = data.h3_video_prompt?.[0];
     if (output) {
       promptStatus.textContent = `${output.image_count} 张图片 · ${output.video_count} 段视频 · ${output.audio_count} 段音频${output.optimized ? " · 已优化" : ""}`;

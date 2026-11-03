@@ -118,9 +118,6 @@ class YtonH3VideoConfig(io.ComfyNode):
                                 for (ratio, preset), size in H3_RATIO_PRESETS.items() if preset in RESOLUTIONS},
                                 "yton_h3_multipliers": {preset: H3_MP_VALUES[preset] for preset in RESOLUTIONS}}),
                 io.Combo.Input("aspect_ratio", options=["auto", *ASPECT_RATIOS], default="16:9"),
-                io.Combo.Input("ref_image_size", options=["max", "match", "自定义"], default="match"),
-                io.Float.Input("ref_scale", default=0.5, min=0.05, max=4, step=0.05,
-                    tooltip="自定义模式按该倍率缩放原始参考图；可连接下游参考图缩放流程。"),
                 io.Float.Input("duration", default=5, min=0.1, max=150, step=0.01, round=False),
                 io.Image.Input("image", display_name="图片列表", optional=True, raw_link=True),
                 io.Video.Input("video", display_name="视频列表", optional=True, raw_link=True),
@@ -134,14 +131,12 @@ class YtonH3VideoConfig(io.ComfyNode):
                 io.Int.Output(display_name="高度"),
                 io.Int.Output(display_name="长度（帧数）"),
                 io.Float.Output(display_name="实际时长（秒）"),
-                io.String.Output(display_name="参考图尺寸"),
-                io.Float.Output(display_name="参考图缩放比例"),
             ],
         )
 
     @classmethod
-    def execute(cls, prompt, optimize_prompt, resolution, aspect_ratio, ref_image_size,
-                ref_scale, duration, image=None, video=None, audio=None, llm=None):
+    def execute(cls, prompt, optimize_prompt, resolution, aspect_ratio,
+                duration, image=None, video=None, audio=None, llm=None):
         def scalar(value, default=None):
             if isinstance(value, list):
                 return value[0] if value else default
@@ -158,8 +153,6 @@ class YtonH3VideoConfig(io.ComfyNode):
         optimize_prompt = bool(scalar(optimize_prompt, False))
         resolution = scalar(resolution)
         aspect_ratio = scalar(aspect_ratio)
-        ref_image_size = scalar(ref_image_size)
-        ref_scale = scalar(ref_scale)
         duration = scalar(duration)
         llm = scalar(llm)
         images = as_list(image)
@@ -170,10 +163,6 @@ class YtonH3VideoConfig(io.ComfyNode):
         width, height, *_ = YtonResolutionSelector().get_resolution(
             "MiniMax H3 (Video)", aspect_ratio, resolution,
         )
-        if ref_image_size not in ("max", "match", "自定义"):
-            raise ValueError("参考图尺寸选项无效。")
-        if not math.isfinite(ref_scale) or ref_scale <= 0:
-            raise ValueError("参考图缩放比例需要大于 0。")
         if not math.isfinite(duration) or duration <= 0:
             raise ValueError("时长需要大于 0 秒。")
         frames = align_frame_count(max(5, math.ceil(duration * 24)))
@@ -198,12 +187,7 @@ class YtonH3VideoConfig(io.ComfyNode):
             if not prompt:
                 raise ValueError("LLM 返回了空提示词，请检查模型是否支持当前参考素材。")
 
-        native_ref_size = ref_image_size
-        if ref_image_size == "自定义":
-            native_ref_size = "max"
-        config_info = {"width": width, "height": height, "frames": frames, "seconds": frames / 24,
-                       "aspect_ratio": aspect_ratio, "resolution": resolution}
         prompt_info = {"text": prompt, "optimized": optimize_prompt, "image_count": image_count,
                        "video_count": video_count, "audio_count": audio_count}
-        return io.NodeOutput(prompt, width, height, frames, frames / 24, native_ref_size, ref_scale,
-                             ui={"h3_video_config": [config_info], "h3_video_prompt": [prompt_info]})
+        return io.NodeOutput(prompt, width, height, frames, frames / 24,
+                             ui={"h3_video_prompt": [prompt_info]})
