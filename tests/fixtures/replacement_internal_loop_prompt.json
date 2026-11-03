@@ -1,0 +1,371 @@
+{
+  "10": {
+    "inputs": {
+      "max_resolution": 1024,
+      "jpeg_quality": 80,
+      "suppress_default_preview": true,
+      "preview_frames": 16,
+      "preview_fps": 24,
+      "tiny_vae": "taeh3.safetensors",
+      "model": [
+        "651:590",
+        0
+      ]
+    },
+    "class_type": "ModelPreviewOverrideKJ",
+    "_meta": {
+      "title": "H3 采样动态预览",
+      "cnr_id": "comfyui-kjnodes",
+      "ver": "d3cfe21625e5170126ce06fbfcfe1d88108688c3"
+    }
+  },
+  "22": {
+    "inputs": {
+      "prompt": [
+        "657",
+        2
+      ],
+      "width": [
+        "657",
+        3
+      ],
+      "height": [
+        "657",
+        4
+      ],
+      "mode": "复刻模式",
+      "duration": 5,
+      "ref_image_size": "match",
+      "sampling_mode": "二采",
+      "steps": 4,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "first_pass_scale": 0.7,
+      "upscale_model": "h3_upscaler_lms_v0.1.safetensors",
+      "second_sampler": "euler",
+      "second_steps": 2,
+      "second_sigma_start": 0.4,
+      "second_rho": 7,
+      "second_sigma_values": "0.631578922, 0.3158, 0.0000",
+      "second_ff_chunks": "沿用模型",
+      "face_refine": true,
+      "face_count": 1,
+      "face_sigmas": "0.631578922, 0.3158, 0",
+      "face_reverse": false,
+      "seed": 6747186174916,
+      "enable_context": [
+        "657",
+        11
+      ],
+      "context_auto_extend": 0,
+      "debug_keep_context": false,
+      "context_noise_strength": 0.1,
+      "context_color_strength": 0.8,
+      "model": [
+        "664",
+        0
+      ],
+      "clip": [
+        "652",
+        1
+      ],
+      "vae": [
+        "624:306",
+        0
+      ],
+      "audio_vae": [
+        "624:305",
+        0
+      ],
+      "image": [
+        "657",
+        0
+      ],
+      "video": [
+        "657",
+        1
+      ],
+      "previous_video": [
+        "657",
+        10
+      ]
+    },
+    "class_type": "YtonH3TraditionalOmniGenerate",
+    "_meta": {
+      "title": "H3 全模态生成",
+      "aux_id": "ytton/ComfyUI-yton-nodes",
+      "ver": "84ba449feb5f2a19290f803a35cdd3b712ac3b70"
+    }
+  },
+  "23": {
+    "inputs": {
+      "UNKNOWN": "null"
+    },
+    "_meta": {
+      "title": "",
+      "aux_id": "pekkAi-dev/ComfyUI-LegacyWidgetWidthFix",
+      "ver": "0eef569a67667111ceb87a00c246740ca7902ff3"
+    }
+  },
+  "59": {
+    "inputs": {
+      "config": "{\"video\":\"yton-replacement/韩国啦啦队队员 李珠珢最甜的32撞 一开始的笑太甜了.mp4\",\"images\":[\"yton-replacement/6a01e394-1539-4b36-a205-ca7786ff535f-canvas-generated-1.png\",\"\",\"\",\"\",\"\",\"\"],\"original\":\"将 <Video 1> 中的主体替换为 <Picture 1> 中的角色，动作与镜头沿用原视频。\",\"prompts\":{\"shared\":\"将 <Video 1> 中的主体替换为 <Picture 1> 中的角色，动作与镜头沿用原视频。\"},\"optimized\":{\"shared\":{\"text\":\"【主体替换】\\n将 <Video 1> 中居中跳舞的女性主体完整替换为 <Picture 1> 中的蓝发兽耳女性角色。<Picture 1> 为同一角色的面部特写、正面与背面外观参考，不是多个角色；使用左侧面部特写确定面容，中间与右侧视图确定服装、发型及尾巴结构。原视频主体在体育场看台前双腿分开站立，随节奏摆动身体、抬臂挥动、胸前交叉双臂、放下双手并转头微笑；替换后逐帧沿用原有表演与人物位置。保持原片竖屏、略低机位、头部至大腿附近的取景及原有裁切，不为展示角色全身而改变镜头。\\n\\n【角色外观】\\n准确还原 <Picture 1> 左侧特写中的精致面容、浅肤色、蓝灰色眼睛、银蓝色长发与头顶一对毛绒兽耳，保留发丝层次、侧边金属发饰及背后长发结构。穿着参考图中的蓝白纹样细肩带露腰上衣、白色高腰百褶短裙，佩戴古金色雕纹颈饰、红色宝石吊坠、臂饰及腕饰。保留背后连接自然的蓬松银蓝色长尾，遵循背面参考的位置与毛量，不将尾巴移到身体正前方。画面涉及脚踝时沿用参考图的金色踝饰与赤足设定。保持参考图细腻的三维幻想角色质感，结合原视频现场光照形成自然融合；面容、发色、兽耳、服装纹样和配饰全程一致。\\n\\n【背景】\\n保留 <Video 1> 原有体育场环境，包括上方钢结构顶棚与灯光、后方层叠看台及人群、画面中的竖直杆件和原有景深。不要使用 <Picture 1> 的浅灰色展示背景，不引入参考图的多视图排版。维持原视频背景构图、透视、虚实关系及镜头运动，人物轮廓与现场光线自然衔接，背景不因角色替换而拉伸或扭曲。\\n\\n【同步要求】\\n动作、身体律动、重心转换、双腿站位、抬手高度、交叉手臂的位置及手势严格对应 <Video 1>，保留原有转头方向、视线、微笑变化、嘴部开合与唇形时序。原视频的镜头角度、运动、人物占比和每个动作发生的时机保持不变，不新增舞步或表演。长发、兽耳、裙摆及尾巴随原动作产生适度、连贯的惯性响应，不额外改变舞蹈节奏；保持手臂与胸前饰品、发丝与肩部、尾巴与裙摆之间正确的前后遮挡。按原构图自然裁切兽耳或肢体，不为容纳新增特征而缩小人物。\\n\\n【负面提示】\\n避免身份漂移、面容闪变、变回原人物、发色或服装变化、兽耳与尾巴消失或增生；避免将参考图中间视图的空白面部复制到角色脸上，避免多视图人物同时出现。避免头身比例错误、四肢拉长、额外手指或肢体、关节扭曲、尾巴错误连接、饰品漂浮、头发与身体穿插。避免人物重影、原主体残留、轮廓光晕、边缘闪烁、模糊、过曝与肤色失真；避免背景透视畸变、看台拉伸、顶棚变形、竖杆弯曲。避免改变原镜头裁切、擅自变焦、动作增删、节奏变化、表情与唇形不同步。\",\"signature\":\"c87f095ec08ac6364ab1296e9a0a47159b93b78717268ebef8973caea7aa0597\"}},\"shared\":true,\"auto\":false,\"ratio\":\"9:16\",\"resolution\":\"1080p\",\"image_scale\":1,\"plan\":{\"enabled\":true,\"mode\":\"MiniMax H3\",\"frames\":260,\"seconds\":10.8333,\"overlap\":22,\"output\":\"完整片段\",\"start\":0,\"end\":18.966313},\"crop\":null,\"compression\":{\"fps\":24,\"crf\":18,\"max_edge\":0,\"width\":270,\"height\":480,\"resize_method\":\"maintain aspect ratio\"}}",
+      "loop_generation": true,
+      "selected_index": 0,
+      "llm": [
+        "63",
+        0
+      ]
+    },
+    "class_type": "YtonReplacementPlan",
+    "_meta": {
+      "title": "人物替换配置器 · 配置输出",
+      "aux_id": "ytton/ComfyUI-yton-nodes",
+      "ver": "ff66c5bd84df11ba7ca4cbf1ecbaaa4eef5ffa1f"
+    }
+  },
+  "60": {
+    "inputs": {
+      "filename_prefix": [
+        "657",
+        9
+      ],
+      "container": "mp4",
+      "fps": 24,
+      "crf": 18,
+      "reuse_existing": false,
+      "save_full": true,
+      "video": [
+        "22",
+        0
+      ],
+      "current": [
+        "657",
+        7
+      ],
+      "total": [
+        "657",
+        8
+      ]
+    },
+    "class_type": "YtonReplacementVideoSave",
+    "_meta": {
+      "title": "人物替换 · 循环视频保存",
+      "aux_id": "ytton/ComfyUI-yton-nodes",
+      "ver": "ff66c5bd84df11ba7ca4cbf1ecbaaa4eef5ffa1f"
+    }
+  },
+  "63": {
+    "inputs": {
+      "model_ref": "[\"ef44c24e-b117-448f-9c8c-79f71c30fdaf\",\"gpt-6.1-sol\"]",
+      "temperature": 0.7,
+      "max_tokens": 4096
+    },
+    "class_type": "YtonLLMConnector",
+    "_meta": {
+      "title": "LLM 通用连接器",
+      "aux_id": "ytton/ComfyUI-yton-nodes",
+      "ver": "f2e8736e69d025e40469fb6cb0af9ef3fafdfdbe"
+    }
+  },
+  "652": {
+    "inputs": {
+      "loras": "[{\"slot\":0,\"enabled\":true,\"lora\":\"H3\\\\功能\\\\minimax_h3_character_swap_v1.1_ref2va_fro.safetensors\",\"strength\":1}]",
+      "model": [
+        "10",
+        0
+      ],
+      "clip": [
+        "624:307",
+        0
+      ]
+    },
+    "class_type": "YtonWeightedLoraLoader",
+    "_meta": {
+      "title": "功能LoRA",
+      "aux_id": "ytton/ComfyUI-yton-nodes",
+      "ver": "f2e8736e69d025e40469fb6cb0af9ef3fafdfdbe"
+    }
+  },
+  "657": {
+    "inputs": {
+      "plan": [
+        "59",
+        0
+      ]
+    },
+    "class_type": "YtonReplacementSegment",
+    "_meta": {
+      "title": "人物替换配置解析器",
+      "aux_id": "ytton/ComfyUI-yton-nodes",
+      "ver": "b576e91cab2fb5025b23deae410257ce7eeec989"
+    }
+  },
+  "664": {
+    "inputs": {
+      "loras": "[{\"slot\":0,\"enabled\":true,\"lora\":\"H3\\\\加速\\\\pika_h3_flex_turbo_4step_fl2va.safetensors\",\"strength\":0.5}]",
+      "model": [
+        "652",
+        0
+      ]
+    },
+    "class_type": "YtonWeightedLoraLoader",
+    "_meta": {
+      "title": "加速LoRA",
+      "aux_id": "ytton/ComfyUI-yton-nodes",
+      "ver": "f2e8736e69d025e40469fb6cb0af9ef3fafdfdbe"
+    }
+  },
+  "624:305": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE",
+      "cnr_id": "comfy-core",
+      "ver": "0.31.0"
+    }
+  },
+  "624:306": {
+    "inputs": {
+      "vae_name": "minimax_h3_lynnreal_light_vae_int8_convrot.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE",
+      "cnr_id": "comfy-core",
+      "ver": "0.31.0"
+    }
+  },
+  "624:307": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_heretic_minimax_h3_nvfp4.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP",
+      "cnr_id": "comfy-core",
+      "ver": "0.31.0"
+    }
+  },
+  "624:308": {
+    "inputs": {
+      "unet_name": "H3\\10Eros_Max_SingularityV2_PRISM2_PikaFlex_0.85_int8HQ.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器",
+      "cnr_id": "comfy-core",
+      "ver": "0.31.0"
+    }
+  },
+  "651:310": {
+    "inputs": {
+      "chunks": 1,
+      "seq_threshold": 4096,
+      "model": [
+        "651:546",
+        0
+      ]
+    },
+    "class_type": "MiniMaxChunkFeedForward",
+    "_meta": {
+      "title": "MiniMax H3 Chunk FeedForward",
+      "cnr_id": "comfyui-kjnodes",
+      "ver": "60cd6bc1870db94c6eeb05fbe455147a8e91c4e9"
+    }
+  },
+  "651:311": {
+    "inputs": {
+      "head_chunks": 2,
+      "model": [
+        "651:310",
+        0
+      ]
+    },
+    "class_type": "MiniMaxLowVRAMAttention",
+    "_meta": {
+      "title": "MiniMax H3 Low VRAM Attention",
+      "cnr_id": "comfyui-kjnodes",
+      "ver": "60cd6bc1870db94c6eeb05fbe455147a8e91c4e9"
+    }
+  },
+  "651:312": {
+    "inputs": {
+      "attention": "comfy kitchen attention",
+      "model": [
+        "624:308",
+        0
+      ]
+    },
+    "class_type": "ModelAttentionBackend",
+    "_meta": {
+      "title": "模型注意力后端",
+      "cnr_id": "comfy-core",
+      "ver": "0.31.0"
+    }
+  },
+  "651:546": {
+    "inputs": {
+      "shift_video": 12,
+      "shift_audio": 3,
+      "model": [
+        "651:312",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3SigmaShift",
+    "_meta": {
+      "title": "MiniMax H3 Sigma Shift",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.1"
+    }
+  },
+  "651:590": {
+    "inputs": {
+      "selection": "sol-attn",
+      "selection.tau": 1.3,
+      "start_percent": 0.2,
+      "end_percent": 1,
+      "dense_blocks": "",
+      "min_tokens": 12288,
+      "extra_tokens": 256,
+      "sink_conditioning": "exact_kv_and_rows",
+      "verbose": true,
+      "model": [
+        "651:654",
+        0
+      ]
+    },
+    "class_type": "BlockSparseAttention",
+    "_meta": {
+      "title": "稀疏注意力 · Sol-attn",
+      "cnr_id": "comfy-core",
+      "ver": "0.35.0"
+    }
+  },
+  "651:654": {
+    "inputs": {
+      "switch": false,
+      "on_false": [
+        "651:546",
+        0
+      ],
+      "on_true": [
+        "651:311",
+        0
+      ]
+    },
+    "class_type": "LazySwitchKJ",
+    "_meta": {
+      "title": "开启显存优化",
+      "cnr_id": "comfyui-kjnodes",
+      "ver": "ab72eda7ffad6280422d71ab7d54d3fb87c0ba18"
+    }
+  }
+}

@@ -33,6 +33,33 @@ def preview(path, kind):
             "format": "video/" + ("mp4" if path.suffix == ".mp4" else "x-matroska")}
 
 
+def project_path(prefix, started_at):
+    prefix = prefix.replace("%date:yyyy-MM-dd%", "%year%-%month%-%day%")
+    directory = prefix.endswith(("/", "\\"))
+    started_time = started_at.strftime("%H-%M-%S")
+    folder, filename, _, _, _ = folder_paths.get_save_image_path(
+        prefix + started_time if directory else prefix, folder_paths.get_output_directory())
+    root = Path(folder) / (filename if directory else f"{filename}_{started_time}")
+    pattern = re.compile(("" if directory else re.escape(filename) + "_") + r"\d{2}-\d{2}-\d{2}(?:-\d+)?$")
+    return root, pattern
+
+
+def existing_project(prefix, started_at, index, total):
+    root, pattern = project_path(prefix, started_at)
+    candidates = []
+    for candidate in root.parent.iterdir() if root.parent.is_dir() else ():
+        manifest_path = candidate / "segments.json"
+        if not candidate.is_dir() or not manifest_path.is_file() or not pattern.fullmatch(candidate.name):
+            continue
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if manifest.get("total") == total and str(index) in manifest.get("segments", {}):
+            candidates.append((manifest_path.stat().st_mtime_ns, candidate, manifest))
+    if not candidates:
+        raise ValueError(f"最近项目中没有第 {index} 段可覆盖。")
+    _, root, manifest = max(candidates, key=lambda item: item[0])
+    return root, manifest
+
+
 def save_segment(video, index, total, *, run, started_at, prefix, container="mp4", fps=24, crf=18,
                  reuse_existing=False, save_full=True, project_root=None):
     if not (1 <= index <= total):
@@ -41,12 +68,8 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
         raise ValueError("保存格式或运行标识无效。")
     if fps <= 0 or not 0 <= crf <= 51:
         raise ValueError("保存帧率或质量值无效。")
-    prefix = prefix.replace("%date:yyyy-MM-dd%", "%year%-%month%-%day%")
-    directory = prefix.endswith(("/", "\\"))
-    started_time = started_at.strftime("%H-%M-%S")
     # Resolve the user prefix through ComfyUI's output path containment check.
-    folder, filename, _, _, _ = folder_paths.get_save_image_path(prefix + started_time if directory else prefix, folder_paths.get_output_directory())
-    root = Path(folder) / (filename if directory else f"{filename}_{started_time}")
+    root, _ = project_path(prefix, started_at)
     temp = Path(folder_paths.get_temp_directory()) / "yton-replacement" / run
     temp.mkdir(parents=True, exist_ok=True)
     with _save_lock:
@@ -58,23 +81,8 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
                 raise ValueError("当前项目目录缺少片段清单，无法继续保存。")
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         elif reuse_existing:
-            candidates = []
-            project_name = re.sub(r"_\d{2}-\d{2}-\d{2}(?:-\d+)?$", "", root.name)
-            candidate_pattern = re.compile(re.escape(project_name) + r"_\d{2}-\d{2}-\d{2}(?:-\d+)?$")
-            for candidate in root.parent.iterdir() if root.parent.is_dir() else ():
-                manifest_path = candidate / "segments.json"
-                if (not candidate.is_dir() or not manifest_path.is_file()
-                        or not candidate_pattern.fullmatch(candidate.name)):
-                    continue
-                try:
-                    previous = json.loads(manifest_path.read_text(encoding="utf-8"))
-                except (OSError, ValueError):
-                    continue
-                if previous.get("total") == total and str(index) in previous.get("segments", {}):
-                    candidates.append((manifest_path.stat().st_mtime_ns, candidate, previous))
-            if not candidates:
-                raise ValueError(f"最近项目中没有第 {index} 段可覆盖。")
-            _, root, manifest = max(candidates, key=lambda item: item[0])
+            root, manifest = existing_project(prefix, started_at, index, total)
+        if project_root is not None or reuse_existing:
             expected_size = list(video.get_dimensions())
             if (manifest.get("format"), manifest.get("fps"), manifest.get("crf"), manifest.get("size")) != (
                     container, fps, crf, expected_size):

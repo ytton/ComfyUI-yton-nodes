@@ -150,7 +150,7 @@ class ReplacementTests(unittest.TestCase):
                 self.assertEqual(first.result[5:9], (39, 39/24, 1, 2))
                 self.assertEqual(first.result[2], "shared prompt" if shared else "first segment")
 
-    def test_config_parser_uses_panel_selection_unless_index_is_connected(self):
+    def test_config_parser_only_accepts_the_current_segment_configuration(self):
         config = self.config()
         planner = type("SelectedPlanTestNode", (YtonReplacementPlan,), {})
         parser = type("SelectedSegmentTestNode", (YtonReplacementSegment,), {})
@@ -158,7 +158,9 @@ class ReplacementTests(unittest.TestCase):
             node.hidden = io.HiddenHolder.from_dict({io.Hidden.unique_id: node.__name__, io.Hidden.dynprompt: DynamicPrompt({})})
         plan = planner.execute(json.dumps(config), selected_index=1).result[0]
         self.assertEqual(parser.execute(plan=plan).result[5:9], (38, 38/24, 2, 2))
-        self.assertEqual(parser.execute(plan=plan, index=0).result[5:9], (39, 39/24, 1, 2))
+        self.assertEqual([item.id for item in parser.define_schema().inputs], ["plan"])
+        self.assertEqual(len(planner.define_schema().outputs), 1)
+        self.assertEqual(parser.execute(plan=plan).result[10:], (None, False))
 
     def test_index_selection_inputs_validate_and_execute(self):
         import execution
@@ -183,7 +185,7 @@ class ReplacementTests(unittest.TestCase):
             ("panel", False, {"selected_index": 1}, 2, 38),
             ("external", False, {"index": 1}, 2, 38),
             ("initial", False, {}, 1, 39),
-            ("parser_external", True, {"index": 1}, 2, 38),
+            ("parser_selected", True, {"selected_index": 1}, 2, 38),
             ("parser_initial", True, {}, 1, 39),
         ]
         for name, parser, selection, expected_segment, expected_frames in cases:
@@ -191,8 +193,8 @@ class ReplacementTests(unittest.TestCase):
                 submitted = deepcopy(prompt)
                 submitted["save"]["inputs"]["filename_prefix"] = f"selected/{name}"
                 if parser:
-                    submitted["plan"] = {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "loop_generation": False}}
-                    submitted["media"] = {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0], **selection}}
+                    submitted["plan"] = {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "loop_generation": False, **selection}}
+                    submitted["media"] = {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0]}}
                 else:
                     submitted["media"] = {"class_type": "YtonCharacterReplacement", "inputs": {"config": json.dumps(config), **selection}}
                 with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, "instance", server, create=True):
@@ -399,10 +401,10 @@ class ReplacementTests(unittest.TestCase):
             plan = planner.execute(json.dumps(config), llm)
         prepare.assert_not_called()
         self.assertEqual(llm.calls, [])
-        self.assertEqual(plan.result[1], 2)
+        self.assertEqual(plan.result[0]["total"], 2)
         self.assertIs(plan.result[0]["llm"], llm)
         config["plan"]["frames"] = 22
-        self.assertEqual(planner.execute(json.dumps(config)).result[1], 4)
+        self.assertEqual(planner.execute(json.dumps(config)).result[0]["total"], 4)
 
     def test_internal_loop_starts_at_selected_segment_and_advances_parser_index(self):
         import execution
@@ -438,10 +440,151 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(sorted(manifest["segments"]), ["2", "3", "4"])
         self.assertEqual(len(list(manifests[0].parent.glob("segment_*.mp4"))), 3)
 
-    def test_official_loop_uses_plan_count_carries_video_and_finishes_saving(self):
+    def test_saved_internal_loop_workflow_has_no_official_loop_controls(self):
+        workflow = json.loads((PLUGIN / "examples/人物替换专用流-内置循环.json").read_text(encoding="utf-8"))
+        prompt = json.loads((PLUGIN / "tests/fixtures/replacement_internal_loop_prompt.json").read_text(encoding="utf-8"))
+        self.assertFalse({"StartLoop", "EndLoop", "ComfyNotNode"} & {n["type"] for n in workflow["nodes"]})
+        self.assertTrue(prompt["59"]["inputs"]["loop_generation"])
+        self.assertEqual(prompt["59"]["inputs"]["selected_index"], 0)
+        self.assertEqual(prompt["657"]["inputs"], {"plan": ["59", 0]})
+        self.assertEqual(prompt["22"]["inputs"]["video"], ["657", 1])
+        self.assertEqual(prompt["60"]["inputs"]["video"], ["22", 0])
+        self.assertEqual(prompt["60"]["inputs"]["filename_prefix"], ["657", 9])
+        self.assertEqual(prompt["22"]["inputs"]["previous_video"], ["657", 10])
+        self.assertEqual(prompt["22"]["inputs"]["enable_context"], ["657", 11])
+
+    def test_internal_loop_reconnects_previous_video_context_between_segments(self):
         import execution
         import nodes
-        from comfy_extras import nodes_loop
+        from server import PromptServer
+
+        config = self.config()
+        config["plan"].update(frames=22, overlap=0)
+        observed = []
+        generated = []
+
+        class MockOmni(io.ComfyNode):
+            @classmethod
+            def define_schema(cls):
+                return io.Schema(node_id="YtonH3TraditionalOmniGenerate",
+                    inputs=[io.Video.Input("video"), io.Video.Input("previous_video", optional=True),
+                            io.Boolean.Input("enable_context")], outputs=[io.Video.Output()])
+
+            @classmethod
+            def execute(cls, video, enable_context, previous_video=None):
+                observed.append((enable_context, previous_video))
+                generated.append(video)
+                return io.NodeOutput(video)
+
+        saved = []
+
+        class MockSave(io.ComfyNode):
+            OUTPUT_NODE = True
+
+            @classmethod
+            def define_schema(cls):
+                return io.Schema(node_id="YtonReplacementVideoSave",
+                    inputs=[io.Video.Input("video"), io.Int.Input("current"), io.Int.Input("total")],
+                    outputs=[io.Video.Output()])
+
+            @classmethod
+            def execute(cls, video, current, total):
+                result = segment_video(config, current - 1)[0]
+                saved.append(result)
+                return io.NodeOutput(result)
+
+        prompt = {
+            "plan": {"class_type": "YtonReplacementPlan", "inputs": {
+                "config": json.dumps(config), "selected_index": 0, "loop_generation": True}},
+            "segment": {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0]}},
+            "generate": {"class_type": "YtonH3TraditionalOmniGenerate", "inputs": {
+                "video": ["segment", 1], "previous_video": ["segment", 10], "enable_context": ["segment", 11]}},
+            "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
+                "video": ["generate", 0], "current": ["segment", 7], "total": ["segment", 8]}},
+        }
+        server = types.SimpleNamespace(client_id=None, last_node_id=None,
+            send_sync=lambda *args: None, send_progress_text=lambda *args: None)
+        mapping = {cls.__name__: cls for cls in CLASSES}
+        mapping["YtonH3TraditionalOmniGenerate"] = MockOmni
+        mapping["YtonReplacementVideoSave"] = MockSave
+        with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, "instance", server, create=True):
+            valid, error, outputs, errors = asyncio.run(execution.validate_prompt("internal-context-loop", prompt, None))
+            self.assertTrue(valid, (error, errors))
+            executor = execution.PromptExecutor(server, cache_type=execution.CacheType.CLASSIC,
+                cache_args={"ram": 0, "ram_inactive": 0})
+            asyncio.run(executor.execute_async(prompt, uuid.uuid4().hex, execute_outputs=outputs))
+            self.assertTrue(executor.success, executor.status_messages)
+        self.assertEqual([enabled for enabled, _ in observed], [False, True, True, True])
+        self.assertIsNone(observed[0][1])
+        self.assertIs(observed[1][1], saved[0])
+        self.assertIs(observed[2][1], saved[1])
+        self.assertIsNot(observed[1][1], generated[0])
+
+    def test_retry_and_resume_restore_previous_segment_and_preserve_length(self):
+        import execution
+        import nodes
+        from server import PromptServer
+
+        config = self.config()
+        config["plan"].update(frames=39, overlap=22, end=56 / 24)
+        video, _ = segment_video(config, 0)
+        observed = []
+
+        class MockOmni(io.ComfyNode):
+            @classmethod
+            def define_schema(cls):
+                return io.Schema(node_id="YtonH3TraditionalOmniGenerate",
+                    inputs=[io.Video.Input("video"), io.Video.Input("previous_video", optional=True),
+                            io.Boolean.Input("enable_context")], outputs=[io.Video.Output()])
+
+            @classmethod
+            def execute(cls, video, enable_context, previous_video=None):
+                observed.append((enable_context, previous_video.get_frame_count() if previous_video else None))
+                components = video.get_components()
+                images = components.images[22:] if enable_context and previous_video else components.images
+                return io.NodeOutput(InputImpl.VideoFromComponents(Types.VideoComponents(
+                    images=images, frame_rate=components.frame_rate)))
+
+        server = types.SimpleNamespace(client_id=None, last_node_id=None,
+            send_sync=lambda *args: None, send_progress_text=lambda *args: None)
+        mapping = {cls.__name__: cls for cls in CLASSES}
+        mapping["YtonH3TraditionalOmniGenerate"] = MockOmni
+        for loop in (False, True):
+            with self.subTest(loop=loop):
+                prefix = f"restore-context/{loop}/"
+                initial = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(), prefix=prefix)
+                first = save_segment(video, 1, 2, **initial)
+                save_segment(video, 2, 2, **initial)
+                root = self.root / "output" / first["saved_segment"]["subfolder"]
+                first_file = root / "segment_0001.mp4"
+                before = first_file.stat().st_mtime_ns
+                prompt = {
+                    "plan": {"class_type": "YtonReplacementPlan", "inputs": {
+                        "config": json.dumps(config), "selected_index": 1, "loop_generation": loop}},
+                    "segment": {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0]}},
+                    "generate": {"class_type": "YtonH3TraditionalOmniGenerate", "inputs": {
+                        "video": ["segment", 1], "previous_video": ["segment", 10], "enable_context": ["segment", 11]}},
+                    "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
+                        "video": ["generate", 0], "current": ["segment", 7], "total": ["segment", 8],
+                        "filename_prefix": prefix, "container": "mp4", "fps": 24, "crf": 18,
+                        "reuse_existing": True, "save_full": True}},
+                }
+                with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, "instance", server, create=True):
+                    valid, error, outputs, errors = asyncio.run(execution.validate_prompt("restore-context", prompt, None))
+                    self.assertTrue(valid, (error, errors))
+                    executor = execution.PromptExecutor(server, cache_type=execution.CacheType.CLASSIC,
+                        cache_args={"ram": 0, "ram_inactive": 0})
+                    asyncio.run(executor.execute_async(prompt, uuid.uuid4().hex, execute_outputs=outputs))
+                    self.assertTrue(executor.success, executor.status_messages)
+                self.assertEqual(observed[-1], (True, 39))
+                self.assertEqual(first_file.stat().st_mtime_ns, before)
+                manifest = json.loads((root / "segments.json").read_text())
+                self.assertEqual([manifest["segments"][str(i)]["frames"] for i in (1, 2)], [39, 17])
+                self.assertEqual(InputImpl.VideoFromFile(str(root / "complete.mp4")).get_frame_count(), 56)
+
+    def test_internal_loop_uses_plan_count_carries_video_and_finishes_saving(self):
+        import execution
+        import nodes
         from server import PromptServer
 
         config = self.config()
@@ -470,6 +613,7 @@ class ReplacementTests(unittest.TestCase):
 
             @classmethod
             def execute(cls, video, index, previous=None):
+                index -= 1
                 if index == 0:
                     test.assertIsNone(previous)
                 else:
@@ -482,20 +626,16 @@ class ReplacementTests(unittest.TestCase):
 
         prompt = {
             "llm": {"class_type": "ReplacementTestConnector", "inputs": {}},
-            "plan": {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "selected_index": 1,
-                "loop_generation": False, "llm": ["llm", 0]}},
-            "start": {"class_type": "StartLoop", "inputs": {"mode": "For", "mode.start_iteration_index": 0,
-                       "mode.max_iteration": ["plan", 1], "mode.step": 1, "cache_iterations": False}},
-            "segment": {"class_type": "YtonReplacementSegment", "inputs": {"index": ["start", 0], "plan": ["plan", 0]}},
+            "plan": {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "selected_index": 0,
+                "loop_generation": True, "llm": ["llm", 0]}},
+            "segment": {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0]}},
             "render": {"class_type": "ReplacementTestRender", "inputs": {"video": ["segment", 1],
-                        "index": ["start", 0], "previous": ["start", 4]}},
+                        "index": ["segment", 7], "previous": ["segment", 10]}},
             "save": {"class_type": "YtonReplacementVideoSave", "inputs": {"video": ["render", 0],
-                      "current": ["segment", 7], "total": ["plan", 1], "filename_prefix": ["segment", 9],
+                      "current": ["segment", 7], "total": ["segment", 8], "filename_prefix": ["segment", 9],
                       "container": "mp4", "fps": 24, "crf": 18, "reuse_existing": False, "save_full": True}},
-            "end": {"class_type": "EndLoop", "inputs": {"output_value": ["save", 0],
-                     "next_iteration_value": ["save", 0], "accumulate": False}},
         }
-        mapping = {**{cls.__name__: cls for cls in CLASSES}, **nodes_loop.NODE_CLASS_MAPPINGS,
+        mapping = {**{cls.__name__: cls for cls in CLASSES},
                    "ReplacementTestConnector": Connector, "ReplacementTestRender": Render}
         server = types.SimpleNamespace(client_id=None, last_node_id=None, send_sync=lambda *args: None,
                                        send_progress_text=lambda *args: None)
@@ -625,6 +765,16 @@ class ReplacementTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "没有第 1 段可覆盖"):
             save_segment(video, 1, 2, run=uuid.uuid4().hex, started_at=started_at,
                 prefix="replacement/no-project", reuse_existing=True)
+
+    def test_reuse_directory_prefix_finds_the_same_project_at_a_different_time(self):
+        video, _ = segment_video(self.config(), 0)
+        first = save_segment(video, 1, 1, run=uuid.uuid4().hex,
+            started_at=datetime(2026, 11, 3, 14, 0, 30).astimezone(), prefix="retry-directory/project/")
+        retried = save_segment(video, 1, 1, run=uuid.uuid4().hex,
+            started_at=datetime(2026, 11, 3, 15, 0, 30).astimezone(), prefix="retry-directory/project/",
+            reuse_existing=True)
+        self.assertEqual(retried["saved_segment"], first["saved_segment"])
+        self.assertEqual(retried["merged"], first["merged"])
 
     def test_save_directory_uses_configuration_start_time_for_all_segments(self):
         config = self.config()
