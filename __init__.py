@@ -55,9 +55,11 @@ from .node_catalog import configure_node_catalog as _configure_node_catalog
 from .nodes.weighted_lora_node import YtonWeightedLoraLoader
 NODE_CLASS_MAPPINGS["YtonWeightedLoraLoader"] = YtonWeightedLoraLoader
 NODE_DISPLAY_NAME_MAPPINGS["YtonWeightedLoraLoader"] = "权重 LoRA 加载器"
-from .nodes.h3_reference_studio_node import YtonH3ReferenceStudio
+from .nodes.h3_reference_studio_node import YtonH3ReferenceStudio, YtonH3VideoConfig
 NODE_CLASS_MAPPINGS["YtonH3ReferenceStudio"] = YtonH3ReferenceStudio
 NODE_DISPLAY_NAME_MAPPINGS["YtonH3ReferenceStudio"] = "H3 参考视频工作台"
+NODE_CLASS_MAPPINGS["YtonH3VideoConfig"] = YtonH3VideoConfig
+NODE_DISPLAY_NAME_MAPPINGS["YtonH3VideoConfig"] = "H3 视频生成配置器"
 _configure_node_catalog(NODE_CLASS_MAPPINGS)
 
 from .replacement.nodes import CLASSES as _replacement_classes

@@ -15,10 +15,14 @@ sys.path.insert(0, str(ROOT.parents[1]))
 if "--cpu" not in sys.argv:
     sys.argv.append("--cpu")
 package = types.ModuleType("studio_test_nodes")
-package.__path__ = [str(ROOT / "nodes")]
+package.__path__ = [str(ROOT)]
 sys.modules[package.__name__] = package
-module = importlib.import_module("studio_test_nodes.h3_reference_studio_node")
+nodes_package = types.ModuleType("studio_test_nodes.nodes")
+nodes_package.__path__ = [str(ROOT / "nodes")]
+sys.modules[nodes_package.__name__] = nodes_package
+module = importlib.import_module("studio_test_nodes.nodes.h3_reference_studio_node")
 Studio = module.YtonH3ReferenceStudio
+VideoConfig = module.YtonH3VideoConfig
 
 import torch
 import folder_paths
@@ -120,6 +124,51 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(resolution["options"], ["320p", "480p", "540p", "640p", "720p", "768p", "944p", "1024p", "1080p"])
         self.assertEqual(resolution["yton_h3_multipliers"]["1080p"], 2.0)
         self.assertNotIn("custom_width", info["input"]["required"])
+
+    def test_video_config_outputs_h3_dimensions_frames_and_reference_settings(self):
+        image = torch.zeros(1, 128, 72, 3)
+        result = VideoConfig.execute("生成提示词", False, "1080p", "9:16", "自定义", 0.75, 7.91, image=image)
+        self.assertEqual(result.result[:7], ("生成提示词", 1088, 1920, 192, 8, "max", 0.75))
+        self.assertEqual(result.result[7][0].shape, (1, 96, 64, 3))
+        self.assertEqual(result.ui["h3_video_config"][0]["width"], 1088)
+        auto = VideoConfig.execute("", False, "480p", "auto", "match", 0.5, 5, image=[None, image])
+        self.assertEqual(auto.result[1:7], (480, 864, 124, 124 / 24, "match", 0.5))
+        fallback = VideoConfig.execute("", False, "480p", "auto", "match", 0.5, 5)
+        self.assertEqual(fallback.result[1:3], (864, 480))
+
+    def test_video_config_passes_three_media_lists_to_optimizer_and_outputs_them(self):
+        image = torch.zeros(1, 64, 96, 3)
+        audio = {"waveform": torch.zeros(1, 1, 320), "sample_rate": 32000}
+        video = object()
+
+        class LLM:
+            def generate(self, prompt, **kwargs):
+                self.prompt, self.kwargs = prompt, kwargs
+                return "优化后的提示词"
+
+        llm = LLM()
+        encoded = [{"type": "text", "text": "图片 1 / 视频 1 / 音频 1"}]
+        with patch.object(module, "media_content", return_value=encoded) as encode:
+            result = VideoConfig.execute("原提示词", True, "480p", "16:9", "match", 0.5, 5,
+                                         image=[image], video=[video], audio=[audio], llm=[llm])
+        encode.assert_called_once_with(image=[image], audio=[audio], video=[video])
+        self.assertEqual(result.result[0], "优化后的提示词")
+        self.assertIs(result.result[7][0], image)
+        self.assertIs(result.result[8][0], video)
+        self.assertIs(result.result[9][0], audio)
+        self.assertEqual(llm.kwargs["media"], encoded)
+        self.assertIn("<Picture N>", llm.prompt)
+
+    def test_video_config_schema_exposes_prompt_parameters_and_auto_ratio_input(self):
+        info = VideoConfig.GET_NODE_INFO_V1()
+        self.assertEqual(info["output"], ["STRING", "INT", "INT", "INT", "FLOAT", "STRING", "FLOAT", "IMAGE", "VIDEO", "AUDIO"])
+        self.assertEqual(info["input"]["optional"]["image"][0], "IMAGE")
+        self.assertEqual(info["input"]["optional"]["video"][0], "VIDEO")
+        self.assertEqual(info["input"]["optional"]["audio"][0], "AUDIO")
+        self.assertEqual(info["input"]["optional"]["llm"][0], "YTON_LLM")
+        self.assertIn("prompt", info["input"]["required"])
+        self.assertNotIn("prompt", info["input"].get("optional", {}))
+        self.assertEqual(info["input"]["required"]["duration"][1]["round"], False)
 
 
 if __name__ == "__main__":
