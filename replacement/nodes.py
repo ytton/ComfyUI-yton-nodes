@@ -47,10 +47,12 @@ class YtonCharacterReplacement(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="YtonCharacterReplacement", display_name="人物替换配置器 · 媒体输出", category="yton-nodes/媒体",
-            description="配置视频、参考图片与提示词，并按当前索引直接输出媒体、提示词、尺寸和片段信息；索引从 0 开始。",
-            inputs=[io.Int.Input("index", default=0, min=0, force_input=True, display_name="当前索引"),
+            description="未连接当前索引时，输出面板选中的片段；连接后按外部索引输出媒体、提示词、尺寸和片段信息，索引从 0 开始。",
+            inputs=[io.Int.Input("index", min=0, optional=True, force_input=True, display_name="当前索引",
+                                 tooltip="可选，从 0 开始。未连接时输出“片段提示词”中选中的片段；连接后以外部索引为准。"),
                     io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
-                    io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
+                    io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True),
+                    io.Int.Input("selected_index", default=0, min=0, socketless=True)],
             outputs=[io.Image.Output(display_name="图片列表", is_output_list=True),
                      io.Video.Output(display_name="视频列表", is_output_list=True),
                      io.String.Output(display_name="提示词"),
@@ -69,9 +71,10 @@ class YtonCharacterReplacement(io.ComfyNode):
         return float("nan")
 
     @classmethod
-    def execute(cls, index, config, llm=None):
+    def execute(cls, config, llm=None, selected_index=0, index=None):
         state = execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)
         config = parse_config(config)
+        index = selected_index if index is None else index
         video, plan = segment_video(config, index)
         width, height = output_size(config, inspect(config["video"]))
         frames = video.get_frame_count()
@@ -105,7 +108,8 @@ class YtonReplacementPlan(io.ComfyNode):
         return io.Schema(node_id="YtonReplacementPlan", display_name="人物替换配置器 · 配置输出", category="yton-nodes/媒体",
             description="将视频、参考图片、提示词与分段设置整合为一份配置，并计算片段总数；连接【人物替换配置解析器】提取媒体。",
             inputs=[io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
-                    io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True)],
+                    io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True),
+                    io.Int.Input("selected_index", default=0, min=0, socketless=True)],
             outputs=[io.Custom("YTON_REPLACEMENT_PLAN").Output(display_name="分段配置"),
                      io.Int.Output(display_name="片段总数", tooltip="根据视频长度、选取范围和分段设置计算的总段数。")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
@@ -115,10 +119,10 @@ class YtonReplacementPlan(io.ComfyNode):
         return float("nan")
 
     @classmethod
-    def execute(cls, config, llm=None):
+    def execute(cls, config, llm=None, selected_index=0):
         execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)
         _, plan = plan_for(parse_config(config))
-        return io.NodeOutput({"config": config, "llm": llm}, len(plan["segments"]))
+        return io.NodeOutput({"config": config, "llm": llm, "selected_index": selected_index}, len(plan["segments"]))
 
 
 class YtonReplacementSegment(YtonCharacterReplacement):
@@ -127,14 +131,15 @@ class YtonReplacementSegment(YtonCharacterReplacement):
         schema = super().define_schema()
         schema.node_id = "YtonReplacementSegment"
         schema.display_name = "人物替换配置解析器"
-        schema.description = "接收整合后的分段配置，按当前索引输出视频、参考图片、提示词、尺寸和片段信息；索引从 0 开始。"
-        schema.inputs = [io.Int.Input("index", default=0, min=0, force_input=True, display_name="当前索引"),
+        schema.description = "未连接当前索引时输出配置器选中的片段；连接后按外部索引输出视频、参考图片、提示词、尺寸和片段信息，索引从 0 开始。"
+        schema.inputs = [io.Int.Input("index", min=0, optional=True, force_input=True, display_name="当前索引",
+                                     tooltip="未连接时输出配置器面板选中的片段；连接后以外部索引为准，从 0 开始。"),
                          io.Custom("YTON_REPLACEMENT_PLAN").Input("plan", display_name="分段配置")]
         return schema
 
     @classmethod
-    def execute(cls, index, plan):
-        return super().execute(index, plan["config"], plan["llm"])
+    def execute(cls, plan, index=None):
+        return super().execute(config=plan["config"], llm=plan["llm"], selected_index=plan["selected_index"], index=index)
 
 
 class YtonReplacementVideoSave(io.ComfyNode):

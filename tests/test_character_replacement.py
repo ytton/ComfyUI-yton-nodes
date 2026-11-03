@@ -32,7 +32,7 @@ package.__path__ = [str(PLUGIN)]
 sys.modules[package.__name__] = package
 from replacement_test_plugin.llm_connection import LLMConnection
 from replacement_test_plugin.replacement.media import contact_sheet, encode, ffmpeg, inspect, output_size, reference_images, reference_size, segment_video
-from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementVideoSave
+from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementSegment, YtonReplacementVideoSave
 from replacement_test_plugin.replacement.plan import make_plan
 from replacement_test_plugin.replacement.prompts import SYSTEM, load_skill, optimize, save_skill, signature
 from replacement_test_plugin.replacement.save import execution_state, save_segment
@@ -111,7 +111,7 @@ class ReplacementTests(unittest.TestCase):
     def test_output_contract_and_alias_identity(self):
         config=self.config()
         config["original"]="将 @视频 的人物替换成 @图片3。"
-        output=self.node().execute(0,json.dumps(config))
+        output=self.node().execute(config=json.dumps(config), index=0)
         self.assertEqual(len(output.result),10)
         self.assertIn("<Picture 2>",output.result[2])
         self.assertEqual([tuple(i.shape) for i in output.result[0]],[(1,120,60,3),(1,45,120,3)])
@@ -121,19 +121,72 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(output.result[1][0].get_dimensions(),(160,96))
         self.assertEqual(output.result[9], "video/人物替换/%date:yyyy-MM-dd%/source/")
         config["images"]=[""]*6
-        self.assertEqual(self.node().execute(0,json.dumps(config)).result[0],[])
+        self.assertEqual(self.node().execute(config=json.dumps(config), index=0).result[0],[])
 
     def test_target_dimensions_and_reference_length(self):
         config=self.config()
-        tail=self.node().execute(1,json.dumps(config))
+        tail=self.node().execute(config=json.dumps(config), index=1)
         self.assertEqual(tail.result[3:7],(800,480,38,38/24))
         config["crop"]=[.1,0,.8,1]
         config["plan"].update(enabled=False,seconds=1.25)
         config["compression"].update(width=96,height=64,fps=12)
-        output=self.node().execute(0,json.dumps(config))
+        output=self.node().execute(config=json.dumps(config), index=0)
         self.assertEqual(output.result[3:7],(640,480,15,1.25))
         video=output.result[1][0].get_components()
         self.assertEqual((video.images.shape[2],video.images.shape[1],video.images.shape[0]),(96,64,15))
+
+    def test_selected_segment_without_index_and_external_zero_takes_priority(self):
+        config = self.config()
+        config["prompts"] = {"0": "first segment", "1": "second segment", "shared": "shared prompt"}
+        for shared in (False, True):
+            with self.subTest(shared=shared):
+                config["shared"] = shared
+                node = self.node()
+                selected = node.execute(config=json.dumps(config), selected_index=1)
+                self.assertEqual(selected.result[5:9], (38, 38/24, 2, 2))
+                self.assertEqual(selected.result[2], "shared prompt" if shared else "second segment")
+                self.assertEqual(selected.result[1][0].get_stream_source(), segment_video(config, 1)[0].get_stream_source())
+                first = node.execute(config=json.dumps(config), selected_index=1, index=0)
+                self.assertEqual(first.result[5:9], (39, 39/24, 1, 2))
+                self.assertEqual(first.result[2], "shared prompt" if shared else "first segment")
+
+    def test_config_parser_uses_panel_selection_unless_index_is_connected(self):
+        config = self.config()
+        planner = type("SelectedPlanTestNode", (YtonReplacementPlan,), {})
+        parser = type("SelectedSegmentTestNode", (YtonReplacementSegment,), {})
+        for node in (planner, parser):
+            node.hidden = io.HiddenHolder.from_dict({io.Hidden.unique_id: node.__name__, io.Hidden.dynprompt: DynamicPrompt({})})
+        plan = planner.execute(json.dumps(config), selected_index=1).result[0]
+        self.assertEqual(parser.execute(plan=plan).result[5:9], (38, 38/24, 2, 2))
+        self.assertEqual(parser.execute(plan=plan, index=0).result[5:9], (39, 39/24, 1, 2))
+
+    def test_unconnected_index_validates_and_executes_selected_segment(self):
+        import execution
+        import nodes
+        from server import PromptServer
+
+        config = self.config()
+        prompt = {
+            "media": {"class_type": "YtonCharacterReplacement", "inputs": {
+                "config": json.dumps(config), "selected_index": 1}},
+            "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
+                "video": ["media", 1], "current": ["media", 7], "total": ["media", 8],
+                "filename_prefix": "selected/segment", "container": "mp4", "fps": 24, "crf": 18, "save_full": False}},
+        }
+        mapping = {cls.__name__: cls for cls in CLASSES}
+        events = []
+        server = types.SimpleNamespace(client_id=None, last_node_id=None,
+            send_sync=lambda event, data, *args: events.append((event, data)), send_progress_text=lambda *args: None)
+        with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, "instance", server, create=True):
+            valid, error, outputs, errors = asyncio.run(execution.validate_prompt("selected-segment", prompt, None))
+            self.assertTrue(valid, (error, errors))
+            executor = execution.PromptExecutor(server, cache_type=execution.CacheType.CLASSIC,
+                                                cache_args={"ram": 0, "ram_inactive": 0})
+            asyncio.run(executor.execute_async(prompt, uuid.uuid4().hex, execute_outputs=outputs))
+            self.assertTrue(executor.success, executor.status_messages)
+        manifest = next((self.root / "output/selected").rglob("segments.json"))
+        self.assertEqual(list(json.loads(manifest.read_text())["segments"]), ["2"])
+        self.assertEqual(InputImpl.VideoFromFile(str(manifest.parent / "segment_0002.mp4")).get_frame_count(), 38)
 
     def test_original_ratio_resolution_uses_short_edge(self):
         config = self.config()
@@ -160,7 +213,7 @@ class ReplacementTests(unittest.TestCase):
         for ratio, size in (("原视频", (1088, 1920)), ("9:16", (1088, 1920)), ("16:9", (1920, 1088))):
             with self.subTest(ratio=ratio):
                 config["ratio"] = ratio
-                output = self.node().execute(0, json.dumps(config))
+                output = self.node().execute(config=json.dumps(config), index=0)
                 self.assertEqual(output.result[3:6], (*size, 6))
                 self.assertEqual((output.ui["replacement_prompt"][0]["width"], output.ui["replacement_prompt"][0]["height"]), size)
                 video = output.result[1][0]
@@ -184,13 +237,13 @@ class ReplacementTests(unittest.TestCase):
         config = self.config()
         config.update(ratio="9:16", resolution="1080p")
         config["compression"].update(width=540, height=960, max_edge=0)
-        output = self.node().execute(0, json.dumps(config))
+        output = self.node().execute(config=json.dumps(config), index=0)
         video = output.result[1][0]
         self.assertEqual(video.get_dimensions(), (540, 960))
         self.assertEqual(output.result[3:7], (1088, 1920, 39, 39/24))
         self.assertEqual((output.ui["replacement_prompt"][0]["width"], output.ui["replacement_prompt"][0]["height"]), (1088, 1920))
         config.update(ratio="16:9", resolution="720p")
-        changed = self.node().execute(0, json.dumps(config))
+        changed = self.node().execute(config=json.dumps(config), index=0)
         self.assertEqual(changed.result[3:5], (1280, 704))
         self.assertEqual(changed.result[1][0].get_stream_source(), video.get_stream_source())
 
@@ -217,28 +270,28 @@ class ReplacementTests(unittest.TestCase):
         config["video"] = "引用视频/舞蹈参考.v1.mp4 [input]"
         node = self.node()
         for index in (0, 1):
-            self.assertEqual(node.execute(index, json.dumps(config)).result[9],
+            self.assertEqual(node.execute(config=json.dumps(config), index=index).result[9],
                              "video/人物替换/%date:yyyy-MM-dd%/舞蹈参考.v1/")
 
     def test_auto_shared_once_per_run_and_per_segment(self):
         config=self.config(); config.update(auto=True,shared=True)
         llm=FakeLLM(); node=self.node()
-        node.execute(0,json.dumps(config),llm); node.execute(1,json.dumps(config),llm)
+        node.execute(config=json.dumps(config), index=0, llm=llm); node.execute(config=json.dumps(config), index=1, llm=llm)
         self.assertEqual(len(llm.calls),1)
         self.assertEqual(len(llm.calls[0][1]["images"]),3)
-        self.node().execute(0,json.dumps(config),llm)
+        self.node().execute(config=json.dumps(config), index=0, llm=llm)
         self.assertEqual(len(llm.calls),2)
         config["shared"]=False
-        node=self.node(); node.execute(0,json.dumps(config),llm);node.execute(1,json.dumps(config),llm)
+        node=self.node(); node.execute(config=json.dumps(config), index=0, llm=llm);node.execute(config=json.dumps(config), index=1, llm=llm)
         self.assertEqual(len(llm.calls),4)
         with self.assertRaisesRegex(ValueError,"连接"):
-            node.execute(0,json.dumps(config))
+            node.execute(config=json.dumps(config), index=0)
 
     def test_manual_result_invalidated_by_media_changes(self):
         config=self.config();config["optimized"]["0"]={"text":"manual optimized", "signature":signature(config,0)}
-        self.assertEqual(self.node().execute(0,json.dumps(config)).result[2],"manual optimized")
+        self.assertEqual(self.node().execute(config=json.dumps(config), index=0).result[2],"manual optimized")
         config["image_scale"]=.75
-        self.assertNotEqual(self.node().execute(0,json.dumps(config)).result[2],"manual optimized")
+        self.assertNotEqual(self.node().execute(config=json.dumps(config), index=0).result[2],"manual optimized")
 
     def test_compression_changes_preserve_optimized_prompt_for_shared_and_segment_modes(self):
         for shared in (False, True):
@@ -254,7 +307,7 @@ class ReplacementTests(unittest.TestCase):
                 config["plan"]["seconds"] = config["plan"]["frames"] / 24
                 config["plan"]["end"] = 3
                 self.assertEqual(signature(config, 0), expected)
-                output = self.node().execute(0, json.dumps(config)).result
+                output = self.node().execute(config=json.dumps(config), index=0).result
                 self.assertEqual(output[2], "keep optimized")
                 self.assertEqual(output[1][0].get_dimensions(), (80, 48))
                 self.assertEqual(output[5], 39)
@@ -283,7 +336,7 @@ class ReplacementTests(unittest.TestCase):
         llm = FakeLLM()
         optimize(llm, config, 0, video, reference_images(config))
         config["auto"] = True
-        self.node().execute(0, json.dumps(config), llm)
+        self.node().execute(config=json.dumps(config), index=0, llm=llm)
         self.assertEqual(len(llm.calls), 2)
         self.assertTrue(all(call[1]["system"] == custom for call in llm.calls))
         save_skill(SYSTEM)
@@ -294,9 +347,9 @@ class ReplacementTests(unittest.TestCase):
         self.addCleanup(path.unlink, missing_ok=True)
         config = self.config()
         config["optimized"]["0"] = {"text": "old optimized", "signature": signature(config, 0)}
-        self.assertEqual(self.node().execute(0, json.dumps(config)).result[2], "old optimized")
+        self.assertEqual(self.node().execute(config=json.dumps(config), index=0).result[2], "old optimized")
         save_skill("只根据当前角色参考与用户要求编写提示词。")
-        self.assertNotEqual(self.node().execute(0, json.dumps(config)).result[2], "old optimized")
+        self.assertNotEqual(self.node().execute(config=json.dumps(config), index=0).result[2], "old optimized")
         for value in ("", " \n ", None):
             with self.assertRaisesRegex(ValueError, "不能为空"):
                 save_skill(value)
@@ -376,7 +429,7 @@ class ReplacementTests(unittest.TestCase):
 
         prompt = {
             "llm": {"class_type": "ReplacementTestConnector", "inputs": {}},
-            "plan": {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "llm": ["llm", 0]}},
+            "plan": {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "selected_index": 1, "llm": ["llm", 0]}},
             "start": {"class_type": "StartLoop", "inputs": {"mode": "For", "mode.start_iteration_index": 0,
                        "mode.max_iteration": ["plan", 1], "mode.step": 1, "cache_iterations": False}},
             "segment": {"class_type": "YtonReplacementSegment", "inputs": {"index": ["start", 0], "plan": ["plan", 0]}},
@@ -420,7 +473,7 @@ class ReplacementTests(unittest.TestCase):
         config=self.config()
         prompt={
             "start":{"class_type":"WhileLoopStartPGS","inputs":{"condition":True,"initial_value0":0}},
-            "config":{"class_type":"YtonCharacterReplacement","inputs":{"index":["start",1],"config":json.dumps(config)}},
+            "config":{"class_type":"YtonCharacterReplacement","inputs":{"index":["start",1],"config":json.dumps(config),"selected_index":0}},
             "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["config",1],"current":["config",7],"total":["config",8],
                     "filename_prefix":"native-loop/video","container":"mp4","fps":24,"crf":18,"save_full":True}},
             "compare":{"class_type":"ComparePGS","inputs":{"a":["config",7],"b":["config",8],"comparison":"a < b"}},

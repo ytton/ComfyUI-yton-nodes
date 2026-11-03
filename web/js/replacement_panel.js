@@ -11,8 +11,10 @@ const kind = file => file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|avi|
 
 export async function setupReplacementPanel(node) {
   const configWidget = node.widgets.find(w => w.name === "config");
+  const selectedWidget = node.widgets.find(w => w.name === "selected_index");
   hideWidget(configWidget);
-  let config = JSON.parse(configWidget.value), index = 0, result;
+  hideWidget(selectedWidget);
+  let config = JSON.parse(configWidget.value), index = selectedWidget.value, result;
   let activeImage = -1, busy = false, removed = false, tab = "original", editor;
   let richMode = true, plainEditor;
   let editorAbort, planRevision = 0;
@@ -27,6 +29,7 @@ export async function setupReplacementPanel(node) {
   const heading = el("div", "yr-row");
   const current = el("select", "yr-input yr-current");
   current.setAttribute("aria-label", "查看片段提示词");
+  current.title="未连接当前索引时输出所选片段；连接后按外部索引输出。";
   current.addEventListener("change", () => changeIndex(Number(current.value)));
   const previous = button("‹", () => changeIndex(index-1), "上一段");
   const next = button("›", () => changeIndex(index+1), "下一段");
@@ -70,12 +73,14 @@ export async function setupReplacementPanel(node) {
     if (invalidate) config.optimized = {};
     node.graph?.beforeChange();
     configWidget.value = JSON.stringify(config);
+    selectedWidget.value = index;
     node.graph?.afterChange();
     node.setDirtyCanvas(true,true);
   }
   function changeIndex(value) {
     const total = result?.plan.segments.length || 1;
     index = Math.max(0,Math.min(total-1, value));
+    commit();
     renderPosition(); renderEditor();
   }
   function renderPosition() {
@@ -97,7 +102,8 @@ export async function setupReplacementPanel(node) {
       const data = await request("replacement/plan", config);
       if (revision !== planRevision || removed) return;
       result=data;showReplacementDimensions(node,data.output_size);
-      index=Math.max(0, Math.min(index, data.plan.segments.length-1));
+      const selected=Math.max(0, Math.min(index, data.plan.segments.length-1));
+      if(index!==selected) {index=selected;commit();}
       renderPosition(); message.textContent="";
     } catch(error) {if (revision===planRevision) {result=null;renderPosition();message.textContent=error.message;}}
   }
@@ -317,7 +323,7 @@ export async function setupReplacementPanel(node) {
     event.preventDefault();event.stopImmediatePropagation();void upload(files,activeImage);
   },{capture:true,signal:lifetime.signal});
   const configure=node.onConfigure;
-  node.onConfigure=function(){configure?.apply(this,arguments);config=JSON.parse(configWidget.value);index=0;renderAll();void updatePlan();};
+  node.onConfigure=function(){configure?.apply(this,arguments);config=JSON.parse(configWidget.value);index=selectedWidget.value;renderAll();void updatePlan();};
   const executed=node.onExecuted;
   node.onExecuted=function(data){
     executed?.apply(this,arguments);
@@ -325,7 +331,8 @@ export async function setupReplacementPanel(node) {
     if(!output) return;
     showReplacementDimensions(node,output);
     index=output.index;
-    if(config.auto) {config.optimized[output.slot]={text:output.text,signature:output.signature};commit();}
+    if(config.auto) config.optimized[output.slot]={text:output.text,signature:output.signature};
+    commit();
     tab=config.auto ? "optimized" : tab;renderPosition();renderEditor();
   };
   const remove=node.onRemoved;

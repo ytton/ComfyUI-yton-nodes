@@ -317,7 +317,7 @@ async (basePage) => {
     check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").outputs.length===10,"configuration outputs include dimensions, duration and project directory");
     check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").outputs[9].name==="项目目录","project directory is a labeled output");
     check(serial.nodes.find(n=>n.type==="YtonReplacementSegment").outputs[9].type==="STRING","parser exposes project directory as STRING");
-    check(!serial.nodes.find(n=>n.type==="YtonCharacterReplacement").widgets_values.includes(0),"index has no editable widget");
+    check(await page.evaluate(()=>!window.comfyAPI.app.app.graph.getNodeById(window.replacementTest.node.id).widgets.some(widget=>widget.name==="index")),"index has no editable widget");
     check(serial.nodes.find(n=>n.type==="YtonCharacterReplacement").inputs.some(i=>i.name==="index" && i.type==="INT"),"index is a normal INT input");
     const geometry=await page.locator(".yton-replacement-panel:not(.yr-save):not(.yr-connector)").evaluate(panel=>({width:panel.clientWidth,scroll:panel.scrollWidth,overflow:getComputedStyle(panel.parentElement).overflow}));
     check(geometry.width>=700 && geometry.scroll===geometry.width,"default panel has no horizontal overflow");
