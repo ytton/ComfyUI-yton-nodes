@@ -468,8 +468,8 @@ function setupVideoConfig(node) {
     }
   };
   followNodeColours(node, panel);
-  node.setSize([1060, node.size[1]]);
-  const domWidget = mountNodePanel(node, "h3_video_config_ui", panel, 980, 680, { fitHeight: true });
+  node.setSize([860, node.size[1]]);
+  const domWidget = mountNodePanel(node, "h3_video_config_ui", panel, 780, 500, { fitHeight: true });
   domWidget.element.classList.add("yton-h3-config-shell");
   domWidget.options.canvasOnly = true;
   requestAnimationFrame(refresh);

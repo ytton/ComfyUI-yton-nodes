@@ -117,15 +117,16 @@
   --yton-selected: color-mix(in srgb, var(--yton-node-bg) 74%, var(--yton-node-fg) 26%);
   --yton-muted: color-mix(in srgb, var(--yton-node-fg) 75%, transparent);
   --yton-border: color-mix(in srgb, var(--yton-node-fg) 25%, transparent);
-  position: relative; display: grid; grid-template-columns: minmax(380px, 44%) minmax(420px, 1fr);
-  align-items: stretch; gap: 14px;
-  padding: 14px; background: var(--yton-node-bg); color: var(--yton-node-fg);
+  position: relative; display: grid; grid-template-columns: minmax(320px, 41%) minmax(320px, 1fr);
+  align-items: stretch; gap: 10px;
+  padding: 10px; background: var(--yton-node-bg); color: var(--yton-node-fg);
 }
-.yton-h3-config .yton-h3-controls { gap: 11px; }
-.yton-h3-config-prompt { display: flex; flex-direction: column; min-width: 0; min-height: 570px; gap: 9px; }
+.yton-h3-config .yton-h3-controls { gap: 8px; }
+.yton-h3-config-prompt { display: flex; flex-direction: column; min-width: 0; min-height: 430px; gap: 8px; }
 .yton-h3-config-prompt .yton-h3-prompt { min-height: 0; height: auto; flex: 1; resize: vertical; }
 .yton-h3-config-prompt .yton-h3-size-info { margin-top: auto; }
-.yton-h3-config .yton-h3-section { gap: 7px; }
+.yton-h3-config .yton-h3-section { gap: 5px; }
+.yton-h3-config .yton-ratio-card { min-height: 56px; }
 .yton-panel.yton-h3-config :is(button, input, textarea):focus-visible { outline-color: var(--yton-node-fg); }
 .yton-h3-config [hidden] { display: none !important; }
 .yton-panel.yton-h3-studio :is(button, input, textarea, .yton-media-item):focus-visible { outline-color: var(--yton-node-fg); }

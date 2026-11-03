@@ -107,7 +107,7 @@ class YtonH3VideoConfig(io.ComfyNode):
             node_id="YtonH3VideoConfig",
             display_name="H3 视频生成配置器",
             category="yton-nodes/MiniMax H3",
-            description="左侧设置分辨率、比例和时长；右侧编辑提示词并接收图片、视频、音频列表。可连接 LLM 在运行时优化提示词。",
+            description="左侧设置生成参数，右侧编辑提示词。图片、视频、音频列表可连接用于比例识别和 LLM 优化；媒体请从加载器直接连接生成节点。",
             is_input_list=True,
             is_output_node=True,
             inputs=[
@@ -136,9 +136,6 @@ class YtonH3VideoConfig(io.ComfyNode):
                 io.Float.Output(display_name="实际时长（秒）"),
                 io.String.Output(display_name="参考图尺寸"),
                 io.Float.Output(display_name="参考图缩放比例"),
-                io.Image.Output(display_name="图片列表", is_output_list=True),
-                io.Video.Output(display_name="视频列表", is_output_list=True),
-                io.Audio.Output(display_name="音频列表", is_output_list=True),
             ],
         )
 
@@ -201,24 +198,12 @@ class YtonH3VideoConfig(io.ComfyNode):
             if not prompt:
                 raise ValueError("LLM 返回了空提示词，请检查模型是否支持当前参考素材。")
 
-        output_images = images
         native_ref_size = ref_image_size
         if ref_image_size == "自定义":
-            output_images = []
-            for item in images:
-                if item is None:
-                    output_images.append(None)
-                    continue
-                h, w = item.shape[1:3]
-                scale = ref_scale
-                tw, th = (max(32, round(side * scale / 32) * 32) for side in (w, h))
-                output_images.append(comfy.utils.common_upscale(item.movedim(-1, 1), tw, th,
-                    "lanczos", "disabled").movedim(1, -1))
             native_ref_size = "max"
         config_info = {"width": width, "height": height, "frames": frames, "seconds": frames / 24,
                        "aspect_ratio": aspect_ratio, "resolution": resolution}
         prompt_info = {"text": prompt, "optimized": optimize_prompt, "image_count": image_count,
                        "video_count": video_count, "audio_count": audio_count}
         return io.NodeOutput(prompt, width, height, frames, frames / 24, native_ref_size, ref_scale,
-                             output_images, videos, audios,
                              ui={"h3_video_config": [config_info], "h3_video_prompt": [prompt_info]})
