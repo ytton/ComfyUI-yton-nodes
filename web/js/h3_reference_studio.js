@@ -245,12 +245,13 @@ function setupVideoConfig(node) {
   const promptHeader = element("div", "yton-h3-heading yton-h3-heading-row");
   const optimizeButton = element("button", "yton-h3-auto-ratio", "✦ 优化");
   optimizeButton.type = "button";
-  optimizeButton.title = "使用连接的 LLM 和参考素材优化提示词；优化在下次执行时进行";
+  optimizeButton.title = "使用连接的 LLM 和参考素材优化提示词；只执行此配置器及其上游输入";
   const promptStatus = element("div", "yton-h3-size-info");
   promptHeader.append(element("span", "", "提示词"), optimizeButton);
   panel.append(controls, promptColumn);
   const groups = [];
   let refreshing = false;
+  let optimizationPending = false;
 
   function update(name, value) {
     node.graph?.beforeChange();
@@ -417,6 +418,8 @@ function setupVideoConfig(node) {
   const executed = node.onExecuted;
   node.onExecuted = function (data) {
     executed?.apply(this, arguments);
+    optimizationPending = false;
+    optimizeButton.disabled = false;
     if (data.h3_video_config?.[0]) node._h3VideoConfig = data.h3_video_config[0];
     const output = data.h3_video_prompt?.[0];
     if (output) {
@@ -429,15 +432,40 @@ function setupVideoConfig(node) {
     }
     refresh();
   };
-  optimizeButton.onclick = () => {
+  const executionError = node.onExecutionError;
+  node.onExecutionError = function () {
+    const result = executionError?.apply(this, arguments);
+    if (optimizationPending) {
+      optimizationPending = false;
+      optimizeButton.disabled = false;
+      widgets.optimize_prompt.value = false;
+      promptStatus.textContent = "优化失败，请查看节点执行错误";
+    }
+    return result;
+  };
+  optimizeButton.onclick = async () => {
+    if (optimizationPending) return;
     const llm = node.inputs.find(input => input.name === "llm");
     if (!llm?.link) {
       promptStatus.textContent = "连接 LLM 后即可优化提示词";
       return;
     }
+    optimizationPending = true;
+    optimizeButton.disabled = true;
     widgets.optimize_prompt.value = true;
     node.graph?.change();
-    promptStatus.textContent = "本次执行将结合已连接的参考素材优化提示词";
+    promptStatus.textContent = "正在优化提示词…仅执行此配置器及其上游输入";
+    try {
+      const queued = await app.queuePrompt(0, 1, [node.id]);
+      if (queued?.node_errors) throw new Error("工作流输入校验失败，请查看节点执行错误");
+      if (optimizationPending) promptStatus.textContent = "已加入队列，等待优化完成";
+    } catch (error) {
+      optimizationPending = false;
+      optimizeButton.disabled = false;
+      widgets.optimize_prompt.value = false;
+      node.graph?.change();
+      promptStatus.textContent = error.message || "无法提交提示词优化任务";
+    }
   };
   followNodeColours(node, panel);
   node.setSize([1060, node.size[1]]);
