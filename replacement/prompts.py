@@ -68,7 +68,7 @@ def signature(config, index):
     fps = 24 if config["plan"]["enabled"] else int(config["compression"]["fps"])
     # Encoding dimensions and quality do not change the action described by a prompt.
     values = [load_skill(), source_prompt(config, index), plan, config.get("crop") or [0, 0, 1, 1], fps,
-              config.get("ratio"), config.get("resolution"), config.get("image_scale"),
+              config.get("image_scale"),
               [(str(path), path.stat().st_mtime_ns, path.stat().st_size) for path in files]]
     return hashlib.sha256(json.dumps(values, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 

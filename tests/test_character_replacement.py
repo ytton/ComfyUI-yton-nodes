@@ -173,7 +173,8 @@ class ReplacementTests(unittest.TestCase):
         prompt = {
             "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
                 "video": ["media", 1], "current": ["media", 7], "total": ["media", 8],
-                "filename_prefix": "selected/segment", "container": "mp4", "fps": 24, "crf": 18, "save_full": False}},
+                "filename_prefix": "selected/segment", "container": "mp4", "fps": 24, "crf": 18,
+                "reuse_existing": False, "save_full": False}},
         }
         mapping = {cls.__name__: cls for cls in CLASSES}
         server = types.SimpleNamespace(client_id=None, last_node_id=None,
@@ -190,7 +191,7 @@ class ReplacementTests(unittest.TestCase):
                 submitted = deepcopy(prompt)
                 submitted["save"]["inputs"]["filename_prefix"] = f"selected/{name}"
                 if parser:
-                    submitted["plan"] = {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config)}}
+                    submitted["plan"] = {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "loop_generation": False}}
                     submitted["media"] = {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0], **selection}}
                 else:
                     submitted["media"] = {"class_type": "YtonCharacterReplacement", "inputs": {"config": json.dumps(config), **selection}}
@@ -403,6 +404,40 @@ class ReplacementTests(unittest.TestCase):
         config["plan"]["frames"] = 22
         self.assertEqual(planner.execute(json.dumps(config)).result[1], 4)
 
+    def test_internal_loop_starts_at_selected_segment_and_advances_parser_index(self):
+        import execution
+        import nodes
+        from server import PromptServer
+
+        config = self.config()
+        config["plan"].update(frames=22, overlap=0)
+
+        prompt = {
+            "plan": {"class_type": "YtonReplacementPlan", "inputs": {
+                "config": json.dumps(config), "selected_index": 1, "loop_generation": True}},
+            "segment": {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0]}},
+            "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
+                "video": ["segment", 1], "current": ["segment", 7], "total": ["segment", 8],
+                "filename_prefix": "internal-loop/video", "container": "mp4", "fps": 24, "crf": 18,
+                "reuse_existing": False, "save_full": True}},
+        }
+        server = types.SimpleNamespace(client_id=None, last_node_id=None,
+            send_sync=lambda *args: None, send_progress_text=lambda *args: None)
+        mapping = {cls.__name__: cls for cls in CLASSES}
+        with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, "instance", server, create=True):
+            valid, error, outputs, errors = asyncio.run(execution.validate_prompt("internal-replacement-loop", prompt, None))
+            self.assertTrue(valid, (error, errors))
+            executor = execution.PromptExecutor(server, cache_type=execution.CacheType.CLASSIC,
+                cache_args={"ram": 0, "ram_inactive": 0})
+            asyncio.run(executor.execute_async(prompt, uuid.uuid4().hex, execute_outputs=outputs))
+            self.assertTrue(executor.success, executor.status_messages)
+        manifests = list((self.root / "output/internal-loop").glob("video_*/segments.json"))
+        self.assertEqual(len(manifests), 1)
+        manifest = json.loads(manifests[0].read_text())
+        self.assertEqual(manifest["total"], 4)
+        self.assertEqual(sorted(manifest["segments"]), ["2", "3", "4"])
+        self.assertEqual(len(list(manifests[0].parent.glob("segment_*.mp4"))), 3)
+
     def test_official_loop_uses_plan_count_carries_video_and_finishes_saving(self):
         import execution
         import nodes
@@ -447,7 +482,8 @@ class ReplacementTests(unittest.TestCase):
 
         prompt = {
             "llm": {"class_type": "ReplacementTestConnector", "inputs": {}},
-            "plan": {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "selected_index": 1, "llm": ["llm", 0]}},
+            "plan": {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config), "selected_index": 1,
+                "loop_generation": False, "llm": ["llm", 0]}},
             "start": {"class_type": "StartLoop", "inputs": {"mode": "For", "mode.start_iteration_index": 0,
                        "mode.max_iteration": ["plan", 1], "mode.step": 1, "cache_iterations": False}},
             "segment": {"class_type": "YtonReplacementSegment", "inputs": {"index": ["start", 0], "plan": ["plan", 0]}},
@@ -455,7 +491,7 @@ class ReplacementTests(unittest.TestCase):
                         "index": ["start", 0], "previous": ["start", 4]}},
             "save": {"class_type": "YtonReplacementVideoSave", "inputs": {"video": ["render", 0],
                       "current": ["segment", 7], "total": ["plan", 1], "filename_prefix": ["segment", 9],
-                      "container": "mp4", "fps": 24, "crf": 18, "save_full": True}},
+                      "container": "mp4", "fps": 24, "crf": 18, "reuse_existing": False, "save_full": True}},
             "end": {"class_type": "EndLoop", "inputs": {"output_value": ["save", 0],
                      "next_iteration_value": ["save", 0], "accumulate": False}},
         }
@@ -493,7 +529,8 @@ class ReplacementTests(unittest.TestCase):
             "start":{"class_type":"WhileLoopStartPGS","inputs":{"condition":True,"initial_value0":0}},
             "config":{"class_type":"YtonCharacterReplacement","inputs":{"index":["start",1],"config":json.dumps(config),"selected_index":0}},
             "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["config",1],"current":["config",7],"total":["config",8],
-                    "filename_prefix":"native-loop/video","container":"mp4","fps":24,"crf":18,"save_full":True}},
+                    "filename_prefix":"native-loop/video","container":"mp4","fps":24,"crf":18,
+                    "reuse_existing":False,"save_full":True}},
             "compare":{"class_type":"ComparePGS","inputs":{"a":["config",7],"b":["config",8],"comparison":"a < b"}},
             "end":{"class_type":"WhileLoopEndPGS","inputs":{"flow":["start",0],"condition":["compare",0],
                    "initial_value0":["config",7],"initial_value1":["save",0]}},
@@ -566,6 +603,28 @@ class ReplacementTests(unittest.TestCase):
         new=save_segment(video,1,2,run=uuid.uuid4().hex,started_at=started_at,prefix="replacement/test")
         self.assertFalse(new["complete"])
         self.assertEqual(Path(new["saved_segment"]["subfolder"]).name,"test_14-00-30-2")
+
+    def test_reuse_existing_project_overwrites_only_an_existing_segment(self):
+        video, _ = segment_video(self.config(), 0)
+        started_at = datetime(2026, 11, 3, 14, 0, 30).astimezone()
+        initial = dict(run=uuid.uuid4().hex, started_at=started_at, prefix="replacement/retry",
+                       save_full=True)
+        original = save_segment(video, 1, 2, **initial)
+        save_segment(video, 2, 2, **initial)
+        project = self.root / "output" / original["saved_segment"]["subfolder"]
+        first_file = project / "segment_0001.mp4"
+        before = first_file.stat().st_mtime_ns
+
+        retried = save_segment(video, 1, 2, run=uuid.uuid4().hex, started_at=started_at,
+            prefix="replacement/retry", reuse_existing=True, save_full=True)
+        self.assertEqual(Path(retried["saved_segment"]["subfolder"]), Path(original["saved_segment"]["subfolder"]))
+        self.assertEqual(len(list((self.root / "output/replacement").glob("retry_14-00-30*/segments.json"))), 1)
+        self.assertGreaterEqual(first_file.stat().st_mtime_ns, before)
+        manifest = json.loads((project / "segments.json").read_text())
+        self.assertEqual(manifest["run"], retried["run"])
+        with self.assertRaisesRegex(ValueError, "没有第 1 段可覆盖"):
+            save_segment(video, 1, 2, run=uuid.uuid4().hex, started_at=started_at,
+                prefix="replacement/no-project", reuse_existing=True)
 
     def test_save_directory_uses_configuration_start_time_for_all_segments(self):
         config = self.config()

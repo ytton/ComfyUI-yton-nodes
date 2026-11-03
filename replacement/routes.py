@@ -58,6 +58,14 @@ def install():
             return {"metadata": metadata, "plan": result, "output_size": {"width": width, "height": height}}
         return await respond(operation)
 
+    @routes.post("/yton/replacement/segment-preview")
+    async def segment_preview(request):
+        data = await request.json()
+        def operation():
+            video, _ = segment_video(data["config"], int(data["index"]))
+            return {"video": preview(Path(video.get_stream_source()), "temp")}
+        return await respond(operation)
+
     @routes.get("/yton/replacement/skill")
     async def optimization_skill(request):
         return await respond(lambda: {"skill": load_skill(), "default_skill": SYSTEM})

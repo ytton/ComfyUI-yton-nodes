@@ -12,10 +12,13 @@ const kind = file => file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|avi|
 export async function setupReplacementPanel(node) {
   const configWidget = node.widgets.find(w => w.name === "config");
   const selectedWidget = node.widgets.find(w => w.name === "selected_index");
+  const loopWidget = node.widgets.find(w => w.name === "loop_generation");
   hideWidget(configWidget);
   hideWidget(selectedWidget);
+  if(loopWidget) hideWidget(loopWidget);
   let config = JSON.parse(configWidget.value), index = selectedWidget.value, result;
   let activeImage = -1, busy = false, removed = false, tab = "original", editor;
+  let segmentPreview = null, previewRevision = 0;
   let richMode = true, plainEditor;
   let editorAbort, planRevision = 0;
   const lifetime = new AbortController();
@@ -82,6 +85,7 @@ export async function setupReplacementPanel(node) {
     index = Math.max(0,Math.min(total-1, value));
     commit();
     renderPosition(); renderEditor();
+    void updateSegmentPreview();
   }
   function renderPosition() {
     const total = result?.plan.segments.length || 0;
@@ -105,7 +109,20 @@ export async function setupReplacementPanel(node) {
       const selected=Math.max(0, Math.min(index, data.plan.segments.length-1));
       if(index!==selected) {index=selected;commit();}
       renderPosition(); message.textContent="";
+      void updateSegmentPreview();
     } catch(error) {if (revision===planRevision) {result=null;renderPosition();message.textContent=error.message;}}
+  }
+  async function updateSegmentPreview() {
+    const revision=++previewRevision;
+    if(!config.video || !config.plan.enabled) {segmentPreview=null;renderMedia();return;}
+    try {
+      const data=await request("replacement/segment-preview",{config,index});
+      if(revision!==previewRevision || removed) return;
+      segmentPreview=data.video;
+      renderMedia();
+    } catch(error) {
+      if(revision===previewRevision) {segmentPreview=null;message.textContent=error.message;renderMedia();}
+    }
   }
   function choose(accept, files) {
     const picker=el("input"); picker.type="file"; picker.accept=accept; picker.multiple=accept.startsWith("image");
@@ -157,7 +174,7 @@ export async function setupReplacementPanel(node) {
     }));
     videoSlot.append(top);
     if (config.video) {
-      const video=el("video"); video.src=mediaURL(config.video); video.controls=true; video.preload="metadata";
+      const video=el("video"); video.src=mediaURL(config.plan.enabled && segmentPreview ? segmentPreview : config.video); video.controls=true; video.preload="metadata";
       videoSlot.append(video);
       top.append(button("×",()=>{config.video="";commit({invalidate:true});renderAll();updatePlan();},"移除视频"));
     } else videoSlot.append(button("＋ 拖入、粘贴或选择视频",()=>choose("video/*",files=>upload(files))));
@@ -239,13 +256,20 @@ export async function setupReplacementPanel(node) {
       config.shared=value;
       commit(); renderSwitches(); renderPosition(); renderEditor();
     }),toggle("每段自动优化",config.auto,value=>{config.auto=value;commit();}));
+    if(loopWidget && node.type === "YtonReplacementPlan") switches.append(toggle("从当前片段循环到结尾",loopWidget.value,value=>{
+      node.graph?.beforeChange();
+      loopWidget.value=value;
+      node.graph?.change();
+      node.graph?.afterChange();
+      node.setDirtyCanvas(true,true);
+    }));
   }
   function renderControls() {
     const segment=result?.plan.segments[index];
     controls.replaceChildren();
     const optionRow=(label,children)=>{const row=el("div","yr-option-row");const options=el("div","yr-options");options.append(...children);row.append(el("span","yr-label",label),options);return row;};
-    const choice=(label,value,selected,change,refresh=false)=>{const control=button(label,()=>{change(value);commit({invalidate:true});renderControls();if(refresh)void updatePlan();});control.setAttribute("aria-pressed",String(selected===value));return control;};
-    const resolution=optionRow("分辨率",["480p","720p","1080p"].map(v=>choice(v,v,config.resolution,value=>{config.resolution=value;},true)));
+    const choice=(label,value,selected,change,refresh=false,invalidate=true)=>{const control=button(label,()=>{change(value);commit({invalidate});renderControls();if(refresh)void updatePlan();});control.setAttribute("aria-pressed",String(selected===value));return control;};
+    const resolution=optionRow("分辨率",["480p","720p","1080p"].map(v=>choice(v,v,config.resolution,value=>{config.resolution=value;},true,false)));
     const duration=el("div","yr-option-row yr-duration");
     if(config.plan.enabled) {
       duration.append(el("span","yr-label","本段帧数"),button(segment ? `${segment.end-segment.start} 帧 · ${((segment.end-segment.start)/24).toFixed(3)} 秒` : "由分段计划控制",()=>videoSlot.querySelector("button").click(),"时长由分段计划决定，点击编辑计划"));
@@ -256,7 +280,7 @@ export async function setupReplacementPanel(node) {
       duration.append(el("span","yr-label","每段时长"),options);
     }
     const ratio=optionRow("画面比例",["原视频","9:16","16:9"].map(v=>{
-      const control=choice(v==="原视频" ? "原比例" : v,v,config.ratio,value=>{config.ratio=value;},true);
+      const control=choice(v==="原视频" ? "原比例" : v,v,config.ratio,value=>{config.ratio=value;},true,false);
       control.prepend(el("span",`yr-ratio ${v==="9:16" ? "tall" : ""}`));return control;
     }));
     const scale=optionRow("图片缩放",[select([{value:.5,label:"0.5× · 最长边等比缩放"},{value:.75,label:"0.75× · 最长边等比缩放"},{value:1,label:"1× · 原尺寸"}],config.image_scale,v=>{config.image_scale=Number(v);commit({invalidate:true});},"六张图片按各自最长边等比缩放")]);
@@ -334,6 +358,7 @@ export async function setupReplacementPanel(node) {
     if(config.auto) config.optimized[output.slot]={text:output.text,signature:output.signature};
     commit();
     tab=config.auto ? "optimized" : tab;renderPosition();renderEditor();
+    void updateSegmentPreview();
   };
   const remove=node.onRemoved;
   node.onRemoved=function(){removed=true;lifetime.abort();editorAbort?.abort();editor?.dispose();root.querySelectorAll("video").forEach(v=>{v.pause();v.removeAttribute("src");v.load();});return remove?.apply(this,arguments);};

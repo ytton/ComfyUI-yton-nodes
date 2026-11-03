@@ -33,7 +33,8 @@ def preview(path, kind):
             "format": "video/" + ("mp4" if path.suffix == ".mp4" else "x-matroska")}
 
 
-def save_segment(video, index, total, *, run, started_at, prefix, container="mp4", fps=24, crf=18, save_full=True):
+def save_segment(video, index, total, *, run, started_at, prefix, container="mp4", fps=24, crf=18,
+                 reuse_existing=False, save_full=True, project_root=None):
     if not (1 <= index <= total):
         raise ValueError("当前段从 1 开始，且不能超过视频总段数。")
     if container not in ("mp4", "mkv") or not re.fullmatch(r"[a-f0-9]{32}", run):
@@ -50,6 +51,40 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
     temp.mkdir(parents=True, exist_ok=True)
     with _save_lock:
         base = root
+        if project_root is not None:
+            root = Path(project_root)
+            manifest_path = root / "segments.json"
+            if not manifest_path.is_file():
+                raise ValueError("当前项目目录缺少片段清单，无法继续保存。")
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        elif reuse_existing:
+            candidates = []
+            project_name = re.sub(r"_\d{2}-\d{2}-\d{2}(?:-\d+)?$", "", root.name)
+            candidate_pattern = re.compile(re.escape(project_name) + r"_\d{2}-\d{2}-\d{2}(?:-\d+)?$")
+            for candidate in root.parent.iterdir() if root.parent.is_dir() else ():
+                manifest_path = candidate / "segments.json"
+                if (not candidate.is_dir() or not manifest_path.is_file()
+                        or not candidate_pattern.fullmatch(candidate.name)):
+                    continue
+                try:
+                    previous = json.loads(manifest_path.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue
+                if previous.get("total") == total and str(index) in previous.get("segments", {}):
+                    candidates.append((manifest_path.stat().st_mtime_ns, candidate, previous))
+            if not candidates:
+                raise ValueError(f"最近项目中没有第 {index} 段可覆盖。")
+            _, root, manifest = max(candidates, key=lambda item: item[0])
+            expected_size = list(video.get_dimensions())
+            if (manifest.get("format"), manifest.get("fps"), manifest.get("crf"), manifest.get("size")) != (
+                    container, fps, crf, expected_size):
+                raise ValueError("最近项目的保存格式、帧率、质量或尺寸不同，不能覆盖本段。")
+            manifest["run"] = run
+            manifest["started_at"] = started_at.isoformat()
+            manifest_path = root / "segments.json"
+            pending = manifest_path.with_suffix(".writing.json")
+            pending.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+            pending.replace(manifest_path)
         suffix = 1
         while root.exists():
             manifest_path = root / "segments.json"
@@ -62,7 +97,8 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
         manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {
             "run": run, "started_at": started_at.isoformat(), "total": total, "segments": {}, "size": list(video.get_dimensions()),
             "format": container, "fps": fps, "crf": crf}
-        if (manifest["total"], manifest["format"], manifest["fps"], manifest["crf"]) != (total, container, fps, crf):
+        if (manifest["total"], manifest["format"], manifest["fps"], manifest["crf"], manifest["size"]) != (
+                total, container, fps, crf, list(video.get_dimensions())):
             raise ValueError("同一轮循环的总段数、格式、帧率和质量需要保持一致。")
         source = temp / "input.mp4"
         target = root / f"segment_{index:04d}.{container}"
@@ -114,4 +150,4 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
                 concat.unlink(missing_ok=True)
         return {"saved_segment": preview(target, "output"), "segments": [preview(path, "output") for path in clips],
                 "merged": preview(merged, "output" if save_full else "temp") if merged else None,
-                "complete": complete, "total": total, "current": index, "run": run}
+                "complete": complete, "total": total, "current": index, "run": run, "_project_root": str(root)}

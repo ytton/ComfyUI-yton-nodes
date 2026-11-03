@@ -112,7 +112,7 @@ function setupSave(node) {
     }
     return bounds;
   };
-  for(const name of ["filename_prefix","container","fps","crf","save_full"]) hideWidget(widgets.get(name));
+  for(const name of ["filename_prefix","container","fps","crf","reuse_existing","save_full"]) hideWidget(widgets.get(name));
   function change(name,value) {widgets.get(name).value=value;node.setDirtyCanvas(true,true);}
   function renderControls() {
     const row=el("div","yr-fields");
@@ -126,6 +126,7 @@ function setupSave(node) {
       prefixControl.title="断开连线后可手动填写保存目录 / 前缀";
     }
     controls.replaceChildren(field("保存目录 / 前缀",prefixControl),row,
+      toggle("覆盖最近项目中的本段",widgets.get("reuse_existing").value,v=>change("reuse_existing",v)),
       toggle("保存完整视频",widgets.get("save_full").value,v=>change("save_full",v)));
   }
   root.append(video,heading,clips,controls);renderControls();
