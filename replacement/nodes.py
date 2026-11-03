@@ -52,7 +52,7 @@ class YtonCharacterReplacement(io.ComfyNode):
                                  tooltip="可选，从 0 开始。未连接时输出“片段提示词”中选中的片段；连接后以外部索引为准。"),
                     io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
                     io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True),
-                    io.Int.Input("selected_index", default=0, min=0, socketless=True)],
+                    io.Int.Input("selected_index", default=0, min=0, optional=True, socketless=True)],
             outputs=[io.Image.Output(display_name="图片列表", is_output_list=True),
                      io.Video.Output(display_name="视频列表", is_output_list=True),
                      io.String.Output(display_name="提示词"),
@@ -109,7 +109,7 @@ class YtonReplacementPlan(io.ComfyNode):
             description="将视频、参考图片、提示词与分段设置整合为一份配置，并计算片段总数；连接【人物替换配置解析器】提取媒体。",
             inputs=[io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
                     io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True),
-                    io.Int.Input("selected_index", default=0, min=0, socketless=True)],
+                    io.Int.Input("selected_index", default=0, min=0, optional=True, socketless=True)],
             outputs=[io.Custom("YTON_REPLACEMENT_PLAN").Output(display_name="分段配置"),
                      io.Int.Output(display_name="片段总数", tooltip="根据视频长度、选取范围和分段设置计算的总段数。")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])

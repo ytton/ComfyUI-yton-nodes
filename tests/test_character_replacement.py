@@ -160,33 +160,51 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(parser.execute(plan=plan).result[5:9], (38, 38/24, 2, 2))
         self.assertEqual(parser.execute(plan=plan, index=0).result[5:9], (39, 39/24, 1, 2))
 
-    def test_unconnected_index_validates_and_executes_selected_segment(self):
+    def test_index_selection_inputs_validate_and_execute(self):
         import execution
         import nodes
         from server import PromptServer
 
         config = self.config()
+        for node in (YtonCharacterReplacement, YtonReplacementPlan):
+            inputs = node.GET_NODE_INFO_V1()["input"]
+            self.assertIn("selected_index", inputs["optional"])
+            self.assertNotIn("selected_index", inputs["required"])
         prompt = {
-            "media": {"class_type": "YtonCharacterReplacement", "inputs": {
-                "config": json.dumps(config), "selected_index": 1}},
             "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
                 "video": ["media", 1], "current": ["media", 7], "total": ["media", 8],
                 "filename_prefix": "selected/segment", "container": "mp4", "fps": 24, "crf": 18, "save_full": False}},
         }
         mapping = {cls.__name__: cls for cls in CLASSES}
-        events = []
         server = types.SimpleNamespace(client_id=None, last_node_id=None,
-            send_sync=lambda event, data, *args: events.append((event, data)), send_progress_text=lambda *args: None)
-        with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, "instance", server, create=True):
-            valid, error, outputs, errors = asyncio.run(execution.validate_prompt("selected-segment", prompt, None))
-            self.assertTrue(valid, (error, errors))
-            executor = execution.PromptExecutor(server, cache_type=execution.CacheType.CLASSIC,
-                                                cache_args={"ram": 0, "ram_inactive": 0})
-            asyncio.run(executor.execute_async(prompt, uuid.uuid4().hex, execute_outputs=outputs))
-            self.assertTrue(executor.success, executor.status_messages)
-        manifest = next((self.root / "output/selected").rglob("segments.json"))
-        self.assertEqual(list(json.loads(manifest.read_text())["segments"]), ["2"])
-        self.assertEqual(InputImpl.VideoFromFile(str(manifest.parent / "segment_0002.mp4")).get_frame_count(), 38)
+            send_sync=lambda *args: None, send_progress_text=lambda *args: None)
+        cases = [
+            ("panel", False, {"selected_index": 1}, 2, 38),
+            ("external", False, {"index": 1}, 2, 38),
+            ("initial", False, {}, 1, 39),
+            ("parser_external", True, {"index": 1}, 2, 38),
+            ("parser_initial", True, {}, 1, 39),
+        ]
+        for name, parser, selection, expected_segment, expected_frames in cases:
+            with self.subTest(name=name):
+                submitted = deepcopy(prompt)
+                submitted["save"]["inputs"]["filename_prefix"] = f"selected/{name}"
+                if parser:
+                    submitted["plan"] = {"class_type": "YtonReplacementPlan", "inputs": {"config": json.dumps(config)}}
+                    submitted["media"] = {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0], **selection}}
+                else:
+                    submitted["media"] = {"class_type": "YtonCharacterReplacement", "inputs": {"config": json.dumps(config), **selection}}
+                with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, "instance", server, create=True):
+                    valid, error, outputs, errors = asyncio.run(execution.validate_prompt(name, submitted, None))
+                    self.assertTrue(valid, (error, errors))
+                    executor = execution.PromptExecutor(server, cache_type=execution.CacheType.CLASSIC,
+                                                        cache_args={"ram": 0, "ram_inactive": 0})
+                    asyncio.run(executor.execute_async(submitted, uuid.uuid4().hex, execute_outputs=outputs))
+                    self.assertTrue(executor.success, executor.status_messages)
+                manifest = next((self.root / "output/selected").glob(f"{name}_*/segments.json"))
+                self.assertEqual(list(json.loads(manifest.read_text())["segments"]), [str(expected_segment)])
+                video = InputImpl.VideoFromFile(str(manifest.parent / f"segment_{expected_segment:04d}.mp4"))
+                self.assertEqual(video.get_frame_count(), expected_frames)
 
     def test_original_ratio_resolution_uses_short_edge(self):
         config = self.config()
