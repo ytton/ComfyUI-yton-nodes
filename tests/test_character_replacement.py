@@ -406,7 +406,7 @@ class ReplacementTests(unittest.TestCase):
         config["plan"]["frames"] = 22
         self.assertEqual(planner.execute(json.dumps(config)).result[0]["total"], 4)
 
-    def test_internal_loop_starts_at_selected_segment_and_advances_parser_index(self):
+    def test_internal_loop_starts_at_selected_segment_when_reuse_has_no_project(self):
         import execution
         import nodes
         from server import PromptServer
@@ -421,7 +421,7 @@ class ReplacementTests(unittest.TestCase):
             "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
                 "video": ["segment", 1], "current": ["segment", 7], "total": ["segment", 8],
                 "filename_prefix": "internal-loop/video", "container": "mp4", "fps": 24, "crf": 18,
-                "reuse_existing": False, "save_full": True}},
+                "reuse_existing": True, "save_full": True}},
         }
         server = types.SimpleNamespace(client_id=None, last_node_id=None,
             send_sync=lambda *args: None, send_progress_text=lambda *args: None)
@@ -554,7 +554,8 @@ class ReplacementTests(unittest.TestCase):
                 prefix = f"restore-context/{loop}/"
                 initial = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(), prefix=prefix)
                 first = save_segment(video, 1, 2, **initial)
-                save_segment(video, 2, 2, **initial)
+                if not loop:
+                    save_segment(video, 2, 2, **initial)
                 root = self.root / "output" / first["saved_segment"]["subfolder"]
                 first_file = root / "segment_0001.mp4"
                 before = first_file.stat().st_mtime_ns
@@ -762,9 +763,37 @@ class ReplacementTests(unittest.TestCase):
         self.assertGreaterEqual(first_file.stat().st_mtime_ns, before)
         manifest = json.loads((project / "segments.json").read_text())
         self.assertEqual(manifest["run"], retried["run"])
-        with self.assertRaisesRegex(ValueError, "没有第 1 段可覆盖"):
-            save_segment(video, 1, 2, run=uuid.uuid4().hex, started_at=started_at,
-                prefix="replacement/no-project", reuse_existing=True)
+
+    def test_reuse_without_project_creates_and_completes_a_new_project(self):
+        video, _ = segment_video(self.config(), 0)
+        for prefix in ("new-project/video", "new-project/directory/"):
+            with self.subTest(prefix=prefix):
+                options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+                    prefix=prefix, reuse_existing=True)
+                first = save_segment(video, 1, 2, **options)
+                second = save_segment(video, 2, 2, **options)
+                self.assertEqual(first["_project_root"], second["_project_root"])
+                project = Path(second["_project_root"])
+                self.assertTrue((project / "segment_0001.mp4").is_file())
+                self.assertTrue((project / "segment_0002.mp4").is_file())
+                self.assertTrue(second["complete"])
+                self.assertEqual(InputImpl.VideoFromFile(str(project / "complete.mp4")).get_frame_count(), 78)
+
+    def test_reuse_without_requested_segment_adds_it_to_the_existing_project(self):
+        video, _ = segment_video(self.config(), 0)
+        started_at = datetime.now().astimezone()
+        prefix = "missing-segment/project/"
+        original = save_segment(video, 2, 2, run=uuid.uuid4().hex, started_at=started_at, prefix=prefix)
+        original_manifest = Path(original["_project_root"]) / "segments.json"
+        second_file = Path(original["_project_root"]) / "segment_0002.mp4"
+        before = second_file.read_bytes()
+        created = save_segment(video, 1, 2, run=uuid.uuid4().hex, started_at=started_at,
+            prefix=prefix, reuse_existing=True)
+        self.assertEqual(created["_project_root"], original["_project_root"])
+        self.assertEqual(second_file.read_bytes(), before)
+        self.assertEqual(sorted(json.loads(original_manifest.read_text())["segments"]), ["1", "2"])
+        self.assertTrue(created["complete"])
+        self.assertTrue((Path(created["_project_root"]) / "segment_0001.mp4").is_file())
 
     def test_reuse_directory_prefix_finds_the_same_project_at_a_different_time(self):
         video, _ = segment_video(self.config(), 0)

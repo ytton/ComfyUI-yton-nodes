@@ -44,7 +44,7 @@ def project_path(prefix, started_at):
     return root, pattern
 
 
-def existing_project(prefix, started_at, index, total):
+def existing_project(prefix, started_at, total):
     root, pattern = project_path(prefix, started_at)
     candidates = []
     for candidate in root.parent.iterdir() if root.parent.is_dir() else ():
@@ -52,10 +52,10 @@ def existing_project(prefix, started_at, index, total):
         if not candidate.is_dir() or not manifest_path.is_file() or not pattern.fullmatch(candidate.name):
             continue
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if manifest.get("total") == total and str(index) in manifest.get("segments", {}):
+        if manifest.get("total") == total:
             candidates.append((manifest_path.stat().st_mtime_ns, candidate, manifest))
     if not candidates:
-        raise ValueError(f"最近项目中没有第 {index} 段可覆盖。")
+        return None
     _, root, manifest = max(candidates, key=lambda item: item[0])
     return root, manifest
 
@@ -74,6 +74,7 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
     temp.mkdir(parents=True, exist_ok=True)
     with _save_lock:
         base = root
+        manifest = None
         if project_root is not None:
             root = Path(project_root)
             manifest_path = root / "segments.json"
@@ -81,8 +82,10 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
                 raise ValueError("当前项目目录缺少片段清单，无法继续保存。")
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         elif reuse_existing:
-            root, manifest = existing_project(prefix, started_at, index, total)
-        if project_root is not None or reuse_existing:
+            existing = existing_project(prefix, started_at, total)
+            if existing is not None:
+                root, manifest = existing
+        if manifest is not None:
             expected_size = list(video.get_dimensions())
             if (manifest.get("format"), manifest.get("fps"), manifest.get("crf"), manifest.get("size")) != (
                     container, fps, crf, expected_size):

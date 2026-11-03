@@ -156,14 +156,17 @@ class YtonReplacementPreviousSegment(io.ComfyNode):
         if not reuse_existing or index == 0:
             return io.NodeOutput(None)
         state = execution_state(cls.hidden.dynprompt, save_id)
-        root, manifest = existing_project(filename_prefix, state["started_at"], index + 1, total)
+        existing = existing_project(filename_prefix, state["started_at"], total)
+        if existing is None:
+            return io.NodeOutput(None)
+        root, manifest = existing
+        state["project_root"] = str(root)
         record = manifest["segments"].get(str(index))
         if record is None:
-            raise ValueError(f"最近项目缺少第 {index} 段，无法作为本段上下文。")
+            return io.NodeOutput(None)
         path = (root / record["file"]).resolve()
         if not path.is_relative_to(root.resolve()) or not path.is_file():
             raise ValueError("上一段视频文件无效或已经被删除。")
-        state["project_root"] = str(root)
         return io.NodeOutput(InputImpl.VideoFromFile(str(path)))
 
 
