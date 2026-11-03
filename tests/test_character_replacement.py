@@ -240,6 +240,36 @@ class ReplacementTests(unittest.TestCase):
         config["image_scale"]=.75
         self.assertNotEqual(self.node().execute(0,json.dumps(config)).result[2],"manual optimized")
 
+    def test_compression_changes_preserve_optimized_prompt_for_shared_and_segment_modes(self):
+        for shared in (False, True):
+            with self.subTest(shared=shared):
+                config = self.config()
+                config["shared"] = shared
+                slot = "shared" if shared else "0"
+                expected = signature(config, 0)
+                config["optimized"][slot] = {"text": "keep optimized", "signature": expected}
+                config["compression"].update(width=80, height=48, max_edge=0, crf=28,
+                                             resize_method="maintain aspect ratio")
+                # The editor derives this informational value from the H3 frame count.
+                config["plan"]["seconds"] = config["plan"]["frames"] / 24
+                config["plan"]["end"] = 3
+                self.assertEqual(signature(config, 0), expected)
+                output = self.node().execute(0, json.dumps(config)).result
+                self.assertEqual(output[2], "keep optimized")
+                self.assertEqual(output[1][0].get_dimensions(), (80, 48))
+                self.assertEqual(output[5], 39)
+
+    def test_prompt_signature_changes_for_segment_content_and_crop(self):
+        config = self.config()
+        expected = signature(config, 0)
+        for field, value in (("start", 1 / 24), ("frames", 56), ("overlap", 22)):
+            changed = deepcopy(config)
+            changed["plan"][field] = value
+            self.assertNotEqual(signature(changed, 0), expected)
+        changed = deepcopy(config)
+        changed["crop"] = [0.1, 0, 0.9, 1]
+        self.assertNotEqual(signature(changed, 0), expected)
+
     def test_custom_skill_persists_and_drives_manual_and_automatic_optimization(self):
         path = self.root / "user/yton-replacement-skill.md"
         self.addCleanup(path.unlink, missing_ok=True)

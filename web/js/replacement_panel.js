@@ -4,6 +4,7 @@ import { followNodeColours, mountNodePanel } from "./node_panel.js";
 import { button, el, field, hideWidget, input, mediaURL, request, select, showReplacementDimensions, toggle } from "./replacement_common.js";
 import { openReplacementEditor } from "./replacement_editor.js";
 import { openReplacementSkill } from "./replacement_skill.js";
+import { videoPromptContent } from "./replacement_prompt_state.js";
 
 const kind = file => file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(file.name) ? "video"
   : file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(file.name) ? "image" : null;
@@ -143,7 +144,9 @@ export async function setupReplacementPanel(node) {
     top.append(el("b","","Video 1"), button("编辑", () => {
       if (!config.video) {message.textContent="请先上传视频。"; return;}
       void openReplacementEditor(config, draft => {
-        config=draft; commit({invalidate:true}); renderAll(); void updatePlan();
+        const duration=result?.metadata.duration;
+        const invalidate=videoPromptContent(config,duration)!==videoPromptContent(draft,duration);
+        config=draft; commit({invalidate}); renderAll(); void updatePlan();
       }).catch(error=>{message.textContent=`视频编辑器加载失败：${error.message}`;});
     }));
     videoSlot.append(top);

@@ -7,7 +7,7 @@ import tempfile
 
 import folder_paths
 
-from .media import contact_sheet, input_path
+from .media import contact_sheet, input_path, plan_for
 
 
 SYSTEM = """你是视频人物替换提示词编写助手。用户提供当前原视频片段的六帧时间顺序拼图，以及依次编号的参考图片。
@@ -64,7 +64,10 @@ def resolve_references(text, config):
 
 def signature(config, index):
     files = [input_path(filename) for filename in [config["video"], *config["images"]] if filename]
-    values = [load_skill(), source_prompt(config, index), config["plan"], config.get("crop"), config.get("compression"),
+    _, plan = plan_for(config)
+    fps = 24 if config["plan"]["enabled"] else int(config["compression"]["fps"])
+    # Encoding dimensions and quality do not change the action described by a prompt.
+    values = [load_skill(), source_prompt(config, index), plan, config.get("crop") or [0, 0, 1, 1], fps,
               config.get("ratio"), config.get("resolution"), config.get("image_scale"),
               [(str(path), path.stat().st_mtime_ns, path.stat().st_size) for path in files]]
     return hashlib.sha256(json.dumps(values, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
