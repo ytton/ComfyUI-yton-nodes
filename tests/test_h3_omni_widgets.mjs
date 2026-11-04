@@ -115,6 +115,16 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   node.onConnectionsChange()
   assert.equal(widgets.get('enable_context').value, false)
   if (widgets.has('second_sigma_values')) {
+    for (const value of [0.4, [0.4, 0.2, 0]]) {
+      widgets.get('second_sigma_values').value = value
+      assert.doesNotThrow(() => node.onConfigure())
+      assert.equal(widgets.get('second_sigma_values').value, value)
+      for (const name of ['second_steps', 'second_sigma_start', 'second_rho']) assert.ok(widgets.get(name).disabled)
+    }
+    for (const value of [null, undefined, '   ']) {
+      change('second_sigma_values', value)
+      for (const name of ['second_steps', 'second_sigma_start', 'second_rho']) assert.equal(widgets.get(name).disabled, false)
+    }
     change('second_sigma_values', '0.4, 0.2, 0')
     for (const name of ['second_steps', 'second_sigma_start', 'second_rho']) assert.ok(widgets.get(name).disabled)
     change('second_sigma_values', '')

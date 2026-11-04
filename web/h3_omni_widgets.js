@@ -222,7 +222,8 @@ function setupSections(node) {
     if (secondSigmaText) {
       secondSigmaText.disabled = !twoPass || secondSigmaLinked;
       secondSigmaText.label = secondSigmaLinked ? "二采 Sigma（已由连线提供）" : "二采 Sigma（留空自动）";
-      const customSecondSigma = secondSigmaLinked || secondSigmaText.value.trim() !== "";
+      const customSecondSigma = secondSigmaLinked || (typeof secondSigmaText.value === "string"
+        ? secondSigmaText.value.trim() !== "" : secondSigmaText.value != null);
       for (const name of ["second_steps", "second_sigma_start", "second_rho"]) {
         widgets.get(name).disabled = !twoPass || customSecondSigma;
       }
