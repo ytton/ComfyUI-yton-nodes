@@ -876,6 +876,129 @@ class ReplacementTests(unittest.TestCase):
         self.assertTrue(created["complete"])
         self.assertTrue((Path(created["_project_root"]) / "segment_0001.mp4").is_file())
 
+    def test_invalid_encoded_replacement_keeps_the_saved_segment_and_manifest(self):
+        video, _ = segment_video(self.config(), 0)
+        options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+                       prefix="save-priority/invalid-encode/")
+        first = save_segment(video, 1, 2, **options)
+        project = Path(first["_project_root"])
+        saved = (project / "segment_0001.mp4").read_bytes()
+        manifest = (project / "segments.json").read_bytes()
+        with patch("replacement_test_plugin.replacement.save.encode",
+                   side_effect=lambda arguments: Path(arguments[-1]).write_bytes(b"invalid video")):
+            with self.assertRaises(av.FFmpegError):
+                save_segment(video, 1, 2, **options, reuse_existing=True)
+        self.assertEqual((project / "segment_0001.mp4").read_bytes(), saved)
+        self.assertEqual((project / "segments.json").read_bytes(), manifest)
+        self.assertFalse(list(project.glob("*.writing.*")))
+
+    def test_cleanup_failure_does_not_block_the_saved_replacement(self):
+        video, _ = segment_video(self.config(), 0)
+        options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+                       prefix="save-priority/cleanup/")
+        first = save_segment(video, 1, 2, **options)
+        project = Path(first["_project_root"])
+        locked = {project / "segment_0001.mkv", project / "complete.mp4"}
+        for path in locked:
+            path.write_bytes(b"old output")
+        real_unlink = Path.unlink
+
+        def fail_locked_cleanup(path, *args, **kwargs):
+            if path in locked:
+                raise PermissionError("file in use")
+            return real_unlink(path, *args, **kwargs)
+
+        with patch.object(Path, "unlink", fail_locked_cleanup):
+            with self.assertLogs(level="WARNING"):
+                result = save_segment(video, 1, 2, **options, reuse_existing=True)
+        self.assertIsNone(result["merged"])
+        self.assertEqual(InputImpl.VideoFromFile(str(project / result["saved_segment"]["filename"])).get_frame_count(), 39)
+        self.assertEqual(json.loads((project / "segments.json").read_text())["segments"]["1"]["file"],
+                         "segment_0001.mp4")
+
+    def test_reuse_with_changed_segment_count_replaces_the_same_sequence_number(self):
+        video, _ = segment_video(self.config(), 0)
+        options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+                       prefix="save-priority/count/")
+        first = save_segment(video, 1, 2, **options)
+        project = Path(first["_project_root"])
+        (project / "segment_0001.mkv").write_bytes(b"obsolete same-sequence file")
+        result = save_segment(video, 1, 3, **{**options, "run": uuid.uuid4().hex}, reuse_existing=True)
+        self.assertEqual(result["_project_root"], str(project))
+        self.assertEqual(result["total"], 3)
+        self.assertFalse(result["complete"])
+        self.assertFalse((project / "segment_0001.mkv").exists())
+        self.assertEqual(InputImpl.VideoFromFile(str(project / "segment_0001.mp4")).get_frame_count(), 39)
+
+    def test_missing_old_segment_does_not_block_the_new_save_or_show_a_stale_merge(self):
+        video, _ = segment_video(self.config(), 0)
+        options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+                       prefix="save-priority/missing/")
+        for index in (1, 2):
+            first = save_segment(video, index, 2, **options)
+        project = Path(first["_project_root"])
+        self.assertTrue((project / "complete.mp4").exists())
+        (project / "segment_0002.mp4").unlink()
+        result = save_segment(video, 1, 2, **{**options, "run": uuid.uuid4().hex}, reuse_existing=True)
+        self.assertTrue((project / result["saved_segment"]["filename"]).is_file())
+        self.assertFalse(result["complete"])
+        self.assertIsNone(result["merged"])
+        self.assertEqual(len(result["segments"]), 1)
+        self.assertFalse((project / "complete.mp4").exists())
+
+    def test_missing_or_invalid_manifest_is_rebuilt_from_existing_segments(self):
+        video, _ = segment_video(self.config(), 0)
+        for invalid in (None, "{broken json", "[]"):
+            for explicit_root in (False, True):
+                with self.subTest(manifest=invalid, explicit_root=explicit_root):
+                    options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+                                   prefix=f"save-priority/rebuild-{uuid.uuid4().hex}/")
+                    first = save_segment(video, 1, 2, **options)
+                    project = Path(first["_project_root"])
+                    previous = (project / "segment_0001.mp4").read_bytes()
+                    manifest = project / "segments.json"
+                    if invalid is None:
+                        manifest.unlink()
+                    else:
+                        manifest.write_text(invalid, encoding="utf-8")
+                    result = save_segment(video, 2, 2, **options, reuse_existing=True,
+                                          project_root=project if explicit_root else None)
+                    self.assertEqual(result["_project_root"], str(project))
+                    self.assertEqual((project / "segment_0001.mp4").read_bytes(), previous)
+                    self.assertTrue(result["complete"])
+                    self.assertEqual(InputImpl.VideoFromFile(str(project / "complete.mp4")).get_frame_count(), 78)
+
+    def test_merge_failure_still_returns_the_saved_replacement(self):
+        video, _ = segment_video(self.config(), 0)
+        options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+                       prefix="save-priority/merge-failure/")
+        for index in (1, 2):
+            first = save_segment(video, index, 2, **options)
+        project = Path(first["_project_root"])
+        replacement = InputImpl.VideoFromComponents(Types.VideoComponents(
+            images=torch.zeros((12, 48, 64, 3)), frame_rate=Fraction(24)))
+        real_encode = encode
+
+        def fail_merge(arguments):
+            if "concat" in arguments:
+                raise ValueError("merge failed")
+            return real_encode(arguments)
+
+        with patch("replacement_test_plugin.replacement.save.encode", side_effect=fail_merge):
+            with self.assertLogs(level="WARNING") as captured:
+                result = save_segment(replacement, 1, 2, **{**options, "run": uuid.uuid4().hex},
+                                      reuse_existing=True)
+        self.assertTrue(result["complete"])
+        self.assertIsNone(result["merged"])
+        saved = project / result["saved_segment"]["filename"]
+        self.assertEqual(InputImpl.VideoFromFile(str(saved)).get_frame_count(), 12)
+        self.assertLess(float(InputImpl.VideoFromFile(str(saved)).get_components().images.mean()), .05)
+        self.assertIn("已保存", captured.output[0])
+        self.assertEqual(json.loads((project / "segments.json").read_text())["segments"]["1"]["frames"], 12)
+        self.assertFalse((project / "complete.mp4").exists())
+        self.assertFalse(list(project.glob("merge_*")))
+        self.assertFalse(list(project.glob("*.writing.*")))
+
     def test_reuse_directory_prefix_finds_the_same_project_at_a_different_time(self):
         video, _ = segment_video(self.config(), 0)
         first = save_segment(video, 1, 1, run=uuid.uuid4().hex,

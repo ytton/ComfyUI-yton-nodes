@@ -156,12 +156,12 @@ class YtonReplacementPreviousSegment(io.ComfyNode):
         if not reuse_existing or index == 0:
             return io.NodeOutput(None)
         state = execution_state(cls.hidden.dynprompt, save_id)
-        existing = existing_project(filename_prefix, state["started_at"], total)
+        existing = existing_project(filename_prefix, state["started_at"])
         if existing is None:
             return io.NodeOutput(None)
         root, manifest = existing
         state["project_root"] = str(root)
-        record = manifest["segments"].get(str(index))
+        record = manifest["segments"].get(str(index)) if manifest else None
         if record is None:
             return io.NodeOutput(None)
         path = (root / record["file"]).resolve()

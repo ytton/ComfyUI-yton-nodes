@@ -3,6 +3,7 @@
 from pathlib import Path
 from datetime import datetime
 import json
+import logging
 import re
 import threading
 import uuid
@@ -33,6 +34,14 @@ def preview(path, kind):
             "format": "video/" + ("mp4" if path.suffix == ".mp4" else "x-matroska")}
 
 
+def cleanup_files(*paths):
+    for path in paths:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as error:
+            logging.warning("[yton-nodes] 文件暂时无法清理：%s (%s)", path, error)
+
+
 def project_path(prefix, started_at):
     prefix = prefix.replace("%date:yyyy-MM-dd%", "%year%-%month%-%day%")
     directory = prefix.endswith(("/", "\\"))
@@ -44,16 +53,32 @@ def project_path(prefix, started_at):
     return root, pattern
 
 
-def existing_project(prefix, started_at, total):
+def read_manifest(root):
+    path = root / "segments.json"
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict) or not isinstance(manifest.get("segments"), dict):
+            raise ValueError("片段清单结构无效")
+        return manifest
+    except FileNotFoundError:
+        return None
+    except ValueError as error:
+        logging.warning("[yton-nodes] 片段清单无法读取，将按现有片段重建：%s (%s)", path, error)
+        return None
+
+
+def existing_project(prefix, started_at):
     root, pattern = project_path(prefix, started_at)
     candidates = []
     for candidate in root.parent.iterdir() if root.parent.is_dir() else ():
         manifest_path = candidate / "segments.json"
-        if not candidate.is_dir() or not manifest_path.is_file() or not pattern.fullmatch(candidate.name):
+        if not candidate.is_dir() or not pattern.fullmatch(candidate.name):
             continue
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if manifest.get("total") == total:
-            candidates.append((manifest_path.stat().st_mtime_ns, candidate, manifest))
+        if not manifest_path.is_file() and not any(candidate.glob("segment_*")):
+            continue
+        manifest = read_manifest(candidate)
+        candidates.append(((manifest_path if manifest_path.is_file() else candidate).stat().st_mtime_ns,
+                           candidate, manifest))
     if not candidates:
         return None
     _, root, manifest = max(candidates, key=lambda item: item[0])
@@ -77,30 +102,33 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
         manifest = None
         if project_root is not None:
             root = Path(project_root)
-            manifest_path = root / "segments.json"
-            if not manifest_path.is_file():
-                raise ValueError("当前项目目录缺少片段清单，无法继续保存。")
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest = read_manifest(root)
         elif reuse_existing:
-            existing = existing_project(prefix, started_at, total)
+            existing = existing_project(prefix, started_at)
             if existing is not None:
                 root, manifest = existing
         suffix = 1
-        while manifest is None and root.exists():
-            manifest_path = root / "segments.json"
-            if manifest_path.is_file():
-                candidate = json.loads(manifest_path.read_text(encoding="utf-8"))
-                if candidate["run"] == run:
-                    manifest = candidate
-                    break
+        while project_root is None and not reuse_existing and manifest is None and root.exists():
+            candidate = read_manifest(root)
+            if candidate is not None and candidate.get("run") == run:
+                manifest = candidate
+                break
             suffix += 1
             root = base.with_name(f"{base.name}-{suffix}")
         root.mkdir(parents=True, exist_ok=True)
         manifest_path = root / "segments.json"
         if manifest is None:
             manifest = {"total": total, "segments": {}}
-        if manifest["total"] != total:
-            raise ValueError("同一轮循环的总段数需要保持一致。")
+            for clip in sorted(root.glob("segment_*"), key=lambda path: path.stat().st_mtime_ns):
+                match = re.fullmatch(r"segment_(\d+)\.(?:mp4|mkv)", clip.name)
+                if match and clip.is_file():
+                    try:
+                        with av.open(str(clip)) as opened:
+                            stream = opened.streams.video[0]
+                            count = stream.frames or sum(1 for _ in opened.decode(stream))
+                        manifest["segments"][str(int(match[1]))] = {"file": clip.name, "frames": count}
+                    except (av.FFmpegError, IndexError) as error:
+                        logging.warning("[yton-nodes] 跳过无法读取的旧片段：%s (%s)", clip, error)
         source = temp / "input.mp4"
         target = root / f"segment_{index:04d}.{container}"
         staging = root / f"segment_{index:04d}.writing.{container}"
@@ -119,24 +147,26 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
                     "-c:a", "aac", "-ar", "48000", "-ac", "2",
                     "-af", f"apad,atrim=duration={duration:.12f},asetpts=PTS-STARTPTS", "-t", f"{duration:.12f}",
                     *(["-movflags", "+faststart"] if container == "mp4" else []), staging])
+            with av.open(str(staging)) as opened:
+                stream = opened.streams.video[0]
+                merge_timescale = stream.time_base.denominator if container == "mp4" else fps * 1024
+                frame_count = stream.frames or sum(1 for _ in opened.decode(stream))
             staging.replace(target)
         finally:
-            source.unlink(missing_ok=True)
-            staging.unlink(missing_ok=True)
-        with av.open(str(target)) as opened:
-            stream = opened.streams.video[0]
-            merge_timescale = stream.time_base.denominator if container == "mp4" else fps * 1024
-            frame_count = stream.frames or sum(1 for _ in opened.decode(stream))
-        previous = manifest["segments"].get(str(index))
-        manifest.update(run=run, started_at=started_at.isoformat(), size=[width, height],
+            cleanup_files(source, staging)
+        manifest.update(run=run, total=total, started_at=started_at.isoformat(), size=[width, height],
                         format=container, fps=fps, crf=crf)
         manifest["segments"][str(index)] = {"file": target.name, "frames": frame_count}
         pending = manifest_path.with_suffix(".writing.json")
         pending.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
         pending.replace(manifest_path)
-        if previous and previous["file"] != target.name:
-            (root / previous["file"]).unlink(missing_ok=True)
-        records = [manifest["segments"][str(i)] for i in range(1, total + 1) if str(i) in manifest["segments"]]
+        cleanup_files(root / "complete.mp4", temp / "complete.mp4")
+        for extension in ("mp4", "mkv"):
+            obsolete = target.with_suffix("." + extension)
+            if obsolete != target:
+                cleanup_files(obsolete)
+        records = [manifest["segments"][str(i)] for i in range(1, total + 1)
+                   if str(i) in manifest["segments"] and (root / manifest["segments"][str(i)]["file"]).is_file()]
         clips = [root / record["file"] for record in records]
         complete = len(clips) == total
         merged = None
@@ -184,11 +214,12 @@ def save_segment(video, index, total, *, run, started_at, prefix, container="mp4
                         "-t", sum(record["frames"] for record in merge_records) / fps,
                         "-movflags", "+faststart", merging])
                 merging.replace(merged)
+            except (ValueError, OSError, av.FFmpegError, IndexError) as error:
+                logging.warning("[yton-nodes] 第 %s 段已保存到 %s；完整视频合并失败：%s", index, target, error)
+                cleanup_files(merged)
+                merged = None
             finally:
-                merging.unlink(missing_ok=True)
-                concat.unlink(missing_ok=True)
-                for clip in normalized:
-                    clip.unlink(missing_ok=True)
+                cleanup_files(merging, concat, *normalized)
         return {"saved_segment": preview(target, "output"), "segments": [preview(path, "output") for path in clips],
                 "merged": preview(merged, "output" if save_full else "temp") if merged else None,
                 "complete": complete, "total": total, "current": index, "run": run, "_project_root": str(root)}
