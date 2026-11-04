@@ -3,6 +3,7 @@
 
 import { widgetValue, setWidgetValue, fileUrl, fmt,
          recommendSegmentSeconds, H3_FPS } from './video_editor_support.js';
+import { createShotControls, requestShotPlan } from './shot_planner.js';
 
 let currentVideoEditor = null;
 
@@ -434,6 +435,7 @@ export function openVideoEditor(node) {
     let segPlan = null;
     let segEnabled = false;
     let segPanelInited = false;
+    let segmentRevision = 0;
 
     const segPanel = document.createElement("div");
     segPanel.style.cssText = "border-top:1px solid #365161;padding-top:10px;margin-top:12px;display:none;";
@@ -497,6 +499,8 @@ export function openVideoEditor(node) {
     segModeSel.style.cssText = "background:#223744;color:#dce7ee;border:1px solid #3a5363;border-radius:4px;padding:3px 6px;font-size:11px;";
     segModeSel.innerHTML = `<option value="raw">含上下文</option><option value="delivered">仅新增帧</option>`;
     segParamsRow.appendChild(segModeSel);
+
+    const shotControls = createShotControls(segParamsRow, () => { if (segEnabled) void recalcSegments(); });
 
     const segStatus = document.createElement("div");
     segStatus.style.cssText = "font-size:11px;color:#0aa4d6;margin-bottom:8px;padding:4px 8px;background:#0d1c24;border-radius:4px;display:none;";
@@ -582,8 +586,10 @@ export function openVideoEditor(node) {
         });
     }
 
-    function recalcSegments() {
+    async function recalcSegments() {
+        const revision = ++segmentRevision;
         if (!dur) return;
+        svb.disabled = false;
         const rawLenSec = parseFloat(segLenSel.value) || 5;
         const ctx = parseInt(segCtxSel.value) || 0;
         const strictH3 = segPresetSel.value === "minimaxh3";
@@ -623,12 +629,36 @@ export function openVideoEditor(node) {
             step = raw;
         }
 
-        const finalSegs = [];
+        let finalSegs = [];
         let droppedTail = false;
         let s = 0;
         let safety = 0;
         const minValidLen = (outMode === "raw" && ctx > 0) ? ctx + 1 : 1;
-        while (s < rangeFrames && safety < 100000) {
+        const shotSettings = shotControls.read();
+        segLenLb.textContent = shotSettings.split === "shots" ? "最长段长(总长):" : "段长(总长):";
+        let detectedSettings;
+        if (shotSettings.split === "shots") {
+            svb.disabled = true;
+            segPlan = null;
+            segList.innerHTML = "";
+            segOverlay.innerHTML = "";
+            segStatus.textContent = "正在检测原视频镜头切换…";
+            try {
+                const detected = await requestShotPlan(widgetValue(node, "filename", ""), {
+                    enabled: true, mode: strictH3 ? "MiniMax H3" : "普通", ...shotSettings,
+                    frames: Math.round(rawLenSec * H3_FPS), seconds: rawLenSec, overlap: ctx,
+                    output: outMode === "raw" ? "完整片段" : "仅新增片段",
+                    start: rangeStartFrame / H3_FPS, end: rangeEndFrame / H3_FPS,
+                });
+                if (revision !== segmentRevision || !ov.isConnected || !segEnabled) return;
+                finalSegs = detected.plan.segments;
+                detectedSettings = detected.settings;
+                svb.disabled = false;
+            } catch (error) {
+                if (revision === segmentRevision && ov.isConnected) segStatus.textContent = error.message;
+                return;
+            }
+        } else while (s < rangeFrames && safety < 100000) {
             const e = Math.min(s + raw, rangeFrames);
             if (e - s >= minValidLen) {
                 finalSegs.push({
@@ -664,6 +694,8 @@ export function openVideoEditor(node) {
             segments: finalSegs,
             range_start_frame: rangeStartFrame,
             range_end_frame: rangeEndFrame,
+            ...shotSettings,
+            ...(detectedSettings ? {cuts: detectedSettings.cuts, shot_source: detectedSettings.shot_source} : {}),
         };
         segPlan = plan;
 
@@ -692,7 +724,9 @@ export function openVideoEditor(node) {
         if (droppedTail) {
             warnText = ` · ⚠ 尾段 ≤ ${ctx} 帧重叠已丢弃`;
         }
-        segStatus.textContent = `${rangeText} · ${segLenText} · 共 ${plan.segment_count} 段${warnText}`;
+        segStatus.textContent = shotSettings.split === "shots"
+            ? `${rangeText} · 最长 ${raw} 帧（${rawSec.toFixed(2)}s，含重叠）· 按镜头切分 ${plan.segment_count} 段 · 切镜处关闭上下文`
+            : `${rangeText} · ${segLenText} · 共 ${plan.segment_count} 段${warnText}`;
 
         segList.innerHTML = "";
         plan.segments.forEach((sg, i) => {
@@ -705,7 +739,7 @@ export function openVideoEditor(node) {
             } else {
                 btn.innerHTML = `<b>#${i}</b> ${(sg.start / H3_FPS).toFixed(2)}→${(sg.end / H3_FPS).toFixed(2)}s<b>(${((sg.end - sg.start) / H3_FPS).toFixed(2)}s)</b>`;
             }
-            btn.title = `帧 ${sg.start} ~ ${sg.end}（${sg.end - sg.start} 帧，索引 ${i}）`;
+            btn.title = `帧 ${sg.start} ~ ${sg.end}（${sg.end - sg.start} 帧，索引 ${i}）${sg.cut_before ? " · 新镜头，不沿用上一段上下文" : ""}`;
             btn.onclick = () => {
                 if (ve.readyState >= 1) ve.currentTime = sg.start / H3_FPS;
             };
@@ -731,6 +765,8 @@ export function openVideoEditor(node) {
         if (segEnabled) {
             recalcSegments();
         } else {
+            ++segmentRevision;
+            svb.disabled = false;
             segOverlay.innerHTML = "";
             segPlan = null;
         }
@@ -758,6 +794,7 @@ export function openVideoEditor(node) {
         segPanelInited = true;
         const saved = node.properties?.segment_plan;
         if (saved && saved.segments && saved.segments.length) {
+            shotControls.restore(saved);
             segEnabled = true;
             segPresetSel.value = saved.preset || "none";
             rebuildSegLenOptions(saved.target_seconds ?? saved.segment_seconds ?? recommendSegmentSeconds(dur * H3_FPS));
@@ -1305,6 +1342,7 @@ export function openVideoEditor(node) {
         window.removeEventListener("resize", onResize);
     };
     svb.onclick = () => {
+        if (segEnabled && !segPlan) return;
         if (segEnabled && segPlan) {
             const saved = {
                 ...segPlan,

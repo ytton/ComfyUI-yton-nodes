@@ -7,7 +7,7 @@ import types
 
 from aiohttp import web
 
-from test_character_replacement import ReplacementTests, CLASSES, DynamicPrompt, YtonReplacementVideoSave, folder_paths, io
+from test_character_replacement import ReplacementTests, CLASSES, DynamicPrompt, YtonReplacementVideoSave, folder_paths, io, camera_cut_video
 from replacement_test_plugin.replacement import routes
 from replacement_test_plugin.replacement.media import segment_video
 from replacement_test_plugin.prompt_optimizer import get_store
@@ -43,6 +43,15 @@ async def saved(request):
     await asyncio.to_thread(node.execute,video,1,2,**options)
     result=await asyncio.to_thread(node.execute,video,2,2,**options)
     return web.json_response(result.ui)
+
+
+@route_table.get("/shot-config")
+async def shot_config(request):
+    source = await asyncio.to_thread(camera_cut_video, root)
+    config = ReplacementTests().config()
+    config["video"] = source.name
+    config["plan"].update(frames=56, seconds=56/24, min_seconds=.2, sensitivity=.8)
+    return web.json_response(config)
 
 
 @route_table.get("/view")

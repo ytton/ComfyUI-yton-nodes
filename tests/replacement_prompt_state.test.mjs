@@ -38,3 +38,12 @@ test('editor filling the full source duration does not change the selected conte
   after.plan.end = 8;
   assert.equal(videoPromptContent(before, 8), videoPromptContent(after, 8));
 });
+
+test('camera cut boundaries invalidate prompts while compression alone retains them', () => {
+  const before = fixture(), after = fixture();
+  for (const config of [before, after]) Object.assign(config.plan, {split:'shots', cuts:[72, 140], min_seconds:1});
+  after.compression.width = 540;
+  assert.equal(videoPromptContent(before), videoPromptContent(after));
+  after.plan.cuts = [80, 140];
+  assert.notEqual(videoPromptContent(before), videoPromptContent(after));
+});

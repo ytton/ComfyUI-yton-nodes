@@ -12,6 +12,7 @@ from ..llm_connection import LLMConnection
 from ..prompt_optimizer import discover_models, get_store
 from .media import contact_sheet, output_size, plan_for, reference_images, segment_video
 from .save import preview
+from .shots import shot_plan
 from .prompts import SYSTEM, load_skill, optimize, save_skill, signature
 
 
@@ -57,6 +58,11 @@ def install():
             width, height = output_size(config, metadata)
             return {"metadata": metadata, "plan": result, "output_size": {"width": width, "height": height}}
         return await respond(operation)
+
+    @routes.post("/yton/replacement/shot-plan")
+    async def detect_shots(request):
+        data = await request.json()
+        return await respond(lambda: shot_plan(data["video"], data["settings"]))
 
     @routes.post("/yton/replacement/segment-preview")
     async def segment_preview(request):

@@ -57,6 +57,9 @@ def inspect(filename):
 
 def plan_for(config):
     metadata = inspect(config["video"])
+    settings = config["plan"]
+    if settings.get("enabled") and settings.get("split") == "shots" and settings.get("shot_source") != config["video"]:
+        raise ValueError("原视频已改变，请在视频编辑器中重新检测镜头并保存。")
     plan = make_plan(config["plan"], metadata["duration"])
     return metadata, plan
 

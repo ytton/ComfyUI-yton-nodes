@@ -10,7 +10,8 @@ dependencies = [
     "pillow",
     "torchaudio",
     "av",
-    "imageio-ffmpeg"
+    "imageio-ffmpeg",
+    "scenedetect[opencv]>=0.7,<0.8"
 ]
 
 [project.urls]

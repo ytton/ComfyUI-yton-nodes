@@ -33,10 +33,22 @@ sys.modules[package.__name__] = package
 from replacement_test_plugin.llm_connection import LLMConnection
 from replacement_test_plugin.replacement.media import contact_sheet, encode, ffmpeg, inspect, output_size, reference_images, reference_size, segment_video
 from replacement_test_plugin.replacement.nodes import CLASSES, DEFAULT_CONFIG, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementSegment, YtonReplacementVideoSave
-from replacement_test_plugin.replacement.plan import make_plan
+from replacement_test_plugin.replacement.plan import make_plan, shot_segments
+from replacement_test_plugin.replacement.shots import shot_plan, _cut_frames
+from replacement_test_plugin.replacement.media import plan_for
 from replacement_test_plugin.replacement.prompts import SYSTEM, load_skill, optimize, save_skill, signature
 from replacement_test_plugin.replacement.save import execution_state, save_segment
 from PIL import Image
+
+
+def camera_cut_video(root):
+    source = root / "input/camera-cuts.mp4"
+    encode(["-f", "lavfi", "-i", "color=red:size=160x96:rate=24:duration=1.5",
+            "-f", "lavfi", "-i", "color=lime:size=160x96:rate=24:duration=2",
+            "-f", "lavfi", "-i", "color=blue:size=160x96:rate=24:duration=3",
+            "-filter_complex", "[0:v][1:v][2:v]concat=n=3:v=1:a=0[v]", "-map", "[v]",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", source])
+    return source
 
 
 @dataclass(frozen=True)
@@ -107,6 +119,69 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(contact_sheet(video).size,(960,600))
         with self.assertRaisesRegex(ValueError,"超出范围"):
             segment_video(config,99)
+
+    def test_shot_boundaries_limit_context_and_cover_the_whole_range(self):
+        settings = dict(enabled=True, mode="MiniMax H3", frames=175, overlap=22,
+                        output="完整片段", split="shots", cuts=[72, 360], min_seconds=.5)
+        segments = make_plan(settings, 18)["segments"]
+        self.assertEqual(segments[0]["start"], 0)
+        self.assertEqual(segments[-1]["end"], 432)
+        self.assertEqual([s["start"] for s in segments if s["cut_before"]], [72, 360])
+        for index, segment in enumerate(segments):
+            self.assertLessEqual(segment["end"] - segment["start"], 175)
+            self.assertFalse(any(segment["start"] < cut < segment["end"] for cut in (72, 360)))
+            if index:
+                self.assertEqual(segments[index - 1]["end"] - segment["start"], segment["context_frames"])
+                self.assertEqual(segment["context_frames"], 0 if segment["cut_before"] else 22)
+        settings.update(start=2, end=17, output="仅新增片段")
+        cropped = make_plan(settings, 18)["segments"]
+        self.assertEqual((cropped[0]["start"], cropped[-1]["end"]), (48, 408))
+        self.assertTrue(all(a["end"] == b["start"] for a, b in zip(cropped, cropped[1:])))
+
+    def test_short_shots_merge_only_when_the_combination_fits(self):
+        merged = shot_segments(0, 192, [8, 72], 96, 24, 0)
+        self.assertNotIn(8, [s["start"] for s in merged])
+        self.assertIn(72, [s["start"] for s in merged])
+        retained = shot_segments(0, 210, [10], 100, 24, 0)
+        self.assertIn(10, [s["start"] for s in retained])
+        self.assertTrue(all(s["end"] - s["start"] <= 100 for s in retained))
+
+    def test_real_cut_detection_and_saved_plan_do_not_reanalyse_on_generation(self):
+        source = camera_cut_video(self.root)
+        config = self.config()
+        config["video"] = source.name
+        config["plan"].update(frames=56, split="shots", min_seconds=.2, sensitivity=.8)
+        for detector in ("adaptive", "content"):
+            with self.subTest(detector=detector):
+                result = shot_plan(source.name, {**config["plan"], "detector": detector})
+                self.assertEqual(result["settings"]["cuts"], [36, 84])
+                self.assertEqual([s["start"] for s in result["plan"]["segments"] if s["cut_before"]], [36, 84])
+                config["plan"] = result["settings"]
+                with patch("replacement_test_plugin.replacement.shots._cut_frames", side_effect=AssertionError("detector reran")):
+                    _, saved = plan_for(config)
+                    self.assertEqual(saved, result["plan"])
+                    cut_index = next(i for i, s in enumerate(saved["segments"]) if s["start"] == 36)
+                    video, _ = segment_video(config, cut_index)
+                    pixels = video.get_components().images
+                    self.assertEqual(len(pixels), 48)
+                    self.assertGreater(float(pixels[0, :, :, 1].mean()), .9)
+        self.assertGreaterEqual(_cut_frames.cache_info().currsize, 2)
+        config["video"] = "source.mp4"
+        with self.assertRaisesRegex(ValueError, "原视频已改变"):
+            plan_for(config)
+
+    def test_config_parser_disables_previous_context_at_a_camera_cut(self):
+        config = self.config()
+        config["plan"].update(split="shots", cuts=[34], shot_source=config["video"], min_seconds=0)
+        _, planned = plan_for(config)
+        parser = type("CameraCutParser", (YtonReplacementSegment,), {})
+        parser.hidden = self.node().hidden
+        previous, _ = segment_video(config, 0)
+        plan = {"config": json.dumps(config), "llm": None, "index": 1,
+                "segment": planned["segments"][1], "previous_video": previous}
+        self.assertEqual(parser.execute(plan=plan).result[10:], (None, False))
+        plan["segment"] = {**plan["segment"], "cut_before": False}
+        self.assertEqual(parser.execute(plan=plan).result[10:], (previous, True))
 
     def test_output_contract_and_alias_identity(self):
         config=self.config()

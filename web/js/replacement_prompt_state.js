@@ -10,5 +10,6 @@ export function videoPromptContent(config, duration) {
     plan.enabled && plan.output === "完整片段" ? plan.overlap : 0,
     config.crop || [0, 0, 1, 1],
     plan.enabled ? 24 : Number(config.compression.fps),
+    plan.enabled && plan.split === "shots" ? [plan.split, plan.cuts, plan.min_seconds] : null,
   ]);
 }

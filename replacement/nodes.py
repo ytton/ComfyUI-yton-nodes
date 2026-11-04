@@ -216,7 +216,7 @@ class YtonReplacementSegment(io.ComfyNode):
     @classmethod
     def execute(cls, plan):
         result = prepare_segment(cls.hidden, config=plan["config"], llm=plan["llm"], selected_index=plan["index"])
-        previous = plan["previous_video"]
+        previous = None if plan["segment"].get("cut_before") else plan["previous_video"]
         return io.NodeOutput(*result.result, previous, previous is not None, ui=result.ui)
 
 

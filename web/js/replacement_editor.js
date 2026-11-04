@@ -19,6 +19,8 @@ export async function openReplacementEditor(config, onApply) {
     preset:plan.mode==="MiniMax H3" ? "minimaxh3" : "none",
     target_seconds:plan.mode==="MiniMax H3" ? plan.frames/24 : plan.seconds,
     context_frames:plan.overlap,output_mode:plan.output==="完整片段" ? "raw" : "delivered",
+    split:plan.split || "fixed", detector:plan.detector || "adaptive", sensitivity:plan.sensitivity ?? .5,
+    min_seconds:plan.min_seconds ?? 1, cuts:plan.cuts, shot_source:plan.shot_source,
     segments:[{start:0,end:1}],
   };
   let applied=false;
@@ -35,6 +37,8 @@ export async function openReplacementEditor(config, onApply) {
         mode:nativePlan.preset==="minimaxh3" ? "MiniMax H3" : "普通",
         frames:Math.round(nativePlan.target_seconds*24),seconds:nativePlan.target_seconds,
         overlap:nativePlan.context_frames,output:nativePlan.output_mode==="raw" ? "完整片段" : "仅新增片段",
+        split:nativePlan.split,detector:nativePlan.detector,sensitivity:nativePlan.sensitivity,
+        min_seconds:nativePlan.min_seconds,cuts:nativePlan.cuts,shot_source:nativePlan.shot_source,
       });
       const crop=["crop_x","crop_y","crop_w","crop_h"].map(name=>Number(value(name)));
       draft.crop=crop.some((n,i)=>n!==[0,0,1,1][i]) ? crop : null;

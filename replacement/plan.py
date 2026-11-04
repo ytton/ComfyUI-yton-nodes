@@ -12,6 +12,39 @@ def frame_round(value):
     return math.floor(float(value) * FPS + 0.5)
 
 
+def shot_segments(start, end, cuts, maximum, minimum, context):
+    """Keep camera cuts, merge short shots when they fit, divide long shots evenly."""
+    cuts = sorted({int(cut) for cut in cuts if start < int(cut) < end})
+    edges = [start, *cuts, end]
+    while len(edges) > 2:
+        removal = None
+        for position, (left, right) in enumerate(zip(edges, edges[1:])):
+            if right - left >= minimum:
+                continue
+            candidates = []
+            if position and right - edges[position - 1] <= maximum:
+                candidates.append((right - edges[position - 1], position))
+            if position + 2 < len(edges) and edges[position + 2] - left <= maximum:
+                candidates.append((edges[position + 2] - left, position + 1))
+            if candidates:
+                removal = min(candidates)[1]
+                break
+        if removal is None:
+            break
+        edges.pop(removal)
+
+    segments = []
+    for left, right in zip(edges, edges[1:]):
+        count = max(1, math.ceil((right - left - context) / (maximum - context)))
+        boundaries = [left] + [left + context + math.floor((right - left - context) * i / count + .5)
+                               for i in range(1, count + 1)]
+        for index in range(count):
+            segments.append({"start": boundaries[index] - (context if index else 0),
+                             "end": boundaries[index + 1], "cut_before": index == 0 and left in cuts,
+                             "context_frames": context if index else 0})
+    return segments
+
+
 def make_plan(settings, duration):
     start = max(0, frame_round(settings.get("start", 0)))
     end = min(frame_round(duration), frame_round(settings.get("end") or duration))
@@ -38,7 +71,18 @@ def make_plan(settings, duration):
     if raw <= context:
         raise ValueError("每段总帧数需要大于上下文重叠帧数。")
     step = raw - context
-    segments = [{"start": cursor, "end": min(cursor + raw, end)}
-                for cursor in range(start, end, step) if min(cursor + raw, end) - cursor > context]
+    split = settings.get("split", "fixed")
+    if enabled and split == "shots":
+        if "cuts" not in settings:
+            raise ValueError("请先在视频编辑器中完成镜头检测并保存分段计划。")
+        minimum = float(settings.get("min_seconds", 1))
+        if not math.isfinite(minimum) or minimum < 0:
+            raise ValueError("最短镜头时长需要大于或等于 0 秒。")
+        segments = shot_segments(start, end, settings["cuts"], raw, min(raw, max(1, frame_round(minimum))), context)
+    elif split == "fixed" or not enabled:
+        segments = [{"start": cursor, "end": min(cursor + raw, end)}
+                    for cursor in range(start, end, step) if min(cursor + raw, end) - cursor > context]
+    else:
+        raise ValueError("分段方式无效。")
     return {"fps": FPS, "raw_frames": raw, "context_frames": context, "step": step,
             "mode": mode, "output": output, "segments": segments}

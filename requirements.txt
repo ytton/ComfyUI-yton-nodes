@@ -4,3 +4,4 @@ Pillow
 torchaudio
 av
 imageio-ffmpeg
+scenedetect[opencv]>=0.7,<0.8
