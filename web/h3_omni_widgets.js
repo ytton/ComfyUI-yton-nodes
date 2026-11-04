@@ -7,6 +7,7 @@ const sections = [
   ["小脸修复", ["face_model", "face_refine", "face_count", "face_sigmas", "face_reverse"]],
   ["种子", ["seed", "control_after_generate"]],
   ["分段上下文", ["enable_context", "previous_video", "h3_context_length", "context_auto_extend", "debug_keep_context", "context_noise_strength", "context_color_strength"]],
+  ["Add Guide", ["enable_add_guide", "guide_video", "guide_image", "guide_audio", "guide_frame_idx"]],
 ];
 const labels = {
   prompt: "提示词", width: "最终宽度", height: "最终高度", duration: "成片目标时长 / 秒",
@@ -14,6 +15,7 @@ const labels = {
   ref_image_size: "参考图尺寸", steps: "调度步数", sampler_name: "采样器",
   scheduler: "调度器", denoise: "调度降噪", seed: "随机种子",
   enable_context: "启用上下文",
+  enable_add_guide: "启用 Add Guide", guide_frame_idx: "注入位置 / 帧",
   context_auto_extend: "自动增加22帧时长",
   debug_keep_context: "不裁剪上下文（调试）",
   context_noise_strength: "前 21 帧噪声强度",
@@ -39,7 +41,8 @@ function setupSections(node) {
   const schema = node.constructor.nodeData.input;
   const inputNames = new Set([...Object.keys(schema.required), ...Object.keys(schema.optional)]);
   const widgets = new Map(node.widgets.map(widget => [widget.name, widget]));
-  const socketLabels = { second_model: "二采模型（可选）", face_model: "修脸模型（可选）", previous_video: "上一段视频（可选）" };
+  const socketLabels = { second_model: "二采模型（可选）", face_model: "修脸模型（可选）", previous_video: "上一段视频（可选）",
+    guide_video: "注入视频（可选）", guide_image: "注入图片 / 帧批次（可选）", guide_audio: "注入音频（可选）" };
   for (const [name, label] of Object.entries(socketLabels)) {
     const widget = node.addCustomWidget({
       name, label, type: "h3_input", value: "", serialize: false, options: { serialize: false },
@@ -180,7 +183,7 @@ function setupSections(node) {
       if (!inputNames.has(input.name) || node.inputs.findIndex(slot => slot.name === input.name) !== i) node.removeInput(i);
     }
     const inputLabels = { model: "主模型", clip: "CLIP", vae: "视频 VAE", audio_vae: "音频 VAE", image: "图片列表", video: "视频列表", audio: "音频列表", previous_video: "上一段视频（可选）", sigmas: "自定义 Sigma", face_sigmas: "修脸 Sigma",
-      second_model: "二采模型（可选）", face_model: "修脸模型（可选）", ...labels };
+      ...socketLabels, ...labels };
     inputLabels.sigmas = "自定义 Sigma";
     inputLabels.second_sigma_values = "二采 Sigma";
     inputLabels.face_sigmas = "修脸 Sigma";
@@ -199,6 +202,7 @@ function setupSections(node) {
       widgets.get(name).disabled = custom;
     }
     widgets.get("duration").disabled = widgets.get("mode").value === "复刻模式";
+    widgets.get("guide_frame_idx").disabled = !widgets.get("enable_add_guide").value;
     const contextEnabled = widgets.get("enable_context").value;
     widgets.get("context_auto_extend").disabled = !contextEnabled;
     widgets.get("debug_keep_context").disabled = !contextEnabled;
@@ -239,7 +243,7 @@ function setupSections(node) {
     widgets.get("face_sigmas").disabled = !widgets.get("face_refine").value;
     node.setDirtyCanvas(true, true);
   }
-  for (const name of ["mode", "sampling_mode", "enable_context", "context_auto_extend", "face_refine", "first_pass_scale", "face_sigmas", "film_method", "second_sigma_values"]) {
+  for (const name of ["mode", "sampling_mode", "enable_context", "enable_add_guide", "context_auto_extend", "face_refine", "first_pass_scale", "face_sigmas", "film_method", "second_sigma_values"]) {
     const widget = widgets.get(name);
     if (!widget) continue;
     const callback = widget.callback;
