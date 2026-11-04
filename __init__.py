@@ -70,3 +70,8 @@ for _node in [*_replacement_classes, *_media_list_classes]:
     NODE_CLASS_MAPPINGS[_schema.node_id] = _node
     NODE_DISPLAY_NAME_MAPPINGS[_schema.node_id] = _schema.display_name
 _install_replacement_routes()
+
+from .nodes.video_save_node import YtonVideoSave
+_video_save_schema = YtonVideoSave.define_schema()
+NODE_CLASS_MAPPINGS[_video_save_schema.node_id] = YtonVideoSave
+NODE_DISPLAY_NAME_MAPPINGS[_video_save_schema.node_id] = _video_save_schema.display_name
