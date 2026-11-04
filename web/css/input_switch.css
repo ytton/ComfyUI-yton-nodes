@@ -1,0 +1,6 @@
+.yton-input-switch { box-sizing:border-box; width:100%; padding:4px 0; color:var(--yton-switch-fg); background:var(--yton-switch-bg); }
+.yton-input-switch-segments { display:flex; gap:3px; padding:3px; border:1px solid color-mix(in srgb,currentColor 18%,transparent); border-radius:9px; background:color-mix(in srgb,var(--yton-switch-bg) 86%,currentColor 14%); }
+.yton-input-switch-segments button { flex:1; min-width:0; border:1px solid transparent; border-radius:6px; padding:8px 12px; color:inherit; background:transparent; font:inherit; font-size:13px; cursor:pointer; }
+.yton-input-switch-segments button:hover { background:color-mix(in srgb,currentColor 10%,transparent); }
+.yton-input-switch-segments button[aria-pressed="true"] { border-color:color-mix(in srgb,currentColor 30%,transparent); background:var(--yton-switch-bg); font-weight:600; box-shadow:0 1px 3px #0002; }
+.yton-input-switch-segments button:focus-visible { outline:2px solid currentColor; outline-offset:1px; }

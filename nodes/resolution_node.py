@@ -2,6 +2,26 @@
 Resolution and aspect ratio calculator for Normal and MiniMax H3 workflows.
 """
 from typing import Tuple, Dict, Any
+import math
+
+ASPECT_RATIOS = ("16:9", "9:16", "1:1", "4:3", "3:4", "2:3", "3:2", "21:9")
+
+
+def resolve_aspect_ratio(aspect_ratio, image=None):
+    """Resolve auto from ComfyUI's BHWC image shape without reading pixels."""
+    if aspect_ratio != "auto":
+        return aspect_ratio
+    if image is None:
+        return "16:9"
+    shape = getattr(image, "shape", ())
+    if len(shape) != 4 or any(size <= 0 for size in shape):
+        raise ValueError("图片输入需要有效的 IMAGE（批次、高度、宽度、通道）")
+    image_ratio = shape[2] / shape[1]
+    # Relative distance treats landscape and portrait matches symmetrically.
+    def distance(ratio):
+        width, height = map(float, ratio.split(":"))
+        return abs(math.log(image_ratio / (width / height)))
+    return min(ASPECT_RATIOS, key=distance)
 
 # Resolution mapping specifications
 # Format: (width, height)
@@ -105,7 +125,6 @@ H3_RATIO_PRESETS = {
     ("16:9", "640p"): (1152, 640),
     ("16:9", "720p"): (1280, 704),
     ("16:9", "768p"): (1344, 768),
-    ("16:9", "848p"): (1504, 832),
     ("16:9", "944p"): (1664, 928),
     ("16:9", "1024p"): (1824, 1024),
     ("16:9", "1080p"): (1920, 1088),
@@ -119,7 +138,6 @@ H3_RATIO_PRESETS = {
     ("9:16", "640p"): (640, 1152),
     ("9:16", "720p"): (704, 1280),
     ("9:16", "768p"): (768, 1344),
-    ("9:16", "848p"): (832, 1504),
     ("9:16", "944p"): (928, 1664),
     ("9:16", "1024p"): (1024, 1824),
     ("9:16", "1080p"): (1088, 1920),
@@ -133,7 +151,6 @@ H3_RATIO_PRESETS = {
     ("1:1", "640p"): (640, 640),
     ("1:1", "720p"): (704, 704),
     ("1:1", "768p"): (768, 768),
-    ("1:1", "848p"): (832, 832),
     ("1:1", "944p"): (928, 928),
     ("1:1", "1024p"): (1024, 1024),
     ("1:1", "1080p"): (1088, 1088),
@@ -147,7 +164,6 @@ H3_RATIO_PRESETS = {
     ("4:3", "640p"): (864, 640),
     ("4:3", "720p"): (960, 704),
     ("4:3", "768p"): (1024, 768),
-    ("4:3", "848p"): (1120, 832),
     ("4:3", "944p"): (1248, 928),
     ("4:3", "1024p"): (1344, 1024),
     ("4:3", "1080p"): (1440, 1088),
@@ -161,7 +177,6 @@ H3_RATIO_PRESETS = {
     ("3:4", "640p"): (640, 864),
     ("3:4", "720p"): (704, 960),
     ("3:4", "768p"): (768, 1024),
-    ("3:4", "848p"): (832, 1120),
     ("3:4", "944p"): (928, 1248),
     ("3:4", "1024p"): (1024, 1344),
     ("3:4", "1080p"): (1088, 1440),
@@ -175,7 +190,6 @@ H3_RATIO_PRESETS = {
     ("3:2", "640p"): (960, 640),
     ("3:2", "720p"): (1088, 704),
     ("3:2", "768p"): (1152, 768),
-    ("3:2", "848p"): (1280, 832),
     ("3:2", "944p"): (1408, 928),
     ("3:2", "1024p"): (1536, 1024),
     ("3:2", "1080p"): (1632, 1088),
@@ -189,7 +203,6 @@ H3_RATIO_PRESETS = {
     ("2:3", "640p"): (640, 960),
     ("2:3", "720p"): (704, 1088),
     ("2:3", "768p"): (768, 1152),
-    ("2:3", "848p"): (832, 1280),
     ("2:3", "944p"): (928, 1408),
     ("2:3", "1024p"): (1024, 1536),
     ("2:3", "1080p"): (1088, 1632),
@@ -203,7 +216,6 @@ H3_RATIO_PRESETS = {
     ("21:9", "640p"): (1472, 640),
     ("21:9", "720p"): (1664, 704),
     ("21:9", "768p"): (1792, 768),
-    ("21:9", "848p"): (1984, 832),
     ("21:9", "944p"): (2208, 928),
     ("21:9", "1024p"): (2368, 1024),
     ("21:9", "1080p"): (2560, 1088),
@@ -219,7 +231,6 @@ H3_MP_VALUES = {
     "640p": 0.7,
     "720p": 0.9,
     "768p": 1.0,
-    "848p": 1.2,
     "944p": 1.5,
     "1024p": 1.8,
     "1080p": 2.0,
@@ -244,12 +255,14 @@ class YtonResolutionSelector:
         return {
             "required": {
                 "mode": (["MiniMax H3 (Video)", "Normal (Standard Image/Video)"], {"default": "MiniMax H3 (Video)"}),
-                "aspect_ratio": (["16:9", "9:16", "1:1", "4:3", "3:4", "3:2", "2:3", "21:9"], {"default": "16:9"}),
-                "resolution": (["480p", "540p", "640p", "720p", "768p", "848p", "944p", "1024p", "1080p", "2K", "2.5K", "4K", "6K"], {"default": "1080p"}),
+                "aspect_ratio": ("STRING", {"default": "16:9"}),
+                "resolution": (["320p", "480p", "540p", "640p", "720p", "768p", "944p", "1024p", "1080p", "2K", "2.5K", "4K", "6K"], {"default": "1080p"}),
             },
             "optional": {
                 "custom_width": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 8}),
                 "custom_height": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 8}),
+                "option_visibility": ("STRING", {"default": "{}"}),
+                "image": ("IMAGE", {"tooltip": "比例选择自动时，按图片宽高匹配最接近的预设比例；未连接图片时使用 16:9"}),
             }
         }
 
@@ -264,8 +277,11 @@ class YtonResolutionSelector:
         aspect_ratio: str,
         resolution: str,
         custom_width: int = 0,
-        custom_height: int = 0
+        custom_height: int = 0,
+        option_visibility: str = "{}",
+        image=None,
     ) -> Tuple[int, int, str, int, int, float, str]:
+        aspect_ratio = resolve_aspect_ratio(aspect_ratio, image)
         # Handle custom override if user provided valid dimensions
         if custom_width > 0 and custom_height > 0:
             w, h = custom_width, custom_height
@@ -317,6 +333,8 @@ class YtonResolutionSelectorSimple(YtonResolutionSelector):
         aspect_ratio: str,
         resolution: str,
         custom_width: int = 0,
-        custom_height: int = 0
+        custom_height: int = 0,
+        option_visibility: str = "{}",
+        image=None,
     ) -> Tuple[int, int]:
-        return super().get_resolution(mode, aspect_ratio, resolution, custom_width, custom_height)[:2]
+        return super().get_resolution(mode, aspect_ratio, resolution, custom_width, custom_height, option_visibility, image)[:2]

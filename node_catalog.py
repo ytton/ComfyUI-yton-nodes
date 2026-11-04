@@ -12,6 +12,6 @@ def configure_node_catalog(classes):
         if category[0] == "yton-nodes" and len(category) > 1:
             category[1] = category_names.get(category[1], category[1])
             node.CATEGORY = "/".join(category)
-        if name.startswith("YuanH3") or name in internal_nodes:
+        if name in internal_nodes:
             node.CATEGORY = "yton-nodes/MiniMax H3/内部"
             node.DEV_ONLY = True

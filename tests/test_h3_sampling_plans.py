@@ -13,11 +13,14 @@ from comfy_extras.nodes_custom_sampler import KarrasScheduler
 class FilmSamplingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        source = PLUGIN.parent / "ComfyUI-MiniMaxH3_LatentUpscaler/nodes.py"
+        cls.native = None
+        if not source.is_file():
+            return
         package = types.ModuleType("film_sampling_test")
         package.__path__ = [str(PLUGIN.parent / "ComfyUI-MiniMaxH3_LatentUpscaler")]
         sys.modules[package.__name__] = package
-        spec = importlib.util.spec_from_file_location(package.__name__ + ".nodes", PLUGIN.parent /
-                                                     "ComfyUI-MiniMaxH3_LatentUpscaler/nodes.py")
+        spec = importlib.util.spec_from_file_location(package.__name__ + ".nodes", source)
         cls.native = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.native)
 
@@ -49,7 +52,8 @@ class FilmSamplingTests(unittest.TestCase):
                 self.assertTrue(upscale["inputs"]["samples"][0].endswith("main"))
                 self.assertEqual(graph["high_ff_chunks"]["inputs"]["model"], ["custom_model", 0])
                 self.assertEqual(graph["high_ff_chunks"]["inputs"]["chunks"], 8)
-                self.assertEqual(upscale["inputs"]["model"], graph["high_guider"]["inputs"]["model"])
+                self.assertEqual(upscale["inputs"]["model"], graph["high_prepare_sampling"]["inputs"]["model"])
+                self.assertTrue(graph["high_guider"]["inputs"]["model"][0].endswith("high_prepare_sampling"))
                 self.assertEqual(upscale["inputs"]["audio_denoise"], 0)
                 self.assertEqual(graph["film_disable_noise"]["class_type"], "DisableNoise")
                 self.assertTrue(graph["high_sample"]["inputs"]["noise"][0].endswith("film_disable_noise"))
@@ -65,7 +69,8 @@ class FilmSamplingTests(unittest.TestCase):
                          {"model": ["custom_model", 0], "chunks": 16, "seq_threshold": 4096})
         graph, _ = expanded(second_model=["custom_model", 0], second_ff_chunks="沿用模型")
         self.assertNotIn("high_ff_chunks", graph)
-        self.assertEqual(graph["high_guider"]["inputs"]["model"], ["custom_model", 0])
+        self.assertEqual(graph["high_prepare_sampling"]["inputs"]["model"], ["custom_model", 0])
+        self.assertTrue(graph["high_guider"]["inputs"]["model"][0].endswith("high_prepare_sampling"))
         self.assertEqual(graph["upscale"]["inputs"]["model"], ["custom_model", 0])
         graph, _ = expanded(sampling_mode="单采")
         self.assertNotIn("high_ff_chunks", graph)
@@ -196,6 +201,8 @@ class FilmSamplingTests(unittest.TestCase):
             expanded(width=1920, height=1080)
 
     def test_expanded_inputs_match_installed_film_interface(self):
+        if self.native is None:
+            self.skipTest("未安装可选的 ComfyUI-MiniMaxH3_LatentUpscaler")
         graph, _ = expanded()
         schema = self.native.MiniMaxH3LatentUpscaleCombined.INPUT_TYPES()
         exposed = YtonH3VideoContextOmniGenerate.INPUT_TYPES()["required"]
@@ -209,6 +216,8 @@ class FilmSamplingTests(unittest.TestCase):
         self.assertTrue(set(graph["upscale"]["inputs"]) <= set(schema["required"]) | set(schema.get("optional", {})))
 
     def test_native_film_conditioning_scales_visual_refs_and_preserves_text_audio_and_timing(self):
+        if self.native is None:
+            self.skipTest("未安装可选的 ComfyUI-MiniMaxH3_LatentUpscaler")
         text, audio = torch.randn(1, 3, 8), torch.randn(1, 32, 2, 37)
         image, video = torch.randn(1, 24, 4, 6), torch.randn(1, 24, 7, 4, 6)
         metadata = {"minimax_refs": [

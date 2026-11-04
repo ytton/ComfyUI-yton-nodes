@@ -1,0 +1,12 @@
+.yton-resolution-advanced [hidden] { display: none; }
+.yton-resolution-advanced button:disabled { opacity: .5; cursor: default; }
+.yton-advanced-popover { width: min(310px, calc(100vw - 16px)); }
+.yton-advanced-tabs { display: flex; gap: 3px; margin-bottom: 12px; padding: 3px; border-radius: 7px; background: #111214; }
+.yton-advanced-tabs button { flex: 1; border: 0; border-radius: 5px; padding: 7px 4px; background: transparent; color: #949ba4; font: inherit; font-size: 12px; cursor: pointer; }
+.yton-advanced-tabs button[aria-selected="true"] { color: #fff; background: #5865f2; }
+.yton-advanced-popover .yton-resolution-option-row { min-height: 34px; }
+.yton-advanced-popover .yton-resolution-option-row > span { min-width: 0; }
+.yton-advanced-dimensions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.yton-advanced-size-field { display: grid; gap: 5px; color: #949ba4; font-size: 12px; }
+.yton-advanced-size-field input { width: 100%; min-width: 0; border: 1px solid #454951; border-radius: 6px; background: #2b2d31; color: #e3e5e8; padding: 7px 8px; }
+.yton-advanced-size-field input:disabled { opacity: .5; }

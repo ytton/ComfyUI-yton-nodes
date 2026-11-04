@@ -2,16 +2,23 @@
 ComfyUI-yton-nodes entry point.
 """
 from .nodes.resolution_node import YtonResolutionSelector, YtonResolutionSelectorSimple
+from .nodes.resolution_advanced_node import YtonResolutionSelectorAdvanced
+from .nodes.input_switch_node import YtonInputSwitch
 from .nodes.media_loader_node import (
     YtonEasyMediaLoader, YtonImageListParser, YtonVideoListParser,
     YtonAudioListParser, YtonImageParser, YtonVideoParser, YtonAudioParser,
 )
 from .nodes.minimax_h3_reference_node import YtonMiniMaxH3ReferenceToVideo
+from .nodes.prompt_optimizer_node import YtonPromptOptimizer
+from .nodes.llama_optimizer_node import YtonLlamaCppOptimizer
+from .prompt_optimizer_routes import install as _install_prompt_optimizer_routes
 from .nodes.h3_video_replacement_node import YtonH3VideoReplacementPrepare, YtonH3VideoReplacementTrim
 
 NODE_CLASS_MAPPINGS = {
     "YtonResolutionSelector": YtonResolutionSelector,
     "YtonResolutionSelectorSimple": YtonResolutionSelectorSimple,
+    "YtonResolutionSelectorAdvanced": YtonResolutionSelectorAdvanced,
+    "YtonInputSwitch": YtonInputSwitch,
     "YtonEasyMediaLoader": YtonEasyMediaLoader,
     "YtonImageListParser": YtonImageListParser,
     "YtonVideoListParser": YtonVideoListParser,
@@ -20,6 +27,8 @@ NODE_CLASS_MAPPINGS = {
     "YtonVideoParser": YtonVideoParser,
     "YtonAudioParser": YtonAudioParser,
     "YtonMiniMaxH3ReferenceToVideo": YtonMiniMaxH3ReferenceToVideo,
+    "YtonPromptOptimizer": YtonPromptOptimizer,
+    "YtonLlamaCppOptimizer": YtonLlamaCppOptimizer,
     "YtonH3VideoReplacementPrepare": YtonH3VideoReplacementPrepare,
     "YtonH3VideoReplacementTrim": YtonH3VideoReplacementTrim,
 }
@@ -27,6 +36,8 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "YtonResolutionSelector": "分辨率比例控件",
     "YtonResolutionSelectorSimple": "分辨率比例控件simple",
+    "YtonResolutionSelectorAdvanced": "分辨率比例控件 · 高级版",
+    "YtonInputSwitch": "输入开关",
     "YtonEasyMediaLoader": "媒体加载器",
     "YtonImageListParser": "图片列表解析",
     "YtonVideoListParser": "视频列表解析",
@@ -35,11 +46,19 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "YtonVideoParser": "视频解析",
     "YtonAudioParser": "音频解析",
     "YtonMiniMaxH3ReferenceToVideo": "MiniMax H3 参考生成视频",
+    "YtonPromptOptimizer": "提示词优化器",
+    "YtonLlamaCppOptimizer": "llama.cpp 提示词优化器",
     "YtonH3VideoReplacementPrepare": "H3 人物替换 · 参考视频补齐",
     "YtonH3VideoReplacementTrim": "H3 人物替换 · 声画同步裁尾",
 }
 
 WEB_DIRECTORY = "./web"
+
+_install_prompt_optimizer_routes()
+
+# Runs on the server's execution worker, so browser and API jobs share the guard.
+from .launcher_guard import install as _install_launcher_guard
+_install_launcher_guard()
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
 

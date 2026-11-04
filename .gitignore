@@ -11,7 +11,7 @@ env/
 venv/
 ENV/
 node_modules/
-scripts/
+/scripts/
 package.json
 package-lock.json
 
@@ -25,3 +25,4 @@ Thumbs.db
 input/
 output/
 temp/
+tests/fixtures/*.tmp.json

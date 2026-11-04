@@ -178,6 +178,8 @@
   border-radius: 2px;
   flex-shrink: 0;
 }
+.yton-ratio-icon.yton-ratio-auto { display: grid; place-items: center; color: #949ba4; font-size: 11px; font-weight: 600; }
+.yton-ratio-card.active .yton-ratio-auto { color: #fff; }
 .yton-ratio-card.active .yton-ratio-icon {
   border-color: #ffffff;
 }
@@ -188,6 +190,66 @@
 }
 
 /* Fixed media slots */
+.yton-resolution-footer { display: flex; justify-content: flex-end; }
+.yton-resolution-settings, .yton-resolution-option-row button {
+  display: grid; place-items: center; width: 28px; height: 28px; padding: 5px;
+  border: 0; border-radius: 6px; background: #2b2d31; color: #b5bac1; cursor: pointer;
+}
+.yton-resolution-settings svg, .yton-resolution-option-row svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.yton-resolution-popover {
+  position: fixed; inset: auto; margin: 0; width: min(280px, calc(100vw - 16px));
+  max-height: min(480px, calc(100vh - 16px)); overflow: auto; padding: 14px;
+  border: 1px solid #454951; border-radius: 10px; background: #1e1f22; color: #e3e5e8;
+  font: 13px/1.4 "Segoe UI", sans-serif; box-shadow: 0 8px 28px #0006;
+}
+.yton-resolution-popover strong { display: block; margin-bottom: 10px; }
+.yton-resolution-settings-list { display: grid; gap: 4px; }
+.yton-resolution-settings-list .yton-label { margin-top: 8px; }
+.yton-resolution-option-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.yton-resolution-option-row button[aria-pressed="false"] { color: #757b86; }
+.yton-resolution-option-row button:disabled { opacity: .3; cursor: default; }
+.yton-resolution-panel [hidden] { display: none; }
+
+/* Resolution controls use the native node palette, including custom colours. */
+.yton-resolution-panel {
+  --yton-surface: color-mix(in srgb, var(--yton-node-bg) 88%, var(--yton-node-fg) 12%);
+  --yton-selected: color-mix(in srgb, var(--yton-node-bg) 72%, var(--yton-node-fg) 28%);
+  --yton-muted: color-mix(in srgb, var(--yton-node-fg) 72%, transparent);
+  --yton-border: color-mix(in srgb, var(--yton-node-fg) 20%, transparent);
+  background: var(--yton-node-bg);
+  color: var(--yton-node-fg);
+}
+.yton-resolution-panel .yton-title,
+.yton-resolution-panel .yton-ratio-text { color: inherit; }
+.yton-resolution-panel .yton-label,
+.yton-resolution-panel .yton-subtext,
+.yton-resolution-panel .yton-segment-btn { color: var(--yton-muted); }
+.yton-resolution-panel .yton-segmented { background: var(--yton-surface); }
+.yton-resolution-panel .yton-pill-btn,
+.yton-resolution-panel .yton-ratio-card,
+.yton-resolution-panel .yton-resolution-settings,
+.yton-resolution-panel .yton-resolution-option-row button {
+  background: var(--yton-surface); border-color: var(--yton-border); color: inherit;
+}
+.yton-resolution-panel .yton-pill-btn:hover,
+.yton-resolution-panel .yton-ratio-card:hover { background: var(--yton-selected); color: inherit; }
+.yton-resolution-panel .active {
+  background: var(--yton-selected); border-color: var(--yton-node-fg); color: inherit;
+}
+.yton-resolution-panel .yton-pill-btn.active .yton-subtext { color: inherit; }
+.yton-resolution-panel .yton-ratio-icon { border-color: var(--yton-muted); color: var(--yton-muted); }
+.yton-resolution-panel .active .yton-ratio-icon { border-color: currentColor; color: inherit; }
+.yton-resolution-panel .yton-resolution-popover {
+  background: var(--yton-node-bg); border-color: var(--yton-border); color: var(--yton-node-fg);
+}
+.yton-resolution-panel .yton-advanced-tabs { background: var(--yton-surface); }
+.yton-resolution-panel .yton-advanced-tabs button { color: var(--yton-muted); }
+.yton-resolution-panel .yton-advanced-tabs button[aria-selected="true"] { background: var(--yton-selected); color: inherit; }
+.yton-resolution-panel .yton-advanced-size-field { color: var(--yton-muted); }
+.yton-resolution-panel .yton-advanced-size-field input { background: var(--yton-surface); border-color: var(--yton-border); color: var(--yton-node-fg); }
+.yton-resolution-panel button:focus-visible,
+.yton-resolution-panel input:focus-visible { outline-color: var(--yton-node-fg); }
+
 .yton-media-panel { background: #111214; gap: 18px; padding: 12px; }
 .yton-media-section { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
 .yton-media-row-header {

@@ -1,77 +1,127 @@
 # ComfyUI-yton-nodes
 
-A clean, modular custom node suite for ComfyUI tailored for AI video (especially MiniMax H3 / Hailuo) and image generation workflows.
+面向图片与视频工作流的 ComfyUI 节点包，提供媒体加载、分辨率配置、提示词优化、视频保存，以及 MiniMax H3 全模态生成与人物替换工具。
 
-## Features
+节点可在添加菜单的 **yton-nodes** 分类中找到，也可直接搜索下方中文名称。
 
-1. **分辨率比例控件 (`YtonResolutionSelector`)**
-   - Dual-mode switching: **Normal (Standard Image/Video)** vs **MiniMax H3 (Video)**
-   - H3 mode outputs widths and heights aligned to multiples of 32 (e.g. 16:9 768p → 1344×768, 1080p → 1920×1088).
-   - Both modes start at 480p and show nine presets in a three-row grid. H3 mode includes 768p (1.0), 848p (1.2), 944p (1.5), and 1024p (1.8). Provides presets across 8 aspect ratios (16:9, 9:16, 1:1, 4:3, 3:4, 2:3, 3:2, 21:9).
-   - The added H3 presets use 768p as the 1.0 baseline: nominal short side = 768 × √multiplier. Output dimensions are aligned to multiples of 32; multiplier labels follow the existing 16:9 convention.
-   - Image presets: 480p, 540p, 640p, 720p, 1080p, 2K, 2.5K, 4K, and 6K. The 2.5K tier scales the existing 2K dimensions by approximately 1.25 (16:9: 3200×1800; 1:1: 2560×2560), using even dimensions.
-   - Outputs: `width`, `height`, `aspect_ratio`, `max_side`, `min_side`, `h3_mp` (compute multiplier), `resolution_str`.
-   - **分辨率比例控件simple (`YtonResolutionSelectorSimple`)** uses the same controls and dimension rules, with only `width` and `height` outputs.
+## 安装与更新
 
-2. **媒体加载器 (`YtonEasyMediaLoader`)**
-   - 固定三列卡片：9 张图片、3 个视频、3 个音频，分类支持折叠。
-   - 新建节点默认宽度 640，图片展开，视频和音频折叠；保存后保留用户选择的尺寸与折叠状态。
-   - 没有输入连线端口。点击槽位选择文件，或直接拖入文件；支持多文件上传、预览、播放、删除及同类槽位交换。
-   - 选中节点后按 Ctrl+V，可粘贴剪贴板中的图片、视频或音频文件，自动分类并填入第一个空槽位，不覆盖已有素材；视频和音频粘贴后自动展开。支持同时粘贴多个文件，槽位满时提示先移除素材；在文本输入框中粘贴仍保留原有行为。
-   - 悬停图片槽位时，删除按钮左侧显示遮罩编辑图标，点击打开 ComfyUI 原生遮罩编辑器。保存后更新当前槽位，取消保留原图；遮罩可通过“图片列表解析 → 图片解析”的 `mask` 输出取得。
-   - 三个原生列表输出：`image`（IMAGE）、`video`（VIDEO）、`audio`（AUDIO），端口显示 ComfyUI 列表图标。
-   - 文件名保存在 `image_1`～`image_9`、`video_1`～`video_3`、`audio_1`～`audio_3` 的 widget 值中，外部 API 可直接填写。
-   - 面板的槽位编号固定；输出列表仅包含已加载的素材，按槽位顺序排列。图片为张量、视频为原生 VIDEO 对象、音频为 waveform/sample_rate 字典，可以直接连接 EasyMedia 的列表处理节点。
+需要较新的 ComfyUI，包含原生 `VIDEO` 类型、V3 节点接口及 MiniMax H3 支持。
 
-3. **素材解析节点**
-   - 三个列表解析节点的输入分别为 `image`、`video`、`audio`，使用 ComfyUI 原生列表图标；输出为各个单项素材。
-   - 图片列表解析：IMAGE 列表 → `image_1`～`image_9`。
-   - 视频列表解析：VIDEO 列表 → `video_1`～`video_3`。
-   - 音频列表解析：AUDIO 列表 → `audio_1`～`audio_3`。
-   - 图片解析：标准 `IMAGE` → RGB 图片、`MASK`；读取媒体加载器保留的图片遮罩，也可解析 RGBA 输入的透明区域。没有遮罩的 RGB 输入输出全零遮罩。
-   - 视频解析：单个 `VIDEO` → 图像帧批次（IMAGE）、帧计数（INT）、原音轨（AUDIO）、视频信息（VHS_VIDEOINFO）。视频信息包含源视频与解析结果的帧率、帧数、时长和宽高，可连接 Video Helper Suite 的视频信息节点；没有音轨时音频为空。
-   - 音频解析：单个音频素材 → 标准 `AUDIO`。
-   - 连接方式：加载器 → 对应列表解析 → 生成或处理节点；单项解析按需使用。列表解析按有效素材顺序拆分，未填充的端口输出空值；图片、视频、音频单项解析也会透传空值。
-   - 可以预先连接全部输出，例如把九张图片都接到 Qwen Image 2.1 编码器；运行时编码器只读取已有图片，其他连接保留。下游需要支持可选素材或忽略空值；必须有素材的节点仍需要提供有效输入。
+在 `ComfyUI/custom_nodes` 中执行：
 
-4. **MiniMax H3 参考生成视频 (`YtonMiniMaxH3ReferenceToVideo`)**
-   - 将媒体加载器的 `image`、`video`、`audio` 三个列表直接连接到同名输入，无需列表解析节点。
-   - 复用 ComfyUI 官方 `MiniMaxH3ReferenceToVideo`：提示词、宽高、帧数、参考图尺寸、CLIP、可选视频/音频 VAE，以及正向条件和 AV latent 输出均与官方一致；后续仍连接正常的采样流程。
-   - 原生 VIDEO 自动按原时长解析为 24fps 画面，并带入原音轨。视频音轨先占用 `<Audio N>` 编号，再排列独立音频；画面对应 `<Video N>`，图片对应 `<Picture N>`。
-   - 禁用的列表项传给官方节点后被忽略，提示词编号遵循官方规则，按有效素材重新连续编号。三个列表均可不连接，支持仅提示词生成。
-
-## Installation
-
-### Method 1: Git Clone into ComfyUI custom_nodes
 ```bash
-cd custom_nodes
-git clone https://github.com/your-username/ComfyUI-yton-nodes.git
+git clone https://github.com/ytton/ComfyUI-yton-nodes.git
 ```
 
-### Method 2: RunningHub
-Submit the git repository URL into RunningHub custom node management or clone inside your personal container.
+使用 **ComfyUI 实际运行的 Python** 安装依赖：
 
-## Node panels
+```bash
+python -m pip install -r ComfyUI-yton-nodes/requirements.txt
+```
 
-- Panels grow with their content and follow node resizing in both canvas and Vue node renderers.
-- Traditional node panels keep their width aligned with the node when the selected-node inspector opens.
-- Resolution and aspect-ratio selections refresh when reopening a workflow or changing widget values.
-- Custom panels are excluded from workflow input serialization.
-- After updating frontend files, refresh the ComfyUI page with Ctrl+F5.
+更新时进入节点包目录执行 `git pull`。安装或更新 Python 代码后重启 ComfyUI，再使用 `Ctrl+F5` 刷新网页。
 
-### Browser regression
+基础媒体、分辨率与保存节点不需要 H3 模型。H3 生成需要另行准备模型、CLIP、视频 VAE，以及对应工作流使用的第三方节点；本仓库不附带模型。llama.cpp 优化器的运行库为可选依赖，只在使用该节点时需要。
 
-With ComfyUI on `127.0.0.1:8188`, export the edited node schemas with
-`tests/export_node_definitions.py` using ComfyUI's Python and its root on `PYTHONPATH`.
-Serve this repository with `python -m http.server 8192 --bind 127.0.0.1`.
-Run `tests/node_panels.browser.js` or `tests/media_loader.browser.js` as a Playwright
-function with a `page` argument. These use isolated browser contexts to check layout,
-both node renderers, restored selections, prompt serialization, fixed slots,
-uploading, drag exchanges, and all three parser chains.
+## 常用节点
 
-Run `tests/media_mask_editor.browser.js` against the installed plugin to check native
-mask painting, saving, cancelling, reopening, and slot/workflow serialization.
+### 媒体加载器
 
-Run `tests/test_media_nodes.py -v` with the same Python environment for real image,
-audio, and video parsing checks. Restart ComfyUI after updating the Python node files,
-then refresh the browser with Ctrl+F5.
+一个面板集中管理 **9 张图片、3 个视频、3 个音频**，支持点击选择文件、拖拽上传，以及选中节点后 `Ctrl+V` 粘贴媒体。图片可预览、编辑遮罩，视频和音频可播放；同类素材可以交换槽位。
+
+输出图片、视频、音频三个原生列表，按已填槽位的顺序排列。支持列表的节点可直接连接；需要单个素材时，连接对应的【图片列表解析】【视频列表解析】【音频列表解析】。
+
+【视频解析】可进一步取得序列帧、帧数、原音轨与视频信息；【图片解析】可取得图片和遮罩。还提供【图片转列表】【视频转列表】【音频转列表】，把其他加载节点的输出收集成列表。
+
+### 分辨率比例控件
+
+点击分辨率和比例预设，输出宽度、高度等参数，支持普通图片模式与 MiniMax H3 模式。H3 模式按模型要求对齐尺寸。
+
+- **分辨率比例控件**：输出宽高、比例、长短边、H3 倍率与分辨率名称。
+- **分辨率比例控件simple**：仅输出宽度和高度，适合简洁工作流。
+- **分辨率比例控件 · 高级版**：支持上游输入宽高、比例或分辨率，并通过齿轮设置显示哪些端口、区域与预设。
+
+高级版的参数优先级与设置说明见 [分辨率高级版](docs/resolution-advanced.md)。
+
+### 提示词优化器
+
+把用户提示词、系统规则、可选的图片／视频／音频参考送给 OpenAI 兼容服务，输出可连接下游的提示词文本。支持选择插件 `skills` 目录中的创作规则，右下角齿轮配置共享服务商与模型。
+
+关闭“启用提示词增强”后，用户原文直接输出，不调用模型。视频通过抽帧与音轨提供参考，模型需要支持实际使用的媒体类型。
+
+另有 **llama.cpp 提示词优化器**，直接调用本地 GGUF 模型。模型放在 `ComfyUI/models/LLM`，多模态推理需要匹配的投影文件和运行库。
+
+详细说明：[API 优化器](docs/prompt-optimizer.md) · [本地 GGUF 优化器](docs/LLAMA_PROMPT_OPTIMIZER.md)。服务商密钥保存在 ComfyUI 用户目录，不写入工作流。
+
+### 保存视频
+
+支持接入原生【创建视频】输出的 `VIDEO`，也支持图片序列帧与可选音频。提供格式、编码、帧率、质量和速度设置，输出仍为 `VIDEO`。
+
+保存路径支持边输入边点击插入日期、时间、序号、分辨率等标签，例如：
+
+```text
+视频/{date}/项目名称/片段-{index}
+```
+
+实际可保存为 `output/视频/2026-11-04/项目名称/片段-00001.mp4`。序号自动避免重名，时间标签使用 Windows 可用的 `HH-mm-ss`。
+
+视频先编码，再发布到目标位置。目录不可写时改存备用位置，并记录实际路径；编码失败尝试通用 MP4。最终仍无法落盘时，明确提示“未保存”并继续输出原视频，保存异常不会阻断流程。
+
+完整标签及失败处理说明见 [保存视频](docs/video-save.md)。
+
+### H3 视频生成配置器与参考视频工作台
+
+- **H3 视频生成配置器**：左侧设置分辨率、比例与时长，右侧编辑或优化提示词；输出提示词、宽高、帧数和实际时长。图片、视频、音频列表可用于参考理解，素材仍由加载器直接连接生成节点。
+- **H3 参考视频工作台**：集中配置提示词、画幅、时长和参考素材，输出 H3 正向条件与 AV latent，连接后续采样流程。
+- **MiniMax H3 参考生成视频**：直接接收图片、视频、音频列表，复用官方参考编码能力；输出条件与 latent，按需搭配自己的采样器。
+
+### H3 全模态生成
+
+提供 **H3 全模态生成**、**H3 全模态生成 · TR**、**H3 全模态生成 · SelfLift**，把参考处理、采样与输出封装到节点中。
+
+使用标准 `MODEL`、`CLIP`、`VAE` 输入，支持参考媒体、可选视频上下文、Add Guide，以及各方案对应的二采与小脸修复设置。选择适合自己模型和显存的采样方案。
+
+【H3 小脸修复】也可单独用于图像帧后处理；【权重 LoRA 加载器】用于加载与调整 LoRA 权重。第三方依赖和模型文件需根据实际启用功能安装。
+
+### 人物替换配置器
+
+集中加载原视频与最多六张参考图，编辑提示词，配置生成画幅，并通过视频编辑弹窗完成参考压缩、裁剪和分段规划。参考视频压缩尺寸与最终生成分辨率独立设置。
+
+提示词可按段保存，也可全段共用；连接【LLM 通用连接器】后，可以结合当前片段抽帧和参考图优化提示词，并编辑优化规则。
+
+两种使用方式：
+
+- **人物替换配置器 · 媒体输出**：输出所选片段的媒体、提示词、宽高、长度、片段序号、总段数和项目目录；可选索引输入控制具体片段。
+- **人物替换配置器 · 配置输出**：输出当前片段配置，连接【人物替换配置解析器】。开启内置循环后，从所选片段生成到末段，配合【人物替换 · 循环视频保存】保存各段、传递上下文并合并完整预览；关闭循环可重跑选中的一段。
+
+普通【保存视频】用于通用保存；【人物替换 · 循环视频保存】用于管理分段项目、替换片段与完整视频合并。
+
+## 典型连线
+
+**通用图片／视频生成：**
+
+```text
+媒体加载器 → 提示词优化器 → 文本编码／生成节点
+分辨率比例控件 → 生成节点的宽度、高度
+生成结果 → 创建视频 → 保存视频
+```
+
+生成节点支持列表时直接连接媒体列表，需要单项素材时加入对应列表解析节点。
+
+**H3 人物替换内置循环：**
+
+```text
+人物替换配置器 · 配置输出 → 人物替换配置解析器
+配置解析器 → H3 全模态生成 → 创建视频 → 人物替换 · 循环视频保存
+```
+
+把解析器的媒体、提示词、宽高、长度、上一段视频和启用上下文连接到生成节点；片段序号、总段数和项目目录连接到循环保存器。模型、CLIP、VAE 由对应加载器提供。
+
+## 示例与使用说明
+
+[examples](examples) 中提供媒体加载与 H3 工作流示例。导入后按自己的环境选择模型、素材和保存位置；部分示例需要其他节点包。
+
+可选的 Qwen Launcher 显存联动默认关闭，在 ComfyUI 设置的 **yton-nodes → 本地模型联动** 中开启。此功能会在执行前卸载启动器模型，并在工作流运行期间阻止其重新加载，配置与限制见 [本地模型显存联动](docs/launcher-guard.md)。
+
+模型文件不随仓库提供。已有模型与 LoRA 应配套使用；显存占用与生成速度取决于模型、帧数、分辨率和启用功能。
