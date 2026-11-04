@@ -779,6 +779,87 @@ class ReplacementTests(unittest.TestCase):
                 self.assertTrue(second["complete"])
                 self.assertEqual(InputImpl.VideoFromFile(str(project / "complete.mp4")).get_frame_count(), 78)
 
+    def test_reuse_with_changed_save_settings_preserves_other_segments_and_merges(self):
+        started_at = datetime.now().astimezone()
+        for name, changes in (
+            ("format", {"container": "mkv"}),
+            ("fps", {"fps": 12}),
+            ("quality", {"crf": 28}),
+            ("size", {"size": (96, 64)}),
+            ("combined", {"container": "mkv", "fps": 12, "crf": 28, "size": (96, 64)}),
+        ):
+            with self.subTest(settings=name):
+                prefix = f"changed-settings/{name}/"
+                initial = dict(run=uuid.uuid4().hex, started_at=started_at, prefix=prefix)
+                for index, color in ((1, .5), (2, 1.)):
+                    video = InputImpl.VideoFromComponents(Types.VideoComponents(
+                        images=torch.full((12, 48, 64, 3), color), frame_rate=Fraction(24)))
+                    original = save_segment(video, index, 2, **initial)
+                project = Path(original["_project_root"])
+                other = project / "segment_0002.mp4"
+                before = other.read_bytes()
+                options = {"container": "mp4", "fps": 24, "crf": 18, **changes}
+                width, height = options.pop("size", (64, 48))
+                replacement = InputImpl.VideoFromComponents(Types.VideoComponents(
+                    images=torch.zeros((12, height, width, 3)), frame_rate=Fraction(24)))
+                result = save_segment(replacement, 1, 2, run=uuid.uuid4().hex,
+                    started_at=started_at, prefix=prefix, reuse_existing=True, **options)
+                self.assertEqual(result["_project_root"], str(project))
+                self.assertTrue(result["complete"])
+                self.assertEqual(other.read_bytes(), before)
+                manifest = json.loads((project / "segments.json").read_text())
+                self.assertEqual((manifest["format"], manifest["fps"], manifest["crf"], manifest["size"]),
+                    (options["container"], options["fps"], options["crf"], [width, height]))
+                self.assertEqual(manifest["segments"]["1"]["frames"], options["fps"] // 2)
+                self.assertEqual(manifest["segments"]["2"], {"file": other.name, "frames": 12})
+                self.assertEqual(sorted(path.name for path in project.glob("segment_*")),
+                    sorted([f"segment_0001.{options['container']}", "segment_0002.mp4"]))
+                merged = InputImpl.VideoFromFile(str(project / "complete.mp4")).get_components()
+                self.assertEqual(tuple(merged.images.shape), (options["fps"], height, width, 3))
+                self.assertEqual(merged.frame_rate, Fraction(options["fps"]))
+                self.assertLess(float(merged.images[0].mean()), .05)
+                self.assertGreater(float(merged.images[-1, height // 2, width // 2].mean()), .95)
+                if "size" in changes:
+                    self.assertLess(float(merged.images[-1, :, 0].mean()), .05)
+                self.assertIsNotNone(merged.audio)
+                self.assertAlmostEqual(merged.audio["waveform"].shape[-1] / merged.audio["sample_rate"], 1, delta=.04)
+                with av.open(str(project / "complete.mp4")) as opened:
+                    self.assertAlmostEqual(opened.duration / av.time_base, 1, delta=.03)
+                self.assertFalse(list(project.glob("merge_*")))
+                self.assertFalse(list(project.glob("*.writing.*")))
+                self.assertFalse((project / "concat.txt").exists())
+
+    def test_changed_settings_follow_the_execution_project_and_preview_only_mode(self):
+        video, _ = segment_video(self.config(), 0)
+        options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+            prefix="changed-settings/execution/", save_full=False)
+        first = save_segment(video, 1, 2, **options)
+        project = Path(first["_project_root"])
+        before = (project / "segment_0001.mp4").read_bytes()
+        second = save_segment(video, 2, 2, project_root=project, fps=12, **options)
+        self.assertEqual(second["_project_root"], str(project))
+        self.assertEqual((project / "segment_0001.mp4").read_bytes(), before)
+        self.assertEqual(second["merged"]["type"], "temp")
+        merged = self.root / "temp" / second["merged"]["subfolder"] / second["merged"]["filename"]
+        self.assertEqual(InputImpl.VideoFromFile(str(merged)).get_frame_count(), 40)
+        self.assertFalse((project / "complete.mp4").exists())
+
+    def test_failed_replacement_keeps_the_saved_segment_and_manifest(self):
+        video, _ = segment_video(self.config(), 0)
+        options = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(),
+            prefix="changed-settings/failed/")
+        first = save_segment(video, 1, 2, **options)
+        project = Path(first["_project_root"])
+        manifest = (project / "segments.json").read_bytes()
+        saved = (project / "segment_0001.mp4").read_bytes()
+        with patch("replacement_test_plugin.replacement.save.encode", side_effect=ValueError("encode failed")):
+            with self.assertRaisesRegex(ValueError, "encode failed"):
+                save_segment(video, 1, 2, run=uuid.uuid4().hex, started_at=options["started_at"],
+                    prefix=options["prefix"], reuse_existing=True, container="mkv", fps=12, crf=28)
+        self.assertEqual((project / "segments.json").read_bytes(), manifest)
+        self.assertEqual((project / "segment_0001.mp4").read_bytes(), saved)
+        self.assertFalse((project / "segment_0001.mkv").exists())
+
     def test_reuse_without_requested_segment_adds_it_to_the_existing_project(self):
         video, _ = segment_video(self.config(), 0)
         started_at = datetime.now().astimezone()
