@@ -30,9 +30,6 @@ const MP_MAP = {
   "944p": "1.5",
   "1024p": "1.8",
   "1080p": "2.0",
-  "2K": "1.5",
-  "4K": "2.5",
-  "6K": "4.0"
 };
 
 const LIST_PARSERS = new Set(["YtonImageListParser", "YtonVideoListParser", "YtonAudioListParser"]);

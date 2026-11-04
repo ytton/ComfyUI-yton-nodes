@@ -31,7 +31,7 @@ class YtonResolutionSelectorAdvanced(YtonResolutionSelector):
         except (ValueError, AttributeError, TypeError):
             raise ValueError("画面比例必须是有效的正数比例，例如 16:9 或 3:4") from None
         aspect_ratio = aspect_ratio.strip()
-        allowed = ("320p", "480p", "540p", "640p", "720p", "768p", "944p", "1024p", "1080p", "2K", "4K") if "H3" in mode else ("480p", "540p", "640p", "720p", "1080p", "2K", "2.5K", "4K", "6K")
+        allowed = ("320p", "480p", "540p", "640p", "720p", "768p", "944p", "1024p", "1080p") if "H3" in mode else ("480p", "540p", "640p", "720p", "1080p", "2K", "2.5K", "4K", "6K")
         if resolution not in allowed:
             raise ValueError(f"当前模式不支持分辨率：{resolution}")
         if width < 0 or height < 0 or width > 16384 or height > 16384:

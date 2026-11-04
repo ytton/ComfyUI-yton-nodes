@@ -10,7 +10,7 @@ const H3 = "MiniMax H3 (Video)";
 const NORMAL = "Normal (Standard Image/Video)";
 const RATIOS = ["auto", "16:9", "9:16", "1:1", "4:3", "3:4", "2:3", "3:2", "21:9"];
 const RESOLUTIONS = {
-  [H3]: ["320p", "480p", "540p", "640p", "720p", "768p", "944p", "1024p", "1080p", "2K", "4K"],
+  [H3]: ["320p", "480p", "540p", "640p", "720p", "768p", "944p", "1024p", "1080p"],
   [NORMAL]: ["480p", "540p", "640p", "720p", "1080p", "2K", "2.5K", "4K", "6K"],
 };
 const MP_MAP = {
@@ -23,8 +23,6 @@ const MP_MAP = {
   "944p": "1.5",
   "1024p": "1.8",
   "1080p": "2.0",
-  "2K": "1.5",
-  "4K": "2.5",
 };
 const INPUTS = [["width", "宽度"], ["height", "高度"], ["aspect_ratio", "比例"], ["resolution", "分辨率"], ["image", "图片"]];
 const OUTPUTS = [["width", "宽度"], ["height", "高度"], ["aspect_ratio", "比例"], ["max_side", "长边"], ["min_side", "短边"], ["h3_mp", "H3 倍率"], ["resolution_str", "分辨率名称"]];
