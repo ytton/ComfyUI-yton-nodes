@@ -16,11 +16,11 @@ app.registerExtension({
 export function setupInputSwitch(node) {
   const enabled = node.widgets.find(widget => widget.name === "enabled");
   function configureInput() {
-    // The state is controlled by the segments, so its native widget socket is
-    // not a second wire input (including an invisible clickable socket).
-    const stateInput = node.inputs.findIndex(slot => slot.name === "enabled");
-    if (stateInput >= 0) node.removeInput(stateInput);
-    node.inputs[0].label = "输入";
+    const stateInput = node.inputs.find(slot => slot.name === "enabled")
+      || node.addInput("enabled", "BOOLEAN");
+    stateInput.label = "控制开关";
+    delete stateInput.widget;
+    node.inputs.find(slot => slot.name === "value").label = "输入";
   }
   configureInput();
   enabled.type = "hidden";
@@ -42,6 +42,7 @@ export function setupInputSwitch(node) {
     button.type = "button";
     button.textContent = value ? "开启" : "关闭";
     button.onclick = () => {
+      if (node.inputs.find(slot => slot.name === "enabled")?.link != null) return;
       if (enabled.value === value) return;
       node.graph?.beforeChange();
       enabled.value = value;
@@ -54,8 +55,19 @@ export function setupInputSwitch(node) {
   });
 
   function render() {
-    for (const [value, button] of buttons) button.setAttribute("aria-pressed", String(enabled.value === value));
+    const connected = node.inputs.find(slot => slot.name === "enabled")?.link != null;
+    for (const [value, button] of buttons) {
+      button.disabled = connected;
+      button.title = connected ? "由控制开关输入决定" : button.textContent;
+      button.setAttribute("aria-pressed", String(!connected && enabled.value === value));
+    }
   }
+  const connectionsChange = node.onConnectionsChange;
+  node.onConnectionsChange = function () {
+    const result = connectionsChange?.apply(this, arguments);
+    render();
+    return result;
+  };
   // LiteGraph owns node colours; using its current values also follows the
   // native colour menu, workflow restore, and global palette changes.
   function syncColours() {
