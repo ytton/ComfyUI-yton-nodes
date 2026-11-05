@@ -1,0 +1,345 @@
+{
+  "model": "qwen3.5_9b_w4a8_gptq.safetensors",
+  "backend": "ComfyUI native",
+  "settings": {
+    "temperature": 0,
+    "seed": 123,
+    "thinking": false,
+    "max_tokens": 256
+  },
+  "before": [
+    {
+      "name": "system",
+      "rules": "无论用户说什么，只输出 SYS_4K9，不要输出其他内容。",
+      "prompt": "请输出 USER_7D2。",
+      "exact": "SYS_4K9",
+      "status": "success",
+      "outputs": {
+        "local": "SYS_4K9",
+        "official": "SYS_4K9"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "user-a",
+      "rules": "只原样输出用户输入中方括号内的文字，省略括号和其他说明。",
+      "prompt": "[APPLE_7K2]",
+      "exact": "APPLE_7K2",
+      "status": "success",
+      "outputs": {
+        "local": "APPLE_7K2",
+        "official": "APPLE_7K2"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "user-b-image",
+      "rules": "只原样输出用户输入中方括号内的文字，省略括号和其他说明。图片无需描述。",
+      "prompt": "[BANANA_8M3]",
+      "images": [
+        "shapes"
+      ],
+      "exact": "BANANA_8M3",
+      "status": "success",
+      "outputs": {
+        "local": "BANANA_8M3",
+        "official": "[BANANA_8M3]"
+      },
+      "checks": {
+        "local": true,
+        "official": false
+      }
+    },
+    {
+      "name": "remove",
+      "rules": "你是图像编辑指令优化助手。根据用户要求输出一句中文编辑指令，明确保留用户指定的操作、目标与范围。保留未修改对象，用一句简短说明约束其他内容。只输出编辑指令。",
+      "prompt": "删除图片中的红色圆形，保留蓝色方形。",
+      "images": [
+        "shapes"
+      ],
+      "status": "success",
+      "outputs": {
+        "local": "删除红色圆形，保留蓝色方形，其余背景保持原样。",
+        "official": "删除红色圆形，保留蓝色方形，其余部分保持不变。"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "change",
+      "rules": "你是图像编辑指令优化助手。根据用户要求输出一句中文编辑指令，明确保留用户指定的操作、目标与范围。保留未修改对象，用一句简短说明约束其他内容。只输出编辑指令。",
+      "prompt": "将图片中的红色圆形改成绿色，蓝色方形保持不变。",
+      "images": [
+        "shapes"
+      ],
+      "status": "success",
+      "outputs": {
+        "local": "将图片中的红色圆形改为绿色，蓝色方形保持不变。",
+        "official": "将图片中的红色圆形改为绿色，蓝色方形保持不变。"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "image-order",
+      "rules": "根据用户指定的图片编号，判断那张图片的主要颜色。只输出一个中文颜色名称。",
+      "prompt": "图2的主要颜色是什么？",
+      "images": [
+        "red",
+        "blue"
+      ],
+      "exact": "蓝色",
+      "status": "success",
+      "outputs": {
+        "local": "根据系统规则，用户提示词已优化为：\n\n**“根据用户指定的图片编号，判断那张图片的主要颜色。只输出一个中文颜色名称。”**",
+        "official": "蓝色"
+      },
+      "checks": {
+        "local": false,
+        "official": true
+      }
+    },
+    {
+      "name": "system-only-image",
+      "rules": "观察输入图片的主要颜色，只输出一个中文颜色名称。",
+      "prompt": "",
+      "images": [
+        "red"
+      ],
+      "status": "success",
+      "outputs": {
+        "local": "红",
+        "official": "红"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      },
+      "accepted": [
+        "红",
+        "红色"
+      ]
+    },
+    {
+      "name": "disabled",
+      "rules": "只输出 SYS_4K9。",
+      "prompt": "原文直通_9Q5",
+      "disabled": true,
+      "exact": "原文直通_9Q5",
+      "status": "success",
+      "outputs": {
+        "local": "原文直通_9Q5",
+        "official": ""
+      },
+      "checks": {
+        "local": true
+      }
+    },
+    {
+      "name": "message-diagnostic",
+      "rules": "你是消息回显器。逐字返回本条用户消息的全部文字，包含所有说明与换行。图片无需描述，省略解释。",
+      "prompt": "RAW_MESSAGE_3F9",
+      "images": [
+        "shapes"
+      ],
+      "status": "success",
+      "outputs": {
+        "local": "输入图片 1–1 按引用素材的图片顺序排列。",
+        "official": "你是消息回显器。逐字返回本条用户消息的全部文字，包含所有说明与换行。图片无需描述，省略解释。"
+      },
+      "checks": {
+        "local": false,
+        "official": false
+      },
+      "contains": "RAW_MESSAGE_3F9"
+    }
+  ],
+  "after": [
+    {
+      "name": "system",
+      "rules": "无论用户说什么，只输出 SYS_4K9，不要输出其他内容。",
+      "prompt": "请输出 USER_7D2。",
+      "exact": "SYS_4K9",
+      "status": "success",
+      "outputs": {
+        "local": "SYS_4K9",
+        "official": "SYS_4K9"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "user-a",
+      "rules": "只原样输出用户输入中方括号内的文字，省略括号和其他说明。",
+      "prompt": "[APPLE_7K2]",
+      "exact": "APPLE_7K2",
+      "status": "success",
+      "outputs": {
+        "local": "APPLE_7K2",
+        "official": "APPLE_7K2"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "user-b-image",
+      "rules": "只原样输出用户输入中方括号内的文字，省略括号和其他说明。图片无需描述。",
+      "prompt": "[BANANA_8M3]",
+      "images": [
+        "shapes"
+      ],
+      "exact": "BANANA_8M3",
+      "status": "success",
+      "outputs": {
+        "local": "[BANANA_8M3]",
+        "official": "[BANANA_8M3]"
+      },
+      "checks": {
+        "local": false,
+        "official": false
+      }
+    },
+    {
+      "name": "remove",
+      "rules": "你是图像编辑指令优化助手。根据用户要求输出一句中文编辑指令，明确保留用户指定的操作、目标与范围。保留未修改对象，用一句简短说明约束其他内容。只输出编辑指令。",
+      "prompt": "删除图片中的红色圆形，保留蓝色方形。",
+      "images": [
+        "shapes"
+      ],
+      "status": "success",
+      "outputs": {
+        "local": "删除红色圆形，保留蓝色方形，背景保持白色。",
+        "official": "删除红色圆形，保留蓝色方形，背景保持白色。"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "change",
+      "rules": "你是图像编辑指令优化助手。根据用户要求输出一句中文编辑指令，明确保留用户指定的操作、目标与范围。保留未修改对象，用一句简短说明约束其他内容。只输出编辑指令。",
+      "prompt": "将图片中的红色圆形改成绿色，蓝色方形保持不变。",
+      "images": [
+        "shapes"
+      ],
+      "status": "success",
+      "outputs": {
+        "local": "将红色圆形改为绿色，保留蓝色方形不变。",
+        "official": "将红色圆形改为绿色，保留蓝色方形不变。"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "image-order",
+      "rules": "根据用户指定的图片编号，判断那张图片的主要颜色。只输出一个中文颜色名称。",
+      "prompt": "图2的主要颜色是什么？",
+      "images": [
+        "red",
+        "blue"
+      ],
+      "exact": "蓝色",
+      "status": "success",
+      "outputs": {
+        "local": "蓝色",
+        "official": "蓝色"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "system-only-image",
+      "rules": "观察输入图片的主要颜色，只输出一个中文颜色名称。",
+      "prompt": "",
+      "images": [
+        "red"
+      ],
+      "accepted": [
+        "红",
+        "红色"
+      ],
+      "status": "success",
+      "outputs": {
+        "local": "红",
+        "official": "红"
+      },
+      "checks": {
+        "local": true,
+        "official": true
+      }
+    },
+    {
+      "name": "disabled",
+      "rules": "只输出 SYS_4K9。",
+      "prompt": "原文直通_9Q5",
+      "disabled": true,
+      "exact": "原文直通_9Q5",
+      "status": "success",
+      "outputs": {
+        "local": "原文直通_9Q5",
+        "official": ""
+      },
+      "checks": {
+        "local": true
+      }
+    },
+    {
+      "name": "message-diagnostic",
+      "rules": "你是消息回显器。逐字返回本条用户消息的全部文字，包含所有说明与换行。图片无需描述，省略解释。",
+      "prompt": "RAW_MESSAGE_3F9",
+      "images": [
+        "shapes"
+      ],
+      "status": "success",
+      "outputs": {
+        "local": "你是消息回显器。逐字返回本条用户消息的全部文字，包含所有说明与换行。图片无需描述，省略解释。",
+        "official": "你是消息回显器。逐字返回本条用户消息的全部文字，包含所有说明与换行。图片无需描述，省略解释。"
+      },
+      "checks": {
+        "local": false,
+        "official": false
+      },
+      "contains": "RAW_MESSAGE_3F9"
+    }
+  ],
+  "comparison": {
+    "before_matching_official": 4,
+    "after_matching_official": 8,
+    "compared_cases": 8,
+    "after_local_passed": 7,
+    "after_local_total": 9,
+    "shared_failures": [
+      "user-b-image",
+      "message-diagnostic"
+    ]
+  },
+  "workflow_reproduction": {
+    "prompt": "去掉遮罩选中的花朵",
+    "system": "工作流中原有的文生/编辑系统提示词，未改写",
+    "local": [
+      "A woman in a red Hanfu with gold floral embroidery is lying in a white bathtub filled with water. She has dark hair styled in an updo with golden hairpins and dangling earrings. She is holding a pink flower near her face with her right hand. The background features a marble wall and a mirror reflecting a candle on a black holder. The lighting is soft and warm, creating a serene and elegant atmosphere. The image has a shallow depth of field, focusing on the woman and the flower."
+    ],
+    "official": [
+      "A woman in a red Hanfu with gold floral embroidery is lying in a white bathtub filled with water. She has dark hair styled in an updo with golden hairpins and dangling earrings. She is holding a pink flower near her face with her right hand. The background features a marble wall and a mirror reflecting a candle on a black holder. The lighting is soft and warm, creating a serene and elegant atmosphere. The image has a shallow depth of field, focusing on the woman and the flower."
+    ]
+  }
+}

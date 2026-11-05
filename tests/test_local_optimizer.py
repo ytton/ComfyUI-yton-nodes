@@ -33,8 +33,7 @@ class LocalOptimizerTests(unittest.TestCase):
         result = native.generate_native(clip, "用户原文", "自定义规则", "选定的 Skill", native.DEFAULT_NATIVE_JSON)
         self.assertEqual(result, "优化结果")
         args, kwargs = clip.tokenize.call_args
-        self.assertIn("依据系统规则", args[0])
-        self.assertTrue(args[0].endswith("用户提示词：\n用户原文"))
+        self.assertEqual(args, ("用户原文",))
         self.assertIn("自定义规则", kwargs["system_prompt"])
         self.assertIn("选定的 Skill", kwargs["system_prompt"])
         self.assertFalse(kwargs["skip_template"])
@@ -64,16 +63,14 @@ class LocalOptimizerTests(unittest.TestCase):
         self.assertEqual(len(kwargs["audios"]), 2)
         self.assertIn("视频 1 时长 3.000 秒", args[0])
         self.assertIn("2.900 秒", args[0])
-        self.assertLess(args[0].index("2.900 秒"), args[0].index("用户提示词："))
-        self.assertTrue(args[0].endswith("用户提示词：\n人物替换"))
+        self.assertTrue(args[0].endswith("\n\n人物替换"))
 
-    def test_masked_edit_request_is_kept_after_reference_metadata(self):
+    def test_masked_edit_request_is_forwarded_verbatim_with_images(self):
         clip = fake_clip()
         native.generate_native(clip, "去掉遮罩选中的花朵", "文生图或编辑规则", "", native.DEFAULT_NATIVE_JSON,
                                image=[torch.zeros(1, 4, 4, 3)])
         request = clip.tokenize.call_args.args[0]
-        self.assertTrue(request.endswith("用户提示词：\n去掉遮罩选中的花朵"))
-        self.assertIn("操作对象和范围限定", request)
+        self.assertEqual(request, "去掉遮罩选中的花朵")
         self.assertEqual(clip.tokenize.call_args.kwargs["system_prompt"], "文生图或编辑规则")
 
     def test_system_only_request_does_not_invent_user_instructions(self):
@@ -81,8 +78,8 @@ class LocalOptimizerTests(unittest.TestCase):
         native.generate_native(clip, "", "根据图片反推", "", native.DEFAULT_NATIVE_JSON,
                                image=[torch.zeros(1, 4, 4, 3)])
         request = clip.tokenize.call_args.args[0]
-        self.assertIn("输入图片", request)
-        self.assertNotIn("用户提示词：", request)
+        self.assertEqual(request, "")
+        self.assertEqual(len(clip.tokenize.call_args.kwargs["images"]), 1)
 
     def test_native_requires_clip_and_valid_options(self):
         with self.assertRaisesRegex(native.OptimizerError, "CLIP"):
