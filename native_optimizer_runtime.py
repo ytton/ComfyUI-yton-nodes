@@ -74,7 +74,12 @@ def generate_native(clip, prompt, rules, skill, raw_options, *, image=None, audi
     messages = build_messages(prompt, rules, skill=skill)
     system = "\n\n".join(message["content"] for message in messages if message["role"] == "system")
     images, audios, description = native_media(image, audio, video)
-    user = "\n\n".join(value for value in (prompt.strip(), description) if value)
+    request = (
+        "请依据系统规则优化下面的用户提示词，保留其中的创作或编辑意图、操作对象和范围限定，"
+        "输出给下游模型使用的最终提示词。\n\n用户提示词：\n" + prompt.strip()
+        if prompt.strip() else ""
+    )
+    user = "\n\n".join(value for value in (description, request) if value)
     sampling = {
         "sampling_mode": "on" if options["temperature"] > 0 else "off",
         "temperature": options["temperature"], "top_k": options["top_k"],
