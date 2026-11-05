@@ -6,6 +6,7 @@ from comfy_api.latest import InputImpl, io, ui
 from server import PromptServer
 
 from ..llm_connection import LLMConnection
+from .anchors import anchor_images
 from .loop import expand_segments
 from .media import image_tensors, input_path, inspect, output_size, plan_for, reference_images, segment_video
 from .prompts import optimize, prompt_slot, resolve_references, signature, source_prompt
@@ -14,7 +15,7 @@ from .save import execution_state, existing_project, save_segment
 
 DEFAULT_CONFIG = {
     "video": "", "images": [""] * 6, "original": "将 <Video 1> 中的主体替换为 <Picture 1> 中的角色，动作与镜头沿用原视频。",
-    "prompts": {}, "optimized": {}, "shared": False, "auto": False,
+    "prompts": {}, "optimized": {}, "anchors": {}, "shared": False, "auto": False,
     "ratio": "原视频", "resolution": "480p", "image_scale": 1,
     "plan": {"enabled": False, "mode": "MiniMax H3", "frames": 175, "seconds": 5,
              "overlap": 22, "output": "完整片段", "start": 0, "end": 0},
@@ -118,7 +119,9 @@ class YtonReplacementPlan(io.ComfyNode):
                     io.Int.Input("selected_index", default=0, min=0, optional=True, socketless=True),
                     io.Boolean.Input("loop_generation", default=False, socketless=True,
                                      tooltip="从当前选中片段开始，依次执行到最后一段。")],
-            outputs=[io.Custom("YTON_REPLACEMENT_PLAN").Output(display_name="本段配置")],
+            outputs=[io.Custom("YTON_REPLACEMENT_PLAN").Output(display_name="本段配置"),
+                     io.Custom("YTON_H3_ANCHORS").Output(display_name="achorImages",
+                        tooltip="当前段已上传的替换帧与帧位置，连接全模态节点的 Add Guide 关键帧。")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt, io.Hidden.execution_list], enable_expand=True)
 
     @classmethod
@@ -136,7 +139,7 @@ class YtonReplacementPlan(io.ComfyNode):
         plan_value = {"config": config, "llm": llm, "index": selected_index, "total": total,
                       "segment": plan["segments"][selected_index], "previous_video": None}
         expanded = expand_segments(cls.hidden, plan_value, plan["segments"], loop_generation)
-        return expanded if expanded is not None else io.NodeOutput(plan_value)
+        return expanded if expanded is not None else io.NodeOutput(plan_value, anchor_images(parsed, selected_index))
 
 
 class YtonReplacementPreviousSegment(io.ComfyNode):
@@ -177,11 +180,12 @@ class YtonReplacementLoopStep(io.ComfyNode):
             io.Custom("YTON_REPLACEMENT_PLAN").Input("plan"),
             io.Video.Input("previous_video", optional=True),
             io.AnyType.Input("dependency", optional=True),
-        ], outputs=[io.Custom("YTON_REPLACEMENT_PLAN").Output()], is_dev_only=True)
+        ], outputs=[io.Custom("YTON_REPLACEMENT_PLAN").Output(), io.Custom("YTON_H3_ANCHORS").Output()], is_dev_only=True)
 
     @classmethod
     def execute(cls, plan, previous_video=None, dependency=None):
-        return io.NodeOutput({**plan, "previous_video": previous_video})
+        return io.NodeOutput({**plan, "previous_video": previous_video},
+                             anchor_images(parse_config(plan["config"]), plan["index"]))
 
 
 class YtonReplacementLoopBarrier(io.ComfyNode):

@@ -10,6 +10,7 @@ from aiohttp import web
 
 from ..llm_connection import LLMConnection
 from ..prompt_optimizer import discover_models, get_store
+from .anchors import editor_preview, frame_preview
 from .media import contact_sheet, output_size, plan_for, reference_images, segment_video
 from .save import preview
 from .shots import shot_plan
@@ -75,6 +76,16 @@ def install():
     @routes.get("/yton/replacement/skill")
     async def optimization_skill(request):
         return await respond(lambda: {"skill": load_skill(), "default_skill": SYSTEM})
+
+    @routes.post("/yton/replacement/anchor-preview")
+    async def anchor_preview(request):
+        data = await request.json()
+        return await respond(lambda: editor_preview(data["config"], int(data["index"])))
+
+    @routes.post("/yton/replacement/anchor-frame")
+    async def anchor_frame(request):
+        data = await request.json()
+        return await respond(lambda: frame_preview(data["config"], int(data["index"]), data["frame"]))
 
     @routes.post("/yton/replacement/skill")
     async def save_optimization_skill(request):

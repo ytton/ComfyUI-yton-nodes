@@ -54,7 +54,7 @@ class H3OmniGenerate:
             "width": ("INT", {"default": 1344, "min": 32, "max": 16384, "step": 32}),
             "height": ("INT", {"default": 768, "min": 32, "max": 16384, "step": 32}),
             "mode": (["普通模式", "复刻模式"], {"default": "普通模式",
-                "tooltip": "普通模式使用填写时长；复刻模式按第一个参考视频的实际时长生成，未接参考视频时使用已启用的注入视频。"}),
+                "tooltip": "普通模式使用填写时长；复刻模式按第一个参考视频的实际时长生成。"}),
             "duration": ("FLOAT", {"default": 5.0, "min": 0.21, "max": 149.66, "step": 0.1,
                 "tooltip": "普通模式目标时长。开启自动增加上下文时长时，填写新增内容时长；关闭时，填写包含上下文的片段总时长。"}),
             "ref_image_size": (["match", "max"], {"default": "match"}),
@@ -186,17 +186,9 @@ class H3OmniGenerate:
             required["selflift_highres_tiling"] = ("BOOLEAN", {"default": False})
             required["selflift_highres_tiles"] = (["auto", "2", "4", "8"], {"default": "auto"})
         required["enable_add_guide"] = ("BOOLEAN", {"default": False,
-            "tooltip": "启用官方 Add Guide，按指定帧位置注入画面或音频条件；关闭时不读取注入媒体。与普通媒体参考和分段上下文分别生效。"})
-        required["guide_frame_idx"] = ("INT", {"default": 0, "min": -9999, "max": 9999,
-            "tooltip": "生成片段中的起始帧，包含上下文区；0 为第一帧，负数从末尾计数。不会自动延长视频，注入片段必须能放入生成长度。"})
-        schema["optional"].update({
-            "guide_video": ("VIDEO", {"lazy": True,
-                "tooltip": "注入第一个有效视频，按原时长转为 24fps，并带入原音轨；视频优先于注入图片。"}),
-            "guide_image": ("IMAGE", {"lazy": True,
-                "tooltip": "注入图片或一批视频帧；未连接注入视频时使用。官方节点将多帧向下取为 5、22、39…帧，不足 5 帧只使用第一帧。"}),
-            "guide_audio": ("AUDIO", {"lazy": True,
-                "tooltip": "可单独注入音频，也可替换注入视频自带的音轨；起点与画面共用注入位置。"}),
-        })
+            "tooltip": "按配置器选定的帧位置注入替换图片；自动处理分段上下文偏移。"})
+        schema["optional"]["anchor_images"] = ("YTON_H3_ANCHORS", {"lazy": True,
+            "tooltip": "连接人物替换配置器的 achorImages；包含当前段的替换图片及位置，无需手填帧号。"})
         schema["hidden"] = {"dynprompt": "DYNPROMPT", "unique_id": "UNIQUE_ID"}
         return schema
 
@@ -216,7 +208,7 @@ class H3OmniGenerate:
     def check_lazy_status(self, enable_context, **inputs):
         media = ("image", "video", "audio") + (("previous_video",) if enable_context[0] else ())
         if inputs.get("enable_add_guide", [False])[0]:
-            media += ("guide_video", "guide_image", "guide_audio")
+            media += ("anchor_images",)
         if inputs["sampling_mode"][0] == "二采" and self.SAMPLING_PLAN != "selflift":
             media += ("second_sigma_values",)
         if inputs["face_refine"][0]:
@@ -228,10 +220,10 @@ class H3OmniGenerate:
         links = dynprompt[0].get_node(unique_id[0])["inputs"]
         values = {}
         for name, items in inputs.items():
-            if name in ("image", "video", "audio", "previous_video", "guide_video", "guide_image", "guide_audio"):
+            if name in ("image", "video", "audio", "previous_video", "anchor_images"):
                 if name == "previous_video" and not inputs["enable_context"][0]:
                     continue
-                if name.startswith("guide_") and not inputs.get("enable_add_guide", [False])[0]:
+                if name == "anchor_images" and not inputs.get("enable_add_guide", [False])[0]:
                     continue
                 # A connected media-loader socket can still yield an empty list.
                 # Inspect its values before passing its original link to the graph.

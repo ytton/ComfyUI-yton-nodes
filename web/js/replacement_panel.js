@@ -3,6 +3,7 @@ import { api } from "../../../scripts/api.js";
 import { followNodeColours, mountNodePanel } from "./node_panel.js";
 import { button, el, field, hideWidget, input, mediaURL, request, select, showReplacementDimensions, toggle } from "./replacement_common.js";
 import { openReplacementEditor } from "./replacement_editor.js";
+import { openReplacementAnchors } from "./replacement_anchors.js";
 import { openReplacementSkill } from "./replacement_skill.js";
 import { videoPromptContent } from "./replacement_prompt_state.js";
 
@@ -19,6 +20,7 @@ export async function setupReplacementPanel(node) {
   let config = JSON.parse(configWidget.value), index = selectedWidget.value, result;
   let activeImage = -1, busy = false, removed = false, tab = "original", editor;
   let segmentPreview = null, previewRevision = 0;
+  let anchorEditor;
   let richMode = true, plainEditor;
   let editorAbort, planRevision = 0;
   const lifetime = new AbortController();
@@ -164,7 +166,16 @@ export async function setupReplacementPanel(node) {
   function renderMedia() {
     videoSlot.replaceChildren(); imageGrid.replaceChildren();
     const top=el("div","yr-slot-toolbar");
-    top.append(el("b","","Video 1"), button("编辑", () => {
+    top.append(el("b","","Video 1"));
+    if (loopWidget) top.append(button("关键帧替换", () => {
+      if (!config.video) {message.textContent="请先上传视频。"; return;}
+      anchorEditor?.close();
+      anchorEditor=openReplacementAnchors(root,structuredClone(config),index,(key,frames)=>{
+        config.anchors ??= {}; config.anchors[key]=frames; commit();
+      });
+      anchorEditor.onClose(()=>{anchorEditor=undefined;});
+    }));
+    top.append(button("编辑", () => {
       if (!config.video) {message.textContent="请先上传视频。"; return;}
       void openReplacementEditor(config, draft => {
         const duration=result?.metadata.duration;
@@ -347,7 +358,7 @@ export async function setupReplacementPanel(node) {
     event.preventDefault();event.stopImmediatePropagation();void upload(files,activeImage);
   },{capture:true,signal:lifetime.signal});
   const configure=node.onConfigure;
-  node.onConfigure=function(){configure?.apply(this,arguments);config=JSON.parse(configWidget.value);index=selectedWidget.value;renderAll();void updatePlan();};
+  node.onConfigure=function(){anchorEditor?.close();configure?.apply(this,arguments);config=JSON.parse(configWidget.value);index=selectedWidget.value;renderAll();void updatePlan();};
   const executed=node.onExecuted;
   node.onExecuted=function(data){
     executed?.apply(this,arguments);
@@ -361,7 +372,7 @@ export async function setupReplacementPanel(node) {
     void updateSegmentPreview();
   };
   const remove=node.onRemoved;
-  node.onRemoved=function(){removed=true;lifetime.abort();editorAbort?.abort();editor?.dispose();root.querySelectorAll("video").forEach(v=>{v.pause();v.removeAttribute("src");v.load();});return remove?.apply(this,arguments);};
+  node.onRemoved=function(){removed=true;anchorEditor?.close();lifetime.abort();editorAbort?.abort();editor?.dispose();root.querySelectorAll("video").forEach(v=>{v.pause();v.removeAttribute("src");v.load();});return remove?.apply(this,arguments);};
   renderAll();void updatePlan();
   try {
     const [rich,utils,styles]=await Promise.all([

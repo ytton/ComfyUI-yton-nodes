@@ -234,7 +234,7 @@ class ReplacementTests(unittest.TestCase):
         plan = planner.execute(json.dumps(config), selected_index=1).result[0]
         self.assertEqual(parser.execute(plan=plan).result[5:9], (38, 38/24, 2, 2))
         self.assertEqual([item.id for item in parser.define_schema().inputs], ["plan"])
-        self.assertEqual(len(planner.define_schema().outputs), 1)
+        self.assertEqual(len(planner.define_schema().outputs), 2)
         self.assertEqual(parser.execute(plan=plan).result[10:], (None, False))
 
     def test_index_selection_inputs_validate_and_execute(self):
@@ -527,6 +527,10 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(prompt["60"]["inputs"]["filename_prefix"], ["657", 9])
         self.assertEqual(prompt["22"]["inputs"]["previous_video"], ["657", 10])
         self.assertEqual(prompt["22"]["inputs"]["enable_context"], ["657", 11])
+        self.assertTrue(prompt["22"]["inputs"]["enable_add_guide"])
+        self.assertEqual(prompt["22"]["inputs"]["anchor_images"], ["59", 1])
+        planner = next(node for node in workflow["nodes"] if node["id"] == 59)
+        self.assertEqual(planner["outputs"][1]["type"], "YTON_H3_ANCHORS")
 
     def test_internal_loop_reconnects_previous_video_context_between_segments(self):
         import execution
@@ -535,6 +539,12 @@ class ReplacementTests(unittest.TestCase):
 
         config = self.config()
         config["plan"].update(frames=22, overlap=0)
+        from replacement_test_plugin.replacement.anchors import segment_info
+        config["anchors"] = {}
+        for i in range(4):
+            path, _, _ = segment_info(config, i)
+            config["anchors"][path.stem] = [{"frame": i, "image": "red.png" if i % 2 == 0 else "blue.png"}]
+        observed_anchors = []
         observed = []
         generated = []
 
@@ -543,10 +553,11 @@ class ReplacementTests(unittest.TestCase):
             def define_schema(cls):
                 return io.Schema(node_id="YtonH3TraditionalOmniGenerate",
                     inputs=[io.Video.Input("video"), io.Video.Input("previous_video", optional=True),
-                            io.Boolean.Input("enable_context")], outputs=[io.Video.Output()])
+                            io.Boolean.Input("enable_context"), io.Custom("YTON_H3_ANCHORS").Input("anchor_images")], outputs=[io.Video.Output()])
 
             @classmethod
-            def execute(cls, video, enable_context, previous_video=None):
+            def execute(cls, video, enable_context, anchor_images, previous_video=None):
+                observed_anchors.append(anchor_images)
                 observed.append((enable_context, previous_video))
                 generated.append(video)
                 return io.NodeOutput(video)
@@ -573,7 +584,7 @@ class ReplacementTests(unittest.TestCase):
                 "config": json.dumps(config), "selected_index": 0, "loop_generation": True}},
             "segment": {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0]}},
             "generate": {"class_type": "YtonH3TraditionalOmniGenerate", "inputs": {
-                "video": ["segment", 1], "previous_video": ["segment", 10], "enable_context": ["segment", 11]}},
+                "anchor_images": ["plan", 1], "video": ["segment", 1], "previous_video": ["segment", 10], "enable_context": ["segment", 11]}},
             "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
                 "video": ["generate", 0], "current": ["segment", 7], "total": ["segment", 8]}},
         }
@@ -589,6 +600,8 @@ class ReplacementTests(unittest.TestCase):
                 cache_args={"ram": 0, "ram_inactive": 0})
             asyncio.run(executor.execute_async(prompt, uuid.uuid4().hex, execute_outputs=outputs))
             self.assertTrue(executor.success, executor.status_messages)
+        self.assertEqual([[a["frame"] for a in anchors] for anchors in observed_anchors], [[0], [1], [2], [3]])
+        self.assertEqual([float(a[0]["image"][0,0,0,0]) for a in observed_anchors], [1, 0, 1, 0])
         self.assertEqual([enabled for enabled, _ in observed], [False, True, True, True])
         self.assertIsNone(observed[0][1])
         self.assertIs(observed[1][1], saved[0])

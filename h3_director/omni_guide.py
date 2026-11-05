@@ -1,36 +1,27 @@
-"""Prepare optional video, image-batch and audio inputs for native H3 Add Guide."""
-
-import torch
+"""Inject replacement keyframes through native H3 Add Guide."""
 
 from comfy_api.latest import io
+from comfy_extras.nodes_minimax_h3 import MiniMaxH3AddGuide
 
 
-class YtonH3GuideMedia(io.ComfyNode):
+class YtonH3AnchorGuide(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        return io.Schema(node_id="YtonH3GuideMedia", is_input_list=True, is_dev_only=True,
-            inputs=[io.Video.Input("video", optional=True), io.Image.Input("image", optional=True),
-                    io.Audio.Input("audio", optional=True)],
-            outputs=[io.Image.Output(), io.Audio.Output()])
+        return io.Schema(node_id="YtonH3AnchorGuide", is_dev_only=True,
+            inputs=[io.Conditioning.Input("positive"), io.Latent.Input("latent"), io.Vae.Input("vae"),
+                    io.Custom("YTON_H3_ANCHORS").Input("anchor_images"), io.Int.Input("frame_offset", default=0)],
+            outputs=[io.Conditioning.Output()])
 
     @classmethod
-    def execute(cls, video=None, image=None, audio=None):
-        frames = next((item for item in image or [] if item is not None), None)
-        soundtrack = None
-        source = next((item for item in video or [] if item is not None), None)
-        if source is not None:
-            components = source.get_components()
-            frames, soundtrack = components.images, components.audio
-            fps = float(components.frame_rate)
-            if fps != 24:
-                count = max(1, int(len(frames) / fps * 24))
-                indices = (torch.arange(count, device=frames.device) * fps / 24).long()
-                frames = frames[indices.clamp_max(len(frames) - 1)]
-        soundtrack = next((item for item in audio or [] if item is not None), soundtrack)
-        if frames is None and soundtrack is None:
-            raise ValueError("Add Guide 已开启，请连接注入视频、图片或音频。")
-        return io.NodeOutput(frames, soundtrack)
+    def execute(cls, positive, latent, vae, anchor_images, frame_offset=0):
+        for anchor in anchor_images:
+            frame, image = anchor["frame"], anchor["image"]
+            if not isinstance(frame, int) or frame < 0 or image.ndim != 4 or image.shape[0] != 1:
+                raise ValueError("关键帧需要单张替换图片及非负帧序号。")
+            positive = MiniMaxH3AddGuide.execute(positive, latent, frame + frame_offset,
+                                                vae=vae, image=image).result[0]
+        return io.NodeOutput(positive)
 
 
-NODE_CLASS_MAPPINGS = {"YtonH3GuideMedia": YtonH3GuideMedia}
-NODE_DISPLAY_NAME_MAPPINGS = {"YtonH3GuideMedia": "H3 引导媒体解析"}
+NODE_CLASS_MAPPINGS = {"YtonH3AnchorGuide": YtonH3AnchorGuide}
+NODE_DISPLAY_NAME_MAPPINGS = {"YtonH3AnchorGuide": "H3 关键帧注入"}

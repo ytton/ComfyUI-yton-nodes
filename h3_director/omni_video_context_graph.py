@@ -61,7 +61,7 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
                               second_sampler="euler", second_sigma_values="",
                               selflift_transition_step=2, selflift_rho=0.0, selflift_w_min=0.5, selflift_w_max=1.0,
                               selflift_highres_tiling=False, selflift_highres_tiles="auto",
-                              enable_add_guide=False, guide_frame_idx=0, guide_video=None, guide_image=None, guide_audio=None):
+                              enable_add_guide=False, anchor_images=None):
     width, height, main_width, main_height = sampling_dimensions(
         width, height, sampling_mode, sampling_plan, first_pass_scale)
     if not enable_context:
@@ -72,7 +72,7 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
     keep_context = debug_keep_context and overlap > 0
 
     if mode == "复刻模式":
-        source_video = video if video is not None else guide_video if enable_add_guide else None
+        source_video = video
         if source_video is None:
             raise ValueError("复刻模式需要传入至少一个视频，时长取第一个视频。")
         plan = graph.node("YtonH3ReplicaPlan", id="replica", video=source_video, context_frames=overlap,
@@ -90,20 +90,16 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
     if previous_video is not None:
         previous = graph.node("YtonH3VideoTail", id="previous", video=previous_video)
 
-    guide_media = None
-    if enable_add_guide:
-        sources = {name: value for name, value in (("video", guide_video), ("image", guide_image), ("audio", guide_audio))
-                   if value is not None}
-        if not sources:
-            raise ValueError("Add Guide 已开启，请连接注入视频、图片或音频。")
-        guide_media = graph.node("YtonH3GuideMedia", id="guide_media", **sources)
+    if enable_add_guide and anchor_images is None:
+        raise ValueError("Add Guide 已开启，请连接配置器的 achorImages 关键帧输出。")
 
     def inject_guide(positive, latent, prefix):
-        if guide_media is None:
+        if not enable_add_guide:
             return positive
-        return graph.node("MiniMaxH3AddGuide", id=prefix, positive=positive, latent=latent,
-                          vae=vae, audio_vae=audio_vae, image=guide_media.out(0), audio=guide_media.out(1),
-                          frame_idx=guide_frame_idx).out(0)
+        # When the input segment already includes context, its local axis is unchanged.
+        offset = overlap if context_auto_extend else 0
+        return graph.node("YtonH3AnchorGuide", id=prefix, positive=positive, latent=latent,
+                          vae=vae, anchor_images=anchor_images, frame_offset=offset).out(0)
 
     reference = graph.node("YtonMiniMaxH3ReferenceToVideo", id="reference",
                            clip=clip, vae=vae, audio_vae=audio_vae,

@@ -11,7 +11,7 @@ const common = {
   sampling_mode: '二采', steps: 4, sampler_name: 'euler', scheduler: 'simple', denoise: 1,
   seed: 1, control_after_generate: 'fixed', enable_context: false, context_auto_extend: true,
   debug_keep_context: false,
-  enable_add_guide: false, guide_frame_idx: 0,
+  enable_add_guide: false,
   context_noise_strength: 0.1, context_color_strength: 0.75,
   face_refine: false, face_count: 1, face_sigmas: '', face_reverse: false, second_ff_chunks: '8',
 }
@@ -27,13 +27,13 @@ const plans = {
 for (const [comfyClass, specific] of Object.entries(plans)) {
   const node = {
     comfyClass, widgets: Object.entries({ ...common, ...specific }).map(([name, value]) => ({ name, value })),
-    inputs: ['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'audio', 'sigmas', 'second_model', 'face_model', 'previous_video', 'guide_video', 'guide_image', 'guide_audio',
+    inputs: ['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'audio', 'sigmas', 'second_model', 'face_model', 'previous_video', 'anchor_images',
       'face_sigmas', ...('second_sigma_values' in specific ? ['second_sigma_values'] : [])].map(name => ({ name, link: null })),
     outputs: [{ name: 'video' }, { name: 'av_latent' }], size: [400, 500],
     constructor: { nodeData: { input: {
       required: Object.fromEntries(Object.keys({ ...common, ...specific }).map(name => [name, []])),
       optional: Object.fromEntries(['model', 'clip', 'vae', 'audio_vae', 'image', 'video', 'audio', 'sigmas',
-        'second_model', 'face_model', 'previous_video', 'face_sigmas', 'guide_video', 'guide_image', 'guide_audio'].map(name => [name, []])),
+        'second_model', 'face_model', 'previous_video', 'face_sigmas', 'anchor_images'].map(name => [name, []])),
     } } },
     removeInput(index) { this.inputs.splice(index, 1) },
     addCustomWidget(widget) { this.widgets.push(widget); return widget },
@@ -42,7 +42,7 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   extension.nodeCreated(node)
   const widgets = new Map(node.widgets.map(w => [w.name, w]))
   const change = (name, value) => { const w = widgets.get(name); w.value = value; w.callback?.(value) }
-  for (const name of ['second_model', 'face_model', 'previous_video', 'guide_video', 'guide_image', 'guide_audio']) {
+  for (const name of ['second_model', 'face_model', 'previous_video', 'anchor_images']) {
     assert.equal(node.inputs.find(i => i.name === name).widget.name, name)
     assert.equal(widgets.get(name).serialize, false)
   }
@@ -59,16 +59,13 @@ for (const [comfyClass, specific] of Object.entries(plans)) {
   assert.equal(widgets.get('h3_context_length').serialize, false)
   const guideStart = node.widgets.findIndex(w => w.name === 'h3_section_Add Guide')
   const guideEnd = node.widgets.length
-  for (const name of ['enable_add_guide', 'guide_video', 'guide_image', 'guide_audio', 'guide_frame_idx'])
+  for (const name of ['enable_add_guide', 'anchor_images'])
     assert.ok(node.widgets.slice(guideStart, guideEnd).includes(widgets.get(name)))
-  assert.equal(widgets.get('guide_frame_idx').disabled, true)
   change('enable_add_guide', true)
-  assert.equal(widgets.get('guide_frame_idx').disabled, false)
-  change('guide_frame_idx', -22)
   node.onConfigure()
-  assert.equal(widgets.get('guide_frame_idx').value, -22)
+  assert.equal(widgets.get('enable_add_guide').value, true)
+  assert.equal(widgets.has('guide_frame_idx'), false)
   change('enable_add_guide', false)
-  assert.equal(widgets.get('guide_frame_idx').disabled, true)
   const contextStart = node.widgets.findIndex(w => w.name === 'h3_section_分段上下文')
   const contextEnd = node.widgets.length
   assert.ok(node.widgets.slice(contextStart, contextEnd).includes(widgets.get('previous_video')))

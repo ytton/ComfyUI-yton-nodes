@@ -89,6 +89,11 @@
       "previous_video": [
         "657",
         10
+      ],
+      "enable_add_guide": true,
+      "anchor_images": [
+        "59",
+        1
       ]
     },
     "class_type": "YtonH3TraditionalOmniGenerate",

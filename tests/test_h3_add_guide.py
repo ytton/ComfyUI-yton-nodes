@@ -1,126 +1,97 @@
-"""Native Add Guide integration across the three H3 generators."""
+"""Keyframe-only Add Guide integration across all three H3 generators."""
 
-from fractions import Fraction
 import types
 import unittest
 
 from test_h3_omni_variants import VARIANTS, expanded, variant_defaults
 from test_h3_video_context import torch, execution, asyncio, DynamicPrompt
-from video_context_test.omni_guide import YtonH3GuideMedia
-from comfy_api.latest import InputImpl, Types
-from comfy_extras.nodes_minimax_h3 import MiniMaxH3AddGuide, _empty_av_latent
+from video_context_test.omni_guide import YtonH3AnchorGuide
+from comfy_extras.nodes_minimax_h3 import _empty_av_latent
 
 
 class AddGuideTests(unittest.TestCase):
-    def test_all_schemas_expose_optional_media_and_disabled_by_default(self):
+    def test_schemas_expose_only_keyframes(self):
         for cls in VARIANTS.values():
             schema = cls.INPUT_TYPES()
             self.assertFalse(schema["required"]["enable_add_guide"][1]["default"])
-            self.assertEqual(schema["required"]["guide_frame_idx"][1]["min"], -9999)
-            for name, kind in (("guide_video", "VIDEO"), ("guide_image", "IMAGE"), ("guide_audio", "AUDIO")):
-                self.assertEqual(schema["optional"][name][0], kind)
-                self.assertTrue(schema["optional"][name][1]["lazy"])
+            self.assertEqual(schema["optional"]["anchor_images"][0], "YTON_H3_ANCHORS")
+            self.assertTrue(schema["optional"]["anchor_images"][1]["lazy"])
+            for name in ("guide_video", "guide_image", "guide_audio", "guide_frame_idx"):
+                self.assertNotIn(name, schema["required"] | schema["optional"])
 
-    def test_disabled_guide_creates_no_media_or_conditioning_branch(self):
+    def test_disabled_guide_has_no_branch(self):
         for cls in VARIANTS.values():
-            graph = expanded(cls, guide_video=["unused", 0], guide_image=["unused", 1], guide_audio=["unused", 2])
-            self.assertNotIn("guide_media", graph)
+            graph = expanded(cls, anchor_images=["unused", 0])
             self.assertNotIn("main_add_guide", graph)
             self.assertNotIn("high_add_guide", graph)
 
-    def test_guide_reaches_main_and_traditional_second_pass_and_preserves_context(self):
+    def test_context_offset_and_both_passes(self):
         for cls in VARIANTS.values():
             for sampling in ("单采", "二采"):
                 for context in (False, True):
-                    with self.subTest(plan=cls.SAMPLING_PLAN, sampling=sampling, context=context):
-                        graph = expanded(cls, sampling_mode=sampling, enable_add_guide=True,
-                            guide_video=["guide", 0], guide_frame_idx=-39, enable_context=context,
-                            previous_video=["previous", 0])
-                        self.assertEqual(graph["guide_media"]["inputs"], {"video": ["guide", 0]})
-                        stages = ("main", "high") if sampling == "二采" and cls.SAMPLING_PLAN == "traditional" else ("main",)
-                        for stage in stages:
-                            guide = graph[f"{stage}_add_guide"]
-                            self.assertEqual(guide["class_type"], "MiniMaxH3AddGuide")
-                            self.assertEqual(guide["inputs"]["frame_idx"], -39)
-                            self.assertEqual(guide["inputs"]["vae"], ["video_vae", 0])
-                            self.assertTrue(guide["inputs"]["image"][0].endswith("guide_media"))
-                            if context:
-                                self.assertTrue(guide["inputs"]["positive"][0].endswith(f"{stage}_context_add_guide_audio_feather"))
-                            if cls.SAMPLING_PLAN == "selflift" and sampling == "二采":
-                                conditioning = graph["main"]["inputs"]["positive"]
-                            else:
-                                guider = "guider" if stage == "main" else "high_guider"
-                                conditioning = graph[guider]["inputs"]["conditioning"]
-                            self.assertTrue(conditioning[0].endswith(f"{stage}_add_guide"))
+                    for extend in (False, True):
+                        for mode in ("普通模式", "复刻模式"):
+                            with self.subTest(plan=cls.SAMPLING_PLAN, sampling=sampling, context=context, extend=extend, mode=mode):
+                                graph = expanded(cls, sampling_mode=sampling, enable_add_guide=True,
+                                    anchor_images=["anchors", 1], enable_context=context,
+                                    previous_video=["previous", 0], context_auto_extend=extend,
+                                    mode=mode, video=["source", 0])
+                                stages = ("main", "high") if sampling == "二采" and cls.SAMPLING_PLAN == "traditional" else ("main",)
+                                for stage in stages:
+                                    guide = graph[f"{stage}_add_guide"]
+                                    self.assertEqual(guide["class_type"], "YtonH3AnchorGuide")
+                                    self.assertEqual(guide["inputs"]["frame_offset"], 22 if context and extend else 0)
+                                    self.assertEqual(guide["inputs"]["anchor_images"], ["anchors", 1])
+                                    if context:
+                                        self.assertTrue(guide["inputs"]["positive"][0].endswith(f"{stage}_context_add_guide_audio_feather"))
 
-    def test_replica_can_use_only_the_guide_video_without_a_video_reference(self):
+    def test_empty_keyframes_do_not_change_conditions(self):
+        positive = [[torch.zeros(1, 1, 1), {}]]
+        self.assertIs(YtonH3AnchorGuide.execute(positive, {}, None, []).result[0], positive)
         for cls in VARIANTS.values():
-            graph = expanded(cls, mode="复刻模式", enable_add_guide=True, guide_video=["guide", 0])
-            self.assertEqual(graph["replica"]["inputs"]["video"], ["guide", 0])
-            self.assertNotIn("video", graph["reference"]["inputs"])
-            graph = expanded(cls, mode="复刻模式", video=["reference", 0], enable_add_guide=True, guide_video=["guide", 0])
-            self.assertEqual(graph["replica"]["inputs"]["video"], ["reference", 0])
-
-    def test_video_resamples_to_24fps_and_explicit_audio_overrides_its_soundtrack(self):
-        frames = torch.arange(30).reshape(30, 1, 1, 1).expand(-1, 4, 4, 3).float()
-        sound = {"waveform": torch.zeros(1, 1, 48000), "sample_rate": 48000}
-        video = InputImpl.VideoFromComponents(Types.VideoComponents(images=frames, audio=sound, frame_rate=Fraction(30)))
-        override = {"waveform": torch.ones(1, 1, 48000), "sample_rate": 48000}
-        result = YtonH3GuideMedia.execute(video=[None, video], image=[torch.zeros(1, 4, 4, 3)], audio=[override])
-        self.assertEqual(len(result.result[0]), 24)
-        self.assertEqual(result.result[0][-1, 0, 0, 0], 28)
-        self.assertIs(result.result[1], override)
-        self.assertIs(YtonH3GuideMedia.execute(video=[video]).result[1], sound)
-
-    def test_image_and_audio_only_and_missing_media(self):
-        frames = torch.zeros(22, 32, 32, 3)
-        sound = {"waveform": torch.zeros(1, 1, 48000), "sample_rate": 48000}
-        self.assertIs(YtonH3GuideMedia.execute(image=[None, frames]).result[0], frames)
-        self.assertEqual(YtonH3GuideMedia.execute(audio=[sound]).result, (None, sound))
-        with self.assertRaisesRegex(ValueError, "请连接注入"):
-            YtonH3GuideMedia.execute(video=[], image=[None])
-        for cls in VARIANTS.values():
-            with self.assertRaisesRegex(ValueError, "请连接注入"):
+            with self.assertRaisesRegex(ValueError, "achorImages"):
                 expanded(cls, enable_add_guide=True)
 
-    def test_native_add_guide_encodes_at_the_requested_position_and_preserves_existing_conditions(self):
+    def test_native_injection_keeps_separate_frame_positions_and_context(self):
         class Vae:
+            def __init__(self): self.images = []
             def encode(self, images):
-                self.images = images
-                return torch.zeros(1, 24, 7, 2, 2)
-
+                self.images.append(images)
+                return torch.zeros(1, 24, 1, 2, 2)
         vae = Vae()
-        latent, length = _empty_av_latent(32, 32, 56)
+        latent, _ = _empty_av_latent(32, 32, 56)
         existing = {"resolved_frame_index": 0, "latent": torch.zeros(1, 24, 7, 2, 2)}
         positive = [[torch.zeros(1, 1, 1), {"minimax_keyframes": [existing]}]]
-        frames = torch.ones(22, 32, 32, 3)
-        output = MiniMaxH3AddGuide.execute(positive, latent, -22, vae=vae, image=frames).result[0]
-        self.assertEqual(output[0][1]["minimax_keyframes"][1]["resolved_frame_index"], length - 22)
-        self.assertIs(output[0][1]["minimax_keyframes"][0], existing)
+        anchors = [{"frame": 0, "image": torch.zeros(1, 32, 32, 3)},
+                   {"frame": 20, "image": torch.ones(1, 32, 32, 3)}]
+        result = YtonH3AnchorGuide.execute(positive, latent, vae, anchors, 22).result[0]
+        self.assertEqual([item["resolved_frame_index"] for item in result[0][1]["minimax_keyframes"]], [0, 22, 42])
         self.assertEqual(len(positive[0][1]["minimax_keyframes"]), 1)
-        self.assertEqual(vae.images.shape, frames.shape)
-        with self.assertRaisesRegex(ValueError, "does not fit"):
-            MiniMaxH3AddGuide.execute(positive, latent, 45, vae=vae, image=frames)
+        self.assertEqual([len(image) for image in vae.images], [1, 1])
+        self.assertEqual(vae.images[0].mean(), 0)
+        self.assertEqual(vae.images[1].mean(), 1)
+        with self.assertRaisesRegex(ValueError, "outside"):
+            YtonH3AnchorGuide.execute(positive, latent, vae, [{"frame": 100, "image": anchors[0]["image"]}])
 
-    def test_lazy_inputs_and_runtime_preserve_media_links_only_when_enabled(self):
-        frames = torch.zeros(1, 32, 32, 3)
+    def test_lazy_keyframes_resolve_as_one_payload(self):
+        anchors = [{"frame": 4, "image": torch.zeros(1, 32, 32, 3)}]
         for cls in VARIANTS.values():
             for enabled in (False, True):
-                values = variant_defaults(cls, enable_add_guide=enabled, guide_image=["media", 0],
-                    guide_video=["media", 1], guide_audio=["media", 2])
-                dynprompt = DynamicPrompt({"omni": {"class_type": cls.__name__, "inputs": values}})
-                inputs, _, _ = execution.get_input_data(values, cls, "omni")
-                requested = asyncio.run(execution._async_map_node_over_list("guide-lazy", "omni", cls(), inputs, "check_lazy_status"))[0]
-                self.assertEqual(set(requested), {"guide_video", "guide_image", "guide_audio"} if enabled else set())
-                cache = execution.CacheEntry(ui={}, outputs=([frames], [], []))
-                execution_list = types.SimpleNamespace(get_cache=lambda *args: cache)
-                inputs, _, _ = execution.get_input_data(values, cls, "omni", execution_list=execution_list, dynprompt=dynprompt)
-                result = asyncio.run(execution._async_map_node_over_list("guide-runtime", "omni", cls(), inputs, "generate"))[0]
-                graph = {key.split(".")[-1]: node for key, node in result["expand"].items()}
-                if enabled:
-                    self.assertEqual(graph["guide_media"]["inputs"], {"image": ["media", 0]})
-                else:
-                    self.assertNotIn("guide_media", graph)
+                for payload in (anchors, []):
+                    values = variant_defaults(cls, enable_add_guide=enabled, anchor_images=["media", 0])
+                    dynprompt = DynamicPrompt({"omni": {"class_type": cls.__name__, "inputs": values}})
+                    inputs, _, _ = execution.get_input_data(values, cls, "omni")
+                    requested = asyncio.run(execution._async_map_node_over_list("guide-lazy", "omni", cls(), inputs, "check_lazy_status"))[0]
+                    self.assertEqual(set(requested), {"anchor_images"} if enabled else set())
+                    cache = execution.CacheEntry(ui={}, outputs=([payload],))
+                    execution_list = types.SimpleNamespace(get_cache=lambda *args: cache)
+                    inputs, _, _ = execution.get_input_data(values, cls, "omni", execution_list=execution_list, dynprompt=dynprompt)
+                    result = asyncio.run(execution._async_map_node_over_list("guide-runtime", "omni", cls(), inputs, "generate"))[0]
+                    graph = {key.split(".")[-1]: node for key, node in result["expand"].items()}
+                    if enabled:
+                        self.assertEqual(graph["main_add_guide"]["inputs"]["anchor_images"], ["media", 0])
+                    else:
+                        self.assertNotIn("main_add_guide", graph)
 
 
 if __name__ == "__main__":

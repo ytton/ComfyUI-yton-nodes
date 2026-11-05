@@ -11,6 +11,7 @@ from test_character_replacement import ReplacementTests, CLASSES, DynamicPrompt,
 from replacement_test_plugin.replacement import routes
 from replacement_test_plugin.replacement.media import segment_video
 from replacement_test_plugin.prompt_optimizer import get_store
+from replacement_test_plugin.h3_director.omni_video_context_runtime import NODE_CLASS_MAPPINGS as OMNI_CLASSES
 import server
 
 
@@ -26,12 +27,28 @@ get_store().save({"providers":[{"id":"fixture","name":"本地视觉测试","base
 
 @route_table.get("/definitions")
 async def definitions(request):
-    return web.json_response({cls.__name__:cls.GET_NODE_INFO_V1() for cls in CLASSES})
+    definitions = {cls.__name__:cls.GET_NODE_INFO_V1() for cls in CLASSES}
+    for name, cls in OMNI_CLASSES.items():
+        if name == "YtonH3VideoTail":
+            continue
+        definitions[name] = {"name": name, "display_name": name, "input": cls.INPUT_TYPES(),
+            "output": cls.RETURN_TYPES, "output_name": cls.RETURN_NAMES, "output_is_list": [False, False],
+            "input_order": {kind: list(values) for kind, values in cls.INPUT_TYPES().items()},
+            "category": cls.CATEGORY, "output_node": True, "description": cls.DESCRIPTION}
+    return web.json_response(definitions)
 
 
 @route_table.get("/config")
 async def config(request):
     return web.json_response(ReplacementTests().config())
+
+
+@route_table.get("/anchor-workflow")
+async def anchor_workflow(request):
+    workflow = json.loads((Path(__file__).resolve().parents[1] / "examples/人物替换专用流-内置循环.json").read_text(encoding="utf-8"))
+    planner = next(node for node in workflow["nodes"] if node["type"] == "YtonReplacementPlan")
+    planner["widgets_values"][0] = json.dumps(ReplacementTests().config())
+    return web.json_response(workflow)
 
 
 @route_table.get("/saved")

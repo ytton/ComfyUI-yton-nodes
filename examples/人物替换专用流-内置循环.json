@@ -2,7 +2,7 @@
   "id": "2bb6e434-ca03-461f-8762-eb0ca3bce87d",
   "revision": 1,
   "last_node_id": 668,
-  "last_link_id": 1955,
+  "last_link_id": 1956,
   "nodes": [
     {
       "id": 10,
@@ -534,6 +534,16 @@
             "name": "face_sigmas"
           },
           "link": null
+        },
+        {
+          "name": "anchor_images",
+          "label": "关键帧 · achorImages（可选）",
+          "type": "YTON_H3_ANCHORS",
+          "shape": 7,
+          "widget": {
+            "name": "anchor_images"
+          },
+          "link": 1956
         }
       ],
       "outputs": [
@@ -594,7 +604,8 @@
         0,
         false,
         0.1,
-        0.8
+        0.8,
+        true
       ],
       "widgets_values_named": {
         "prompt": "",
@@ -626,7 +637,8 @@
         "context_auto_extend": 0,
         "debug_keep_context": false,
         "context_noise_strength": 0.1,
-        "context_color_strength": 0.8
+        "context_color_strength": 0.8,
+        "enable_add_guide": true
       }
     },
     {
@@ -692,6 +704,14 @@
           "type": "YTON_REPLACEMENT_PLAN",
           "links": [
             1930
+          ]
+        },
+        {
+          "name": "achorImages",
+          "localized_name": "achorImages",
+          "type": "YTON_H3_ANCHORS",
+          "links": [
+            1956
           ]
         }
       ],
@@ -1771,6 +1791,14 @@
       22,
       32,
       "BOOLEAN"
+    ],
+    [
+      1956,
+      59,
+      1,
+      22,
+      40,
+      "YTON_H3_ANCHORS"
     ]
   ],
   "groups": [
