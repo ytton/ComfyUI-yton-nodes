@@ -36,6 +36,6 @@ ComfyUI/custom_nodes/ComfyUI-yton-nodes/skills/你的Skill/SKILL.md
 
 右下角齿轮配置共享服务商、OpenAI 兼容地址、API Key 和模型。密钥仅保存在 ComfyUI 用户目录，不写入工作流。
 
-本地 GGUF 推理使用同分类中的 [llama.cpp 提示词优化器](LLAMA_PROMPT_OPTIMIZER.md)，高级设置随各节点保存。
+本地 GGUF 推理使用同分类中的 [本地提示词优化器](LLAMA_PROMPT_OPTIMIZER.md)，高级设置随各节点保存。
 
 更新 Python 文件后重启 ComfyUI，再用 Ctrl+F5 刷新页面。重新添加节点可使用完整的默认输入端口。

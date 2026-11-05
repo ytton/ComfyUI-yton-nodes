@@ -10,7 +10,7 @@ stylesheet.href = new URL("../css/prompt_optimizer.css", import.meta.url).href;
 document.head.appendChild(stylesheet);
 
 function setupOptimizer(node) {
-  const local = node.comfyClass === "YtonLlamaCppOptimizer";
+  const local = node.comfyClass === "YtonLocalPromptOptimizer";
   const widgets = Object.fromEntries(node.widgets.map(widget => [widget.name, widget]));
   for (const widget of Object.values(widgets)) {
     widget.type = "hidden";
@@ -50,6 +50,15 @@ function setupOptimizer(node) {
   modelMenu.append(modelLabel, modelOptions);
   const modelRow = element("div", "yton-ai-inline yton-ai-model-row");
   modelRow.append(modelMenu);
+  const backendMenu = element("details", "yton-ai-model-menu");
+  const backendLabel = element("summary");
+  backendLabel.setAttribute("aria-label", "本地推理方式");
+  const backendOptions = element("div", "yton-ai-model-options");
+  backendOptions.append(...[["comfyui", "ComfyUI 原生 · CLIP"], ["llama.cpp", "llama.cpp · GGUF"]].map(([value, label]) => button(label, () => {
+    write("backend", value); invalidate(); sync(); backendMenu.open = false;
+    if (value === "llama.cpp" && !catalogue) void loadLocalModels();
+  })));
+  backendMenu.append(backendLabel, backendOptions);
   if (local) {
     const refresh = button("↻", () => void loadLocalModels(), "yton-ai-icon");
     refresh.title = "刷新本地 GGUF 模型";
@@ -61,20 +70,30 @@ function setupOptimizer(node) {
   const footer = element("div", "yton-ai-node-footer");
   const gear = button("", () => {
     if (!local) return openOptimizerSettings();
-    if (!catalogue) return report("本地模型列表未就绪，请点击模型旁的刷新按钮。", true);
-    openLlamaSettings(widgets.options_json.value, catalogue, value => { write("options_json", value); invalidate(); });
+    const native = widgets.backend.value === "comfyui";
+    const schema = native ? nativeCatalogue : catalogue;
+    if (!schema) return report("本地推理配置尚未就绪，请稍后重试。", true);
+    const key = native ? "native_options_json" : "options_json";
+    openLlamaSettings(widgets[key].value, schema, value => { write(key, value); invalidate(); }, native);
   }, "yton-ai-icon yton-ai-settings");
   gear.innerHTML = GEAR;
-  gear.title = local ? "llama.cpp 高级设置（当前节点）" : "服务商与模型设置（所有优化器共用）";
+  gear.title = local ? "本地推理设置（当前节点）" : "服务商与模型设置（所有优化器共用）";
   gear.setAttribute("aria-label", gear.title);
   footer.append(gear);
-  panel.append(enableField, field("用户提示词", prompt), rulesSection, skillField, modelRow, status, footer);
-  panel.dataset.runtime = local ? "llama" : "openai";
+  panel.append(enableField, field("用户提示词", prompt), rulesSection, skillField);
+  if (local) {
+    const backendField = element("div", "yton-ai-field");
+    backendField.append(element("span", "", "推理方式"), backendMenu);
+    panel.append(backendField);
+  }
+  panel.append(modelRow, status, footer);
+  panel.dataset.runtime = local ? widgets.backend.value : "openai";
   mountNodePanel(node, "prompt_optimizer_ui", panel, 340, 290);
   let settings = { providers: [], defaultModel: "" };
   let skills = null;
   let removed = false;
   let catalogue = null;
+  let nativeCatalogue = null;
 
   function write(name, value) {
     widgets[name].value = value;
@@ -138,6 +157,12 @@ function setupOptimizer(node) {
     finally { refreshSkills.disabled = false; }
   }
   function sync() {
+    if (local) {
+      const native = widgets.backend.value === "comfyui";
+      backendLabel.textContent = native ? "ComfyUI 原生 · CLIP" : "llama.cpp · GGUF";
+      modelRow.style.display = native ? "none" : "";
+      panel.dataset.runtime = widgets.backend.value;
+    }
     enabled.checked = widgets.enabled.value;
     prompt.value = widgets.prompt.value || "";
     rules.value = widgets.rules.value || "";
@@ -147,7 +172,7 @@ function setupOptimizer(node) {
       delete input.widget;
     }
     const linked = name => node.inputs?.some(input => input.name === name && input.link != null);
-    const labels = { prompt: "用户提示词", rules: "系统提示词", image: "image · 图片列表", audio: "audio · 音频列表", video: "video · 视频列表" };
+    const labels = { prompt: "用户提示词", rules: "系统提示词", image: "image · 图片列表", audio: "audio · 音频列表", video: "video · 视频列表", clip: "CLIP · 原生文本生成" };
     for (const input of node.inputs || []) if (labels[input.name]) input.label = labels[input.name];
     prompt.disabled = linked("prompt");
     rules.disabled = linked("rules");
@@ -171,11 +196,14 @@ function setupOptimizer(node) {
   node.onRemoved = function () { removed = true; settingsEvents.removeEventListener("change", changed); return onRemoved?.apply(this, arguments); };
   sync();
   void loadSkills();
-  if (local) void loadLocalModels();
+  if (local) {
+    optimizerRequest("native").then(data => { if (!removed) nativeCatalogue = data; }).catch(error => report(error.message, true));
+    if (widgets.backend.value === "llama.cpp") void loadLocalModels();
+  }
   else optimizerRequest("settings").then(data => { if (!removed) { settings = data; updateModels(); } }).catch(error => report(error.message, true));
 }
 
 app.registerExtension({
   name: "yton.prompt_optimizer",
-  nodeCreated(node) { if (["YtonPromptOptimizer", "YtonLlamaCppOptimizer"].includes(node.comfyClass)) setupOptimizer(node); },
+  nodeCreated(node) { if (["YtonPromptOptimizer", "YtonLocalPromptOptimizer"].includes(node.comfyClass)) setupOptimizer(node); },
 });

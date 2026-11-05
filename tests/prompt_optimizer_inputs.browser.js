@@ -4,13 +4,13 @@ async (page) => {
   try {
     await target.goto("http://127.0.0.1:8188/", { waitUntil: "domcontentloaded" });
     await target.waitForFunction(() => window.LiteGraph?.registered_node_types.YtonPromptOptimizer
-      && window.LiteGraph.registered_node_types.YtonLlamaCppOptimizer && window.comfyAPI?.app?.app?.graph);
+      && window.LiteGraph.registered_node_types.YtonLocalPromptOptimizer && window.comfyAPI?.app?.app?.graph);
     await target.getByRole("button", { name: "运行", exact: true }).first().waitFor();
     const checks = await target.evaluate(async () => {
       const app = window.comfyAPI.app.app;
       const assert = (condition, message) => { if (!condition) throw new Error(message); };
       const checks = [];
-      for (const type of ["YtonPromptOptimizer", "YtonLlamaCppOptimizer"]) {
+      for (const type of ["YtonPromptOptimizer", "YtonLocalPromptOptimizer"]) {
         app.graph.clear();
         let node = LiteGraph.createNode(type);
         node.pos = [550, 80];

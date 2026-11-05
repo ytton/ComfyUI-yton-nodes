@@ -8,6 +8,7 @@ from aiohttp import web
 from .prompt_optimizer import OptimizerError, discover_models, get_store
 from .prompt_optimizer_skill import available_skills
 from .llama_optimizer_config import model_catalogue
+from .native_optimizer_runtime import NATIVE_FIELDS, DEFAULT_NATIVE
 
 
 def install():
@@ -46,6 +47,10 @@ def install():
     @routes.get("/yton/prompt-optimizer/llama")
     async def llama_models(request):
         return await respond(model_catalogue)
+
+    @routes.get("/yton/prompt-optimizer/native")
+    async def native_options(request):
+        return web.json_response({"fields": NATIVE_FIELDS, "defaults": DEFAULT_NATIVE})
 
     @routes.post("/yton/prompt-optimizer/settings")
     async def save_settings(request):

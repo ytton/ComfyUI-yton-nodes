@@ -1,8 +1,8 @@
 import { button, element, field } from "./prompt_optimizer_api.js";
 
-export function openLlamaSettings(raw, catalogue, save) {
+export function openLlamaSettings(raw, catalogue, save, native = false) {
   const dialog = element("dialog", "yton-ai-dialog yton-llama-dialog");
-  const heading = element("h2", "", "llama.cpp 高级设置");
+  const heading = element("h2", "", native ? "ComfyUI 原生推理设置" : "llama.cpp 推理设置");
   heading.id = `yton-llama-${crypto.randomUUID()}`;
   dialog.setAttribute("aria-labelledby", heading.id);
   const close = () => dialog.close();
@@ -17,7 +17,7 @@ export function openLlamaSettings(raw, catalogue, save) {
   const controls = new Map();
   let draft;
   try { draft = JSON.parse(raw); }
-  catch { throw new Error("llama.cpp 高级设置不是有效 JSON。"); }
+  catch { throw new Error("本地推理设置不是有效 JSON。"); }
 
   function choiceControl(spec, choices) {
     const menu = element("details", "yton-ai-model-menu");
@@ -40,6 +40,7 @@ export function openLlamaSettings(raw, catalogue, save) {
     return menu;
   }
   for (const group of ["采样", "思考", "加载"]) {
+    if (!catalogue.fields.some(item => item.group === group)) continue;
     const section = element("section", "yton-llama-section");
     section.append(element("h3", "", group === "加载" ? "模型加载与显存" : group));
     const grid = element("div", "yton-llama-grid");
@@ -83,11 +84,13 @@ export function openLlamaSettings(raw, catalogue, save) {
     event.preventDefault();
     if (!form.reportValidity()) return;
     const fail = text => { status.textContent = text; status.classList.add("yton-ai-error"); };
-    if (draft.max_tokens >= draft.n_ctx) return fail("最大输出 Token 必须小于模型上下文。");
-    if (draft.n_ubatch > draft.n_batch) return fail("物理批次不能大于逻辑批次。");
-    if (draft.image_min_tokens > draft.image_max_tokens) return fail("图片最少 Token 不能大于图片最多 Token。");
-    if (draft.kv_cache_type !== "f16" && !draft.flash_attn) return fail("量化 KV 缓存需要启用 Flash Attention。");
-    const budget = { off: 0, low: 512, medium: 2048, high: 8192, custom: draft.reasoning_budget }[draft.thinking];
+    if (!native) {
+      if (draft.max_tokens >= draft.n_ctx) return fail("最大输出 Token 必须小于模型上下文。");
+      if (draft.n_ubatch > draft.n_batch) return fail("物理批次不能大于逻辑批次。");
+      if (draft.image_min_tokens > draft.image_max_tokens) return fail("图片最少 Token 不能大于图片最多 Token。");
+      if (draft.kv_cache_type !== "f16" && !draft.flash_attn) return fail("量化 KV 缓存需要启用 Flash Attention。");
+    }
+    const budget = native ? 0 : { off: 0, low: 512, medium: 2048, high: 8192, custom: draft.reasoning_budget }[draft.thinking];
     if (budget >= draft.max_tokens) return fail("最大输出 Token 需大于思考预算。");
     save(JSON.stringify(draft)); close();
   });

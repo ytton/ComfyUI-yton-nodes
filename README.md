@@ -58,7 +58,7 @@ Option 页可设置按钮的行数与列数，网格容量不足时自动补行�
 
 关闭“启用提示词增强”后，用户原文直接输出，不调用模型。视频通过抽帧与音轨提供参考，模型需要支持实际使用的媒体类型。
 
-另有 **llama.cpp 提示词优化器**，直接调用本地 GGUF 模型。模型放在 `ComfyUI/models/LLM`，多模态推理需要匹配的投影文件和运行库。
+另有 **本地提示词优化器**，支持 ComfyUI 原生 CLIP 文本生成与 llama.cpp GGUF 两种方式。原生方式连接支持生成的 CLIP，复用官方 Generate Text；GGUF 模型放在 `ComfyUI/models/LLM`，多模态推理需要匹配的投影文件和运行库。
 
 详细说明：[API 优化器](docs/prompt-optimizer.md) · [本地 GGUF 优化器](docs/LLAMA_PROMPT_OPTIMIZER.md)。服务商密钥保存在 ComfyUI 用户目录，不写入工作流。
 
