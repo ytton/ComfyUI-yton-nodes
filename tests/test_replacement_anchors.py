@@ -47,7 +47,7 @@ class AnchorTests(unittest.TestCase):
         config = self.config()
         path, _, _ = segment_info(config, 0)
         config["anchors"] = {path.stem: [{"frame": 32, "image": "blue.png"},
-            {"frame": 4, "image": ""}, {"frame": 2, "image": "red.png"}]}
+            {"frame": 4, "image": ""}, {"frame": 8, "image": "red.png", "stale": True}, {"frame": 2, "image": "red.png"}]}
         anchors = anchor_images(config, 0)
         self.assertEqual([item["frame"] for item in anchors], [2, 32])
         self.assertEqual(float(anchors[0]["image"][0, 0, 0, 0]), 1)

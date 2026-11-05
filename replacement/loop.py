@@ -89,4 +89,4 @@ def expand_segments(hidden, plan, segments, loop_generation):
             start_id=root_id, position=index + 1, total=plan["total"], **dependencies).out(0)
         previous_video = copies[save_ids[0]].out(0) if save_ids else None
     hidden.execution_list.inhibit_nodes(descendants)
-    return io.NodeOutput(None, None, expand=graph.finalize())
+    return io.NodeOutput(None, expand=graph.finalize())

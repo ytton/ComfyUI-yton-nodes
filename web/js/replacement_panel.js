@@ -349,7 +349,7 @@ export async function setupReplacementPanel(node) {
   document.addEventListener("dragend",clearVideoDrag,{signal:lifetime.signal});
   root.addEventListener("drop",event=>{event.preventDefault();event.stopPropagation();void upload(Array.from(event.dataTransfer.files),activeImage);});
   document.addEventListener("paste",event=>{
-    if(event.defaultPrevented || removed || node.graph!==app.canvas?.graph) return;
+    if(event.defaultPrevented || removed || anchorEditor || node.graph!==app.canvas?.graph) return;
     if(event.target instanceof Element && event.target.closest("input,textarea,[contenteditable]:not([contenteditable='false'])")) return;
     const selected=Object.values(app.canvas.selected_nodes || {});
     if(selected.find(n=>["YtonCharacterReplacement","YtonReplacementPlan"].includes(n.type))!==node) return;

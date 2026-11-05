@@ -49,7 +49,7 @@ class AddGuideTests(unittest.TestCase):
         positive = [[torch.zeros(1, 1, 1), {}]]
         self.assertIs(YtonH3AnchorGuide.execute(positive, {}, None, []).result[0], positive)
         for cls in VARIANTS.values():
-            with self.assertRaisesRegex(ValueError, "achorImages"):
+            with self.assertRaisesRegex(ValueError, "替换关键帧"):
                 expanded(cls, enable_add_guide=True)
 
     def test_native_injection_keeps_separate_frame_positions_and_context(self):

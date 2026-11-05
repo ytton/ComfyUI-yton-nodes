@@ -58,7 +58,7 @@ def anchor_images(config, index):
     path, fps, count = segment_info(config, index)
     result = []
     for item in sorted(config["anchors"].get(path.stem, []), key=lambda item: item["frame"]):
-        if not item.get("image"):
+        if not item.get("image") or item.get("stale"):
             continue
         frame = item["frame"]
         if not isinstance(frame, int) or not 0 <= frame < count:

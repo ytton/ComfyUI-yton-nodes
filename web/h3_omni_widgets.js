@@ -42,7 +42,7 @@ function setupSections(node) {
   const inputNames = new Set([...Object.keys(schema.required), ...Object.keys(schema.optional)]);
   const widgets = new Map(node.widgets.map(widget => [widget.name, widget]));
   const socketLabels = { second_model: "二采模型（可选）", face_model: "修脸模型（可选）", previous_video: "上一段视频（可选）",
-    anchor_images: "关键帧 · achorImages（可选）" };
+    anchor_images: "替换关键帧（可选）" };
   for (const [name, label] of Object.entries(socketLabels)) {
     const widget = node.addCustomWidget({
       name, label, type: "h3_input", value: "", serialize: false, options: { serialize: false },

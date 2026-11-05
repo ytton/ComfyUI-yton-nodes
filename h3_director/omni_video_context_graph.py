@@ -91,7 +91,7 @@ def build_video_context_graph(model, clip, vae, audio_vae, prompt, width, height
         previous = graph.node("YtonH3VideoTail", id="previous", video=previous_video)
 
     if enable_add_guide and anchor_images is None:
-        raise ValueError("Add Guide 已开启，请连接配置器的 achorImages 关键帧输出。")
+        raise ValueError("Add Guide 已开启，请连接配置解析器的替换关键帧输出。")
 
     def inject_guide(positive, latent, prefix):
         if not enable_add_guide:

@@ -179,9 +179,9 @@ class ReplacementTests(unittest.TestCase):
         previous, _ = segment_video(config, 0)
         plan = {"config": json.dumps(config), "llm": None, "index": 1,
                 "segment": planned["segments"][1], "previous_video": previous}
-        self.assertEqual(parser.execute(plan=plan).result[10:], (None, False))
+        self.assertEqual(parser.execute(plan=plan).result[10:], (None, False, []))
         plan["segment"] = {**plan["segment"], "cut_before": False}
-        self.assertEqual(parser.execute(plan=plan).result[10:], (previous, True))
+        self.assertEqual(parser.execute(plan=plan).result[10:], (previous, True, []))
 
     def test_output_contract_and_alias_identity(self):
         config=self.config()
@@ -234,8 +234,8 @@ class ReplacementTests(unittest.TestCase):
         plan = planner.execute(json.dumps(config), selected_index=1).result[0]
         self.assertEqual(parser.execute(plan=plan).result[5:9], (38, 38/24, 2, 2))
         self.assertEqual([item.id for item in parser.define_schema().inputs], ["plan"])
-        self.assertEqual(len(planner.define_schema().outputs), 2)
-        self.assertEqual(parser.execute(plan=plan).result[10:], (None, False))
+        self.assertEqual(len(planner.define_schema().outputs), 1)
+        self.assertEqual(parser.execute(plan=plan).result[10:], (None, False, []))
 
     def test_index_selection_inputs_validate_and_execute(self):
         import execution
@@ -528,9 +528,11 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(prompt["22"]["inputs"]["previous_video"], ["657", 10])
         self.assertEqual(prompt["22"]["inputs"]["enable_context"], ["657", 11])
         self.assertTrue(prompt["22"]["inputs"]["enable_add_guide"])
-        self.assertEqual(prompt["22"]["inputs"]["anchor_images"], ["59", 1])
+        self.assertEqual(prompt["22"]["inputs"]["anchor_images"], ["657", 12])
         planner = next(node for node in workflow["nodes"] if node["id"] == 59)
-        self.assertEqual(planner["outputs"][1]["type"], "YTON_H3_ANCHORS")
+        self.assertEqual(len(planner["outputs"]), 1)
+        parser = next(node for node in workflow["nodes"] if node["id"] == 657)
+        self.assertEqual(parser["outputs"][12]["name"], "替换关键帧")
 
     def test_internal_loop_reconnects_previous_video_context_between_segments(self):
         import execution
@@ -584,7 +586,7 @@ class ReplacementTests(unittest.TestCase):
                 "config": json.dumps(config), "selected_index": 0, "loop_generation": True}},
             "segment": {"class_type": "YtonReplacementSegment", "inputs": {"plan": ["plan", 0]}},
             "generate": {"class_type": "YtonH3TraditionalOmniGenerate", "inputs": {
-                "anchor_images": ["plan", 1], "video": ["segment", 1], "previous_video": ["segment", 10], "enable_context": ["segment", 11]}},
+                "anchor_images": ["segment", 12], "video": ["segment", 1], "previous_video": ["segment", 10], "enable_context": ["segment", 11]}},
             "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
                 "video": ["generate", 0], "current": ["segment", 7], "total": ["segment", 8]}},
         }

@@ -188,7 +188,7 @@ class H3OmniGenerate:
         required["enable_add_guide"] = ("BOOLEAN", {"default": False,
             "tooltip": "按配置器选定的帧位置注入替换图片；自动处理分段上下文偏移。"})
         schema["optional"]["anchor_images"] = ("YTON_H3_ANCHORS", {"lazy": True,
-            "tooltip": "连接人物替换配置器的 achorImages；包含当前段的替换图片及位置，无需手填帧号。"})
+            "tooltip": "连接人物替换配置解析器的替换关键帧；包含当前段的替换图片及位置，无需手填帧号。"})
         schema["hidden"] = {"dynprompt": "DYNPROMPT", "unique_id": "UNIQUE_ID"}
         return schema
 

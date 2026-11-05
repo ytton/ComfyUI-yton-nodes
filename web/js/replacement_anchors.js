@@ -8,6 +8,8 @@ export function openReplacementAnchors(owner, config, index, save) {
     dialog.style.setProperty(name, style.getPropertyValue(name));
   const lifetime = new AbortController();
   const uploading = new Set();
+  let activeMarker = null;
+  const colors = ["#f3ca52", "#ff8066", "#65cba8", "#83b5f5", "#c29af0", "#ec9cc0"];
   let closed = false, info, markers = [], frameCallback;
   const screenshots = new Map();
   const header = el("header", "yr-anchor-header");
@@ -32,7 +34,10 @@ export function openReplacementAnchors(owner, config, index, save) {
   slider.type = "range"; slider.min = "0"; slider.step = "1"; slider.value = "0";
   slider.disabled = true; slider.setAttribute("aria-label", "当前帧");
   const pins = el("div", "yr-anchor-pins");
-  timeline.append(strip, slider, pins);
+  const ruler = el("div", "yr-anchor-ruler");
+  const track = el("div", "yr-anchor-track");
+  track.append(strip, slider, pins);
+  timeline.append(ruler, track);
   const actions = el("div", "yr-anchor-actions");
   const capture = button("＋ 收集当前帧", collect, "收集当前帧（C）");
   capture.disabled = true;
@@ -48,7 +53,9 @@ export function openReplacementAnchors(owner, config, index, save) {
   const footer = el("footer", "yr-anchor-footer");
   footer.append(el("span", "yr-muted", "自动保存 · 仅已上传的替换图片参与生成"), button("完成", () => dialog.close()));
   dialog.append(header, stage, timeline, actions, listHeading, list, status, footer);
-  const persist = () => save(info.key, markers.map(({ frame, image }) => ({ frame, image })));
+  const persist = () => save(info.key, markers.map(({ frame, image, stale }) => ({ frame, image, stale: Boolean(stale) })));
+  const videoName = config.video.split(/[\\/]/).at(-1).replace(/\.[^.]+$/, "");
+  const frameName = frame => `${videoName}_第${frame + 1}帧.png`;
   const currentFrame = () => Math.max(0, Math.min(info.frames - 1, Math.floor(video.currentTime * info.fps + 0.01)));
 
   function sync() {
@@ -79,50 +86,158 @@ export function openReplacementAnchors(owner, config, index, save) {
     if (!closed && !video.paused && video.requestVideoFrameCallback)
       frameCallback = video.requestVideoFrameCallback(playbackTick);
   }
+  function selectMarker(marker, preview = true) {
+    activeMarker = marker;
+    for (const [i, item] of markers.entries()) {
+      list.querySelector(`[data-marker="${i}"]`)?.classList.toggle("selected", item === marker);
+      const pin = pins.querySelector(`[data-marker="${i}"]`);
+      pin?.classList.toggle("selected", item === marker);
+      pin?.setAttribute("aria-current", String(item === marker));
+    }
+    if (preview) seek(marker.frame);
+  }
+  function renderRuler() {
+    ruler.replaceChildren();
+    for (let i = 0; i <= 8; i++) {
+      const tick = el("span", "", `${Math.round((info.frames - 1) * i / 8) + 1}`);
+      tick.style.left = `${i / 8 * 100}%`;
+      ruler.append(tick);
+    }
+    ruler.setAttribute("aria-label", "片段帧刻度");
+  }
+  function updatePin(pin, marker) {
+    pin.style.left = `${marker.frame / Math.max(1, info.frames - 1) * 100}%`;
+    pin.setAttribute("aria-valuenow", String(marker.frame + 1));
+    pin.title = `第 ${marker.frame + 1} 帧 · 拖动调整位置`;
+    pin.classList.toggle("ready", Boolean(marker.image) && !marker.stale);
+  }
+  function availableFrame(marker, requested) {
+    const frame = Math.max(0, Math.min(info.frames - 1, Math.round(requested)));
+    const occupied = new Set(markers.filter(item => item !== marker).map(item => item.frame));
+    for (let distance = 0; distance < info.frames; distance++) {
+      for (const candidate of [frame + distance, frame - distance])
+        if (candidate >= 0 && candidate < info.frames && !occupied.has(candidate)) return candidate;
+    }
+    return marker.frame;
+  }
+  function moveMarker(marker, requested) {
+    const frame = availableFrame(marker, requested);
+    if (marker.frame === frame) return false;
+    if (marker.image) marker.stale = true;
+    marker.frame = frame;
+    seek(frame);
+    return true;
+  }
   function renderPins() {
     pins.replaceChildren();
-    for (const marker of markers) {
-      const pin = button("", () => seek(marker.frame), `跳到第 ${marker.frame + 1} 帧`);
-      pin.style.left = `${marker.frame / Math.max(1, info.frames - 1) * 100}%`;
-      pin.classList.toggle("ready", Boolean(marker.image));
+    for (const [i, marker] of markers.entries()) {
+      const pin = el("button", "yr-anchor-pin");
+      pin.type = "button";
+      pin.dataset.marker = String(i);
+      pin.style.setProperty("--marker-color", colors[i % colors.length]);
+      pin.append(el("span", "", String(i + 1)));
+      pin.setAttribute("role", "slider");
+      pin.setAttribute("aria-label", `调整关键帧 ${i + 1}`);
+      pin.setAttribute("aria-valuemin", "1");
+      pin.setAttribute("aria-valuemax", String(info.frames));
+      updatePin(pin, marker);
+      pin.classList.toggle("selected", marker === activeMarker);
+      pin.addEventListener("click", () => selectMarker(marker));
+      pin.addEventListener("pointerdown", event => {
+        if (event.button !== 0) return;
+        event.preventDefault(); event.stopPropagation();
+        selectMarker(marker); pin.focus();
+        pin.setPointerCapture(event.pointerId);
+        const bounds = track.getBoundingClientRect();
+        const originX = event.clientX, originFrame = marker.frame;
+        let moved = false;
+        const move = event => {
+          const target = originFrame + (event.clientX - originX) / bounds.width * Math.max(1, info.frames - 1);
+          moved = moveMarker(marker, target) || moved;
+          updatePin(pin, marker);
+          const card = list.querySelector(`[data-marker="${i}"]`);
+          const input = card?.querySelector("input[type=number]");
+          if (input) input.value = String(marker.frame + 1);
+          if (card) card.dataset.frame = String(marker.frame);
+        };
+        const finish = () => {
+          pin.removeEventListener("pointermove", move);
+          pin.removeEventListener("pointerup", finish);
+          pin.removeEventListener("pointercancel", finish);
+          pin.removeEventListener("lostpointercapture", finish);
+          if (moved) { persist(); renderList(); }
+        };
+        pin.addEventListener("pointermove", move);
+        pin.addEventListener("pointerup", finish);
+        pin.addEventListener("pointercancel", finish);
+        pin.addEventListener("lostpointercapture", finish);
+      });
       pins.append(pin);
     }
-    progress.textContent = `${markers.filter(marker => marker.image).length} / ${markers.length} 已上传`;
+    progress.textContent = `${markers.filter(marker => marker.image && !marker.stale).length} / ${markers.length} 已上传`;
   }
   function imageCard(image, caption) {
     const card = el("div", "yr-anchor-image");
     if (image) { const img = el("img"); img.src = mediaURL(image); img.alt = caption; card.append(img); }
-    card.append(el("span", "", caption));
     return card;
   }
-  async function screenshot(frame, card) {
+  async function screenshot(frame, card, download) {
     try {
       if (!screenshots.has(frame)) screenshots.set(frame, request("replacement/anchor-frame", { config, index, frame }));
       const data = await screenshots.get(frame);
       if (closed || !card.isConnected) return;
       const img = el("img"); img.src = mediaURL(data.image); img.alt = `原帧 ${frame + 1}`;
       card.prepend(img);
-      const download = el("a", "yr-anchor-download", "↓");
-      download.href = mediaURL(data.image); download.download = `片段${index + 1}-第${frame + 1}帧.png`;
-      download.title = "下载原帧"; download.setAttribute("aria-label", "下载原帧");
-      download.addEventListener("click", event => event.stopPropagation());
-      card.append(download);
+      download.href = mediaURL(data.image); download.download = frameName(frame);
+      download.removeAttribute("aria-disabled");
     } catch (error) { screenshots.delete(frame); if (!closed) status.textContent = error.message; }
   }
   function renderList() {
     list.replaceChildren(); renderPins();
     if (!markers.length) { list.append(el("div", "yr-anchor-empty", "拖动播放头定位画面，按 C 收集需要替换的帧")); return; }
-    for (const marker of markers) {
-      const row = el("div", "yr-anchor-row"); row.dataset.frame = String(marker.frame);
-      const label = button(`第 ${marker.frame + 1} 帧`, () => seek(marker.frame), `定位第 ${marker.frame + 1} 帧`);
-      label.classList.add("yr-anchor-frame-label");
+    for (const [i, marker] of markers.entries()) {
+      const card = el("section", "yr-anchor-card");
+      card.dataset.frame = String(marker.frame); card.dataset.marker = String(i);
+      card.style.setProperty("--marker-color", colors[i % colors.length]);
+      card.classList.toggle("selected", marker === activeMarker);
+      card.addEventListener("pointerdown", () => selectMarker(marker, false));
+      const heading = el("div", "yr-anchor-card-header");
+      const badge = button(String(i + 1), () => selectMarker(marker), `选择关键帧 ${i + 1}`);
+      badge.classList.add("yr-anchor-badge");
+      const position = el("label", "yr-anchor-position");
+      const frameInput = el("input");
+      frameInput.type = "number"; frameInput.min = "1"; frameInput.max = String(info.frames);
+      frameInput.step = "1"; frameInput.value = String(marker.frame + 1);
+      frameInput.setAttribute("aria-label", `关键帧 ${i + 1} 的帧号`);
+      frameInput.addEventListener("change", () => {
+        if (Number.isFinite(frameInput.valueAsNumber) && moveMarker(marker, frameInput.valueAsNumber - 1)) persist();
+        renderList();
+      });
+      position.append(document.createTextNode("第 "), frameInput, document.createTextNode(" 帧"));
+      const remove = button("移除", () => {
+        markers = markers.filter(item => item !== marker);
+        if (activeMarker === marker) activeMarker = markers[0] || null;
+        persist(); renderList();
+      }, `移除第 ${marker.frame + 1} 帧`);
+      remove.classList.add("yr-anchor-remove");
+      heading.append(badge, position, remove);
+      const pair = el("div", "yr-anchor-pair");
+      const sourceColumn = el("div", "yr-anchor-column");
+      const editColumn = el("div", "yr-anchor-column");
       const original = imageCard(null, "原帧");
-      original.addEventListener("click", () => seek(marker.frame));
-      const replacement = imageCard(marker.image, marker.image ? "替换帧" : "＋ 上传替换帧");
+      original.addEventListener("click", () => selectMarker(marker));
+      const download = el("a", "yr-button yr-anchor-download", "下载原帧");
+      download.setAttribute("aria-label", `下载第 ${marker.frame + 1} 帧`);
+      download.setAttribute("aria-disabled", "true");
+      sourceColumn.append(el("span", "yr-muted", "原帧"), original, download);
+      const replacement = imageCard(marker.image, "替换帧");
+      replacement.classList.toggle("empty", !marker.image);
+      if (!marker.image) replacement.append(el("span", "yr-anchor-upload-hint", "拖入、粘贴或上传替换图片"));
       const file = el("input"); file.type = "file"; file.accept = "image/*"; file.hidden = true;
       file.setAttribute("aria-label", `上传第 ${marker.frame + 1} 帧的替换图片`);
-      const uploadButton = button(uploading.has(marker.frame) ? "上传中…" : marker.image ? "更换图片" : "上传图片", () => file.click(), `上传第 ${marker.frame + 1} 帧的替换图片`);
-      uploadButton.disabled = uploading.has(marker.frame);
+      const uploadButton = button(uploading.has(marker) ? "上传中…" : marker.image ? "更换图片" : "上传图片", () => file.click(), `上传第 ${marker.frame + 1} 帧的替换图片`);
+      uploadButton.classList.add("yr-anchor-upload");
+      uploadButton.disabled = uploading.has(marker);
       replacement.addEventListener("click", () => file.click());
       replacement.addEventListener("dragover", event => { event.preventDefault(); replacement.classList.add("drag-over"); });
       replacement.addEventListener("dragleave", () => replacement.classList.remove("drag-over"));
@@ -131,10 +246,14 @@ export function openReplacementAnchors(owner, config, index, save) {
         void upload(event.dataTransfer.files[0], marker, uploadButton);
       });
       file.addEventListener("change", () => { void upload(file.files[0], marker, uploadButton); });
-      const tools = el("div", "yr-anchor-row-tools");
-      tools.append(uploadButton, button("移除", () => { markers = markers.filter(item => item !== marker); persist(); renderList(); }, `移除第 ${marker.frame + 1} 帧`));
-      row.append(label, original, el("span", "yr-anchor-arrow", "→"), replacement, tools, file);
-      list.append(row); void screenshot(marker.frame, original);
+      editColumn.append(el("span", "yr-muted", "替换帧"), replacement, uploadButton);
+      pair.append(sourceColumn, editColumn);
+      const note = el("div", "yr-anchor-card-note");
+      const message = el("span", marker.stale ? "stale" : "yr-muted", marker.stale ? "帧位置已调整，请上传对应的替换图" : marker.image ? "替换图已就绪" : "下载原帧 → 编辑 → 上传替换图");
+      note.append(message);
+      if (marker.image) note.append(button("清空", () => { marker.image = ""; marker.stale = false; persist(); renderList(); }, `清空第 ${marker.frame + 1} 帧的替换图片`));
+      card.append(heading, pair, note, file);
+      list.append(card); void screenshot(marker.frame, original, download);
     }
   }
   function collect() {
@@ -142,15 +261,18 @@ export function openReplacementAnchors(owner, config, index, save) {
     video.pause();
     const frame = currentFrame();
     if (!markers.some(marker => marker.frame === frame)) {
-      markers.push({ frame, image: "" }); markers.sort((a, b) => a.frame - b.frame);
+      const marker = { frame, image: "", stale: false };
+      markers.push(marker); activeMarker = marker;
       persist(); renderList();
     }
+    selectMarker(markers.find(marker => marker.frame === frame), false);
     list.querySelector(`[data-frame="${frame}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
   async function upload(file, marker, control) {
-    if (!file || uploading.has(marker.frame)) return;
+    if (!file || uploading.has(marker)) return;
     if (!file.type.startsWith("image/")) { status.textContent = "请选择图片文件。"; return; }
-    uploading.add(marker.frame);
+    uploading.add(marker);
+    const uploadedFrame = marker.frame;
     control.disabled = true; control.textContent = "上传中…"; status.textContent = "";
     try {
       const body = new FormData();
@@ -161,9 +283,10 @@ export function openReplacementAnchors(owner, config, index, save) {
       const data = await response.json();
       if (!data.name) throw new Error("上传没有返回图片文件名。");
       if (closed || !markers.includes(marker)) return;
-      marker.image = [data.subfolder, data.name].filter(Boolean).join("/"); persist();
+      marker.image = [data.subfolder, data.name].filter(Boolean).join("/");
+      marker.stale = marker.frame !== uploadedFrame; persist();
     } catch (error) { if (!closed) status.textContent = error.message; }
-    finally { uploading.delete(marker.frame); if (!closed) renderList(); }
+    finally { uploading.delete(marker); if (!closed) renderList(); }
   }
   slider.addEventListener("input", () => seek(Number(slider.value)));
   slider.addEventListener("pointerdown", () => video.pause());
@@ -176,6 +299,14 @@ export function openReplacementAnchors(owner, config, index, save) {
   document.addEventListener("keydown", event => {
     if (!dialog.open) return;
     event.stopImmediatePropagation();
+    const markerPin = event.target instanceof Element ? event.target.closest(".yr-anchor-pin") : null;
+    if (markerPin && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      const marker = markers[Number(markerPin.dataset.marker)];
+      const target = event.key === "Home" ? 0 : event.key === "End" ? info.frames - 1 : marker.frame + (event.key === "ArrowRight" ? 1 : -1);
+      if (moveMarker(marker, target)) { persist(); renderList(); pins.querySelector(`[data-marker="${markers.indexOf(marker)}"]`)?.focus(); }
+      return;
+    }
     if (event.target instanceof Element && event.target.closest("input:not([type='range']),textarea,[contenteditable='true']")) return;
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.key.toLowerCase() === "c") { event.preventDefault(); collect(); }
@@ -183,6 +314,14 @@ export function openReplacementAnchors(owner, config, index, save) {
     else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault(); if (info) seek(currentFrame() + (event.key === "ArrowRight" ? 1 : -1));
     }
+  }, { capture: true, signal: lifetime.signal });
+  document.addEventListener("paste", event => {
+    if (!dialog.open || !activeMarker) return;
+    const file = Array.from(event.clipboardData?.files || []).find(file => file.type.startsWith("image/"));
+    if (!file) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    const control = list.querySelector(`[data-marker="${markers.indexOf(activeMarker)}"] .yr-anchor-upload`);
+    void upload(file, activeMarker, control);
   }, { capture: true, signal: lifetime.signal });
   for (const event of ["pointerdown", "keydown", "wheel", "drop", "paste"])
     dialog.addEventListener(event, event => event.stopPropagation());
@@ -198,7 +337,8 @@ export function openReplacementAnchors(owner, config, index, save) {
     info = data; markers = structuredClone(config.anchors?.[info.key] || []);
     video.src = mediaURL(info.video); strip.src = mediaURL(info.strip);
     slider.max = String(info.frames - 1); slider.disabled = false; capture.disabled = false;
-    renderList(); sync();
+    activeMarker = markers[0] || null;
+    renderRuler(); renderList(); sync();
   }).catch(error => { if (!closed) { status.textContent = error.message; counter.textContent = "片段加载失败"; } });
   return { close: () => dialog.close(), onClose: callback => { closeHook = callback; } };
 }

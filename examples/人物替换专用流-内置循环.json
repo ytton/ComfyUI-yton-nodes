@@ -537,7 +537,7 @@
         },
         {
           "name": "anchor_images",
-          "label": "关键帧 · achorImages（可选）",
+          "label": "替换关键帧（可选）",
           "type": "YTON_H3_ANCHORS",
           "shape": 7,
           "widget": {
@@ -704,14 +704,6 @@
           "type": "YTON_REPLACEMENT_PLAN",
           "links": [
             1930
-          ]
-        },
-        {
-          "name": "achorImages",
-          "localized_name": "achorImages",
-          "type": "YTON_H3_ANCHORS",
-          "links": [
-            1956
           ]
         }
       ],
@@ -1452,6 +1444,14 @@
           "links": [
             1955
           ]
+        },
+        {
+          "name": "替换关键帧",
+          "localized_name": "替换关键帧",
+          "type": "YTON_H3_ANCHORS",
+          "links": [
+            1956
+          ]
         }
       ],
       "properties": {
@@ -1794,8 +1794,8 @@
     ],
     [
       1956,
-      59,
-      1,
+      657,
+      12,
       22,
       40,
       "YTON_H3_ANCHORS"

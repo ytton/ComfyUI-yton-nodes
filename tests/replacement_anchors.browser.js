@@ -46,15 +46,15 @@ async (basePage) => {
     await dialog.locator("video").evaluate(video=>video.readyState>=2 || new Promise(resolve=>video.addEventListener('loadeddata',resolve,{once:true})));
     check(await dialog.locator('.yr-anchor-counter').textContent()==="1 / 39 帧","frame-only counter");
     await page.keyboard.press('c');
-    await dialog.locator('.yr-anchor-row').first().locator('img').waitFor();
-    check(await dialog.locator('.yr-anchor-row').count()===1,"C collects exactly one frame");
+    await dialog.locator('.yr-anchor-card').first().locator('img').waitFor();
+    check(await dialog.locator('.yr-anchor-card').count()===1,"C collects exactly one frame");
     await page.keyboard.press('c');
-    check(await dialog.locator('.yr-anchor-row').count()===1,"same frame is not collected twice");
-    const imageURL=new URL(await dialog.locator('.yr-anchor-row img').first().getAttribute('src'),page.url());
+    check(await dialog.locator('.yr-anchor-card').count()===1,"same frame is not collected twice");
+    const imageURL=new URL(await dialog.locator('.yr-anchor-card img').first().getAttribute('src'),page.url());
     const png=await(await page.request.get('http://127.0.0.1:8190'+imageURL.pathname.replace(/^\/api/,'')+imageURL.search)).body();
     await dialog.locator('input[type=file]').first().setInputFiles({name:'edited.png',mimeType:'image/png',buffer:png});
     await dialog.locator('.yr-anchor-image img').nth(1).waitFor();
-    await page.waitForFunction(()=>document.querySelectorAll('.yr-anchor-row .yr-anchor-image img')[1]?.naturalWidth>0);
+    await page.waitForFunction(()=>document.querySelectorAll('.yr-anchor-card .yr-anchor-image img')[1]?.naturalWidth>0);
     check(await dialog.locator('.yr-anchor-list-heading').textContent()==="替换帧1 / 1 已上传","uploaded count");
     const box=await slider.boundingBox();
     await page.mouse.move(box.x+4,box.y+box.height/2);
@@ -66,7 +66,7 @@ async (basePage) => {
     await slider.evaluate(input=>{input.value="20";input.dispatchEvent(new Event('input',{bubbles:true}));});
     await page.waitForFunction(()=>document.querySelector('.yr-anchor-stage video')?.seeking===false);
     await page.keyboard.press('c');
-    await dialog.locator('.yr-anchor-row[data-frame="20"] img').waitFor();
+    await dialog.locator('.yr-anchor-card[data-frame="20"] img').waitFor();
     check(await dialog.locator('.yr-anchor-counter').textContent()==="21 / 39 帧","drag seeks correct frame");
     await page.keyboard.press('ArrowRight');
     await page.waitForFunction(()=>document.querySelector('.yr-anchor-stage video')?.seeking===false);
@@ -75,13 +75,67 @@ async (basePage) => {
     await page.waitForFunction(()=>!document.querySelector('.yr-anchor-stage video').paused);
     await page.keyboard.press('Space');
     await page.waitForFunction(()=>document.querySelector('.yr-anchor-stage video').paused);
+    const layout=await dialog.locator('.yr-anchor-card').evaluateAll(cards=>cards.map(card=>{const box=card.getBoundingClientRect();return {x:box.x,y:box.y,width:box.width};}));
+    check(layout.length===2 && Math.abs(layout[0].y-layout[1].y)<2 && layout[1].x>layout[0].x,'cards arranged in two columns');
+    check(await dialog.locator('.yr-anchor-pin span').allTextContents().then(labels=>labels.join(','))==='1,2','numbered timeline markers match cards');
+    const download=dialog.getByRole('link',{name:'下载第 1 帧',exact:true});
+    check(await download.getAttribute('download')==='source_第1帧.png','download includes source video name and frame');
+    const [downloaded]=await Promise.all([page.waitForEvent('download'),download.click()]);
+    check(downloaded.suggestedFilename()==='source_第1帧.png','browser download filename');
+    const marker=dialog.getByRole('slider',{name:'调整关键帧 1',exact:true});
+    const markerBox=await marker.boundingBox();
+    const trackBox=await dialog.locator('.yr-anchor-track').boundingBox();
+    await page.mouse.move(markerBox.x+markerBox.width/2,markerBox.y+8);
+    await page.mouse.down();
+    await page.mouse.move(markerBox.x+markerBox.width/2+trackBox.width*8/38,markerBox.y+8,{steps:10});
+    await page.mouse.up();
+    await dialog.locator('.yr-anchor-card[data-marker="0"][data-frame="8"] img').first().waitFor();
+    check(await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).inputValue()==='9','drag updates card frame number');
+    check(await dialog.locator('.yr-anchor-counter').textContent()==='9 / 39 帧','drag previews new frame');
+    check(await dialog.locator('.yr-anchor-card[data-marker="0"] .stale').textContent()==='帧位置已调整，请上传对应的替换图','moved uploaded edit marked stale');
+    check(await dialog.locator('.yr-anchor-list-heading').textContent()==='替换帧0 / 2 已上传','stale edit excluded from ready count');
+    await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).fill('10');
+    await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).press('Tab');
+    await dialog.locator('.yr-anchor-card[data-marker="0"][data-frame="9"] img').first().waitFor();
+    check(await dialog.getByRole('link',{name:'下载第 10 帧',exact:true}).getAttribute('download')==='source_第10帧.png','download follows adjusted frame');
+    await dialog.getByRole('slider',{name:'调整关键帧 1',exact:true}).focus();
+    await page.keyboard.press('ArrowRight');
+    await dialog.locator('.yr-anchor-card[data-marker="0"][data-frame="10"] img').first().waitFor();
+    check(await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).inputValue()==='11','marker keyboard adjustment');
+    await dialog.getByRole('slider',{name:'调整关键帧 1',exact:true}).focus();
+    await page.keyboard.press('End');
+    await dialog.locator('.yr-anchor-card[data-marker="0"][data-frame="38"] img').first().waitFor();
+    check(await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).inputValue()==='39','marker reaches last frame');
+    await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).fill('21');
+    await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).press('Tab');
+    check(await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).inputValue()!=='21','markers cannot overlap');
+    await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).fill('11');
+    await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).press('Tab');
+    await dialog.getByRole('button',{name:'选择关键帧 1',exact:true}).click();
+    await page.evaluate(base64=>{
+      const bytes=Uint8Array.from(atob(base64),char=>char.charCodeAt(0));
+      const transfer=new DataTransfer();
+      transfer.items.add(new File([bytes],'edited-new.png',{type:'image/png'}));
+      document.querySelector('.yr-anchor-dialog').dispatchEvent(new ClipboardEvent('paste',{clipboardData:transfer,bubbles:true,cancelable:true}));
+    },png.toString('base64'));
+    await page.waitForFunction(()=>document.querySelector('.yr-anchor-list-heading').textContent==='替换帧1 / 2 已上传');
+    check(await page.evaluate(()=>JSON.parse(window.replacementSelectionNode.widgets.find(w=>w.name==='config').value).images[0])==='red.png','pasting into modal does not upload into node reference slots');
+    await dialog.locator('.yr-anchor-card[data-marker="1"] .yr-anchor-column:nth-child(2) .yr-anchor-image').evaluate((element,base64)=>{
+      const bytes=Uint8Array.from(atob(base64),char=>char.charCodeAt(0));
+      const transfer=new DataTransfer();
+      transfer.items.add(new File([bytes],'dropped.png',{type:'image/png'}));
+      element.dispatchEvent(new DragEvent('drop',{dataTransfer:transfer,bubbles:true,cancelable:true}));
+    },png.toString('base64'));
+    await page.waitForFunction(()=>document.querySelector('.yr-anchor-list-heading').textContent==='替换帧2 / 2 已上传');
+    await dialog.getByRole('button',{name:'清空第 21 帧的替换图片',exact:true}).click();
+    check(await dialog.locator('.yr-anchor-list-heading').textContent()==='替换帧1 / 2 已上传','clearing replacement keeps source marker');
     const saved=await page.evaluate(()=>JSON.parse(window.replacementSelectionNode.widgets.find(w=>w.name==='config').value).anchors);
-    check(Object.values(saved)[0].map(x=>x.frame).join(',')==='0,20',"selection persisted in node configuration");
-    check(Boolean(Object.values(saved)[0][0].image),"uploaded image path persisted");
+    check(Object.values(saved)[0].map(x=>x.frame).join(',')==='10,20',"selection persisted in node configuration");
+    check(Boolean(Object.values(saved)[0][0].image) && !Object.values(saved)[0][0].stale,"new upload clears stale state");
     await dialog.getByRole('button',{name:'完成',exact:true}).click();
     await dialog.waitFor({state:'detached'});
     await page.getByRole('button',{name:'关键帧替换',exact:true}).click();
-    await dialog.locator('.yr-anchor-row').nth(1).waitFor();
+    await dialog.locator('.yr-anchor-card').nth(1).waitFor();
     check(await dialog.locator('.yr-anchor-list-heading').textContent()==="替换帧1 / 2 已上传","reopen preserves pairs");
     await page.setViewportSize({width:680,height:720});
     const geometry=await dialog.evaluate(element=>({width:element.clientWidth,scroll:element.scrollWidth,height:element.clientHeight,scrollHeight:element.scrollHeight}));
@@ -93,15 +147,15 @@ async (basePage) => {
     await selection.selectOption('1');
     await page.getByRole('button',{name:'关键帧替换',exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('.yr-anchor-slider')?.disabled===false);
-    check(await dialog.locator('.yr-anchor-row').count()===0,"next segment has independent markers");
+    check(await dialog.locator('.yr-anchor-card').count()===0,"next segment has independent markers");
     await page.keyboard.press('c');
-    await dialog.locator('.yr-anchor-row img').waitFor();
+    await dialog.locator('.yr-anchor-card img').waitFor();
     await dialog.getByRole('button',{name:'移除第 1 帧',exact:true}).click();
-    check(await dialog.locator('.yr-anchor-row').count()===0,"remove marker");
+    check(await dialog.locator('.yr-anchor-card').count()===0,"remove marker");
     await dialog.getByRole('button',{name:'完成',exact:true}).click();
     await selection.selectOption('0');
     await page.getByRole('button',{name:'关键帧替换',exact:true}).click();
-    await dialog.locator('.yr-anchor-row').nth(1).waitFor();
+    await dialog.locator('.yr-anchor-card').nth(1).waitFor();
     check(await dialog.locator('.yr-anchor-list-heading').textContent()==="替换帧1 / 2 已上传","first segment retained after navigation");
     await page.evaluate(()=>window.comfyAPI.app.app.graph.remove(window.replacementSelectionNode));
     await dialog.waitFor({state:'detached'});
@@ -114,12 +168,13 @@ async (basePage) => {
       const {output}=await app.graphToPrompt();
       return {enabled:omni.widgets.find(w=>w.name==='enable_add_guide').value,
         anchors:output[String(omni.id)].inputs.anchor_images,planner:String(planner.id),
-        outputName:planner.outputs[1].name,
+        outputName:app.graph._nodes.find(n=>n.type==='YtonReplacementSegment').outputs[12].name,
+        plannerOutputs:planner.outputs.length,parser:String(app.graph._nodes.find(n=>n.type==='YtonReplacementSegment').id),
         prompt:output[String(omni.id)].inputs.prompt};
     });
     check(wired.enabled===true,'saved workflow enables Add Guide');
-    check(wired.outputName==='achorImages' && wired.anchors[0]===wired.planner && wired.anchors[1]===1,'saved workflow connects keyframe payload');
+    check(wired.plannerOutputs===1 && wired.outputName==='替换关键帧' && wired.anchors[0]===wired.parser && wired.anchors[1]===12,'saved workflow connects keyframe payload');
     check(wired.prompt[1]===2,'existing prompt link remains correct');
-    return {checks:['processed video and frame counter','C capture and deduplication','image upload','timeline seek','frame stepping','play/pause','config persistence','reopen','small viewport','per-segment isolation','delete','node removal cleanup','full workflow serialization and Add Guide link']};
+    return {checks:['processed video and frame counter','C capture and deduplication','image upload','timeline seek','frame stepping','play/pause','config persistence','reopen','small viewport','per-segment isolation','delete','node removal cleanup','full workflow serialization and Add Guide link','two-column cards','numbered marker drag','numeric frame adjustment','marker keyboard adjustment','stale edit invalidation and reupload','source filename download','clipboard upload isolation','drop upload and clear']};
   } finally { await context.close(); }
 }
