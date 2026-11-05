@@ -42,7 +42,8 @@ textarea.yton-ai-input { display: block; resize: vertical; line-height: 1.6; }
 .yton-llama-check input { width: auto; }
 @media (max-width: 600px) { .yton-llama-grid { grid-template-columns: minmax(0, 1fr); } }
 .yton-ai-model-menu > summary { cursor: pointer; border: 1px solid var(--ai-border); border-radius: 7px; padding: 7px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.yton-ai-model-options { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; display: flex; flex-direction: column; padding: 4px; max-height: 230px; overflow: auto; border: 1px solid var(--ai-border); border-radius: 8px; background: var(--ai-bg); box-shadow: 0 8px 24px #0004; }
+.yton-ai-model-options { position: fixed; inset: auto; left: anchor(left); top: calc(anchor(bottom) + 4px); width: anchor-size(width); max-width: calc(100vw - 16px); margin: 0; position-try-fallbacks: flip-block, flip-inline; display: flex; flex-direction: column; padding: 4px; max-height: min(230px, 50dvh); overflow: auto; border: 1px solid var(--ai-border); border-radius: 8px; background: var(--ai-bg); color: var(--ai-text); box-shadow: 0 8px 24px #0004; }
+.yton-ai-model-options:not(:popover-open) { display: none; }
 .yton-ai-model-options button { justify-content: flex-start; text-align: left; overflow-wrap: anywhere; flex-shrink: 0; border: 0; }
 .yton-ai-dialog { width: min(830px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid var(--ai-border); border-radius: 14px; background: var(--comfy-menu-bg, #202127); box-shadow: 0 20px 90px #0006; }
 .yton-ai-dialog[open] { display: flex; flex-direction: column; }
