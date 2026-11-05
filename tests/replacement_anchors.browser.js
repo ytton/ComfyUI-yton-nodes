@@ -37,8 +37,10 @@ async (basePage) => {
       const node=LiteGraph.createNode("YtonReplacementPlan");
       app.graph.add(node);node.pos=[30,80];app.canvas.ds.scale=1;app.canvas.ds.offset=[0,0];
       node.widgets.find(widget=>widget.name==="config").value=JSON.stringify(config);
+      node.addOutput("achorImages","YTON_H3_ANCHOR_IMAGES");
       node.onConfigure();window.replacementSelectionNode=node;
     },{definitions,config});
+    check(await page.evaluate(()=>window.replacementSelectionNode.outputs.length)===1,'configurator keeps only current segment configuration output');
     await page.getByRole("button",{name:"关键帧替换",exact:true}).click();
     const dialog=page.locator(".yr-anchor-dialog");
     const slider=dialog.getByRole("slider",{name:"当前帧",exact:true});
@@ -50,8 +52,8 @@ async (basePage) => {
     check(await dialog.locator('.yr-anchor-card').count()===1,"C collects exactly one frame");
     await page.keyboard.press('c');
     check(await dialog.locator('.yr-anchor-card').count()===1,"same frame is not collected twice");
-    const imageURL=new URL(await dialog.locator('.yr-anchor-card img').first().getAttribute('src'),page.url());
-    const png=await(await page.request.get('http://127.0.0.1:8190'+imageURL.pathname.replace(/^\/api/,'')+imageURL.search)).body();
+    const imageBytes=await dialog.locator('.yr-anchor-card img').first().evaluate(async image=>Array.from(new Uint8Array(await(await fetch(image.src)).arrayBuffer())));
+    const png=await(await page.request.get('http://127.0.0.1:8190/view?filename=red.png&type=input')).body();
     await dialog.locator('input[type=file]').first().setInputFiles({name:'edited.png',mimeType:'image/png',buffer:png});
     await dialog.locator('.yr-anchor-image img').nth(1).waitFor();
     await page.waitForFunction(()=>document.querySelectorAll('.yr-anchor-card .yr-anchor-image img')[1]?.naturalWidth>0);
@@ -80,8 +82,19 @@ async (basePage) => {
     check(await dialog.locator('.yr-anchor-pin span').allTextContents().then(labels=>labels.join(','))==='1,2','numbered timeline markers match cards');
     const download=dialog.getByRole('link',{name:'下载第 1 帧',exact:true});
     check(await download.getAttribute('download')==='source_第1帧.png','download includes source video name and frame');
-    const [downloaded]=await Promise.all([page.waitForEvent('download'),download.click()]);
-    check(downloaded.suggestedFilename()==='source_第1帧.png','browser download filename');
+    const downloadFrame=async(link,name,expected)=>{
+      check((await link.getAttribute('href')).startsWith('blob:'),'frame downloads use a local file URL');
+      const [downloaded]=await Promise.all([page.waitForEvent('download'),link.click()]);
+      check(downloaded.suggestedFilename()===name,'browser download filename');
+      check(await downloaded.failure()===null,'frame download completes');
+      const bytes=[];
+      for await(const chunk of await downloaded.createReadStream()) bytes.push(...chunk);
+      check(bytes.length===expected.length && bytes.every((value,index)=>value===expected[index]),'downloaded PNG matches selected original frame');
+    };
+    await downloadFrame(download,'source_第1帧.png',imageBytes);
+    const secondDownload=dialog.getByRole('link',{name:'下载第 21 帧',exact:true});
+    const secondBytes=await dialog.locator('.yr-anchor-card[data-frame="20"] .yr-anchor-column:first-child img').evaluate(async image=>Array.from(new Uint8Array(await(await fetch(image.src)).arrayBuffer())));
+    await downloadFrame(secondDownload,'source_第21帧.png',secondBytes);
     const marker=dialog.getByRole('slider',{name:'调整关键帧 1',exact:true});
     const markerBox=await marker.boundingBox();
     const trackBox=await dialog.locator('.yr-anchor-track').boundingBox();
@@ -97,7 +110,10 @@ async (basePage) => {
     await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).fill('10');
     await dialog.getByRole('spinbutton',{name:'关键帧 1 的帧号'}).press('Tab');
     await dialog.locator('.yr-anchor-card[data-marker="0"][data-frame="9"] img').first().waitFor();
-    check(await dialog.getByRole('link',{name:'下载第 10 帧',exact:true}).getAttribute('download')==='source_第10帧.png','download follows adjusted frame');
+    const adjustedDownload=dialog.getByRole('link',{name:'下载第 10 帧',exact:true});
+    check(await adjustedDownload.getAttribute('download')==='source_第10帧.png','download follows adjusted frame');
+    const adjustedBytes=await dialog.locator('.yr-anchor-card[data-frame="9"] .yr-anchor-column:first-child img').evaluate(async image=>Array.from(new Uint8Array(await(await fetch(image.src)).arrayBuffer())));
+    await downloadFrame(adjustedDownload,'source_第10帧.png',adjustedBytes);
     await dialog.getByRole('slider',{name:'调整关键帧 1',exact:true}).focus();
     await page.keyboard.press('ArrowRight');
     await dialog.locator('.yr-anchor-card[data-marker="0"][data-frame="10"] img').first().waitFor();
@@ -160,6 +176,7 @@ async (basePage) => {
     await page.evaluate(()=>window.comfyAPI.app.app.graph.remove(window.replacementSelectionNode));
     await dialog.waitFor({state:'detached'});
     const workflow=await(await page.request.get('http://127.0.0.1:8190/anchor-workflow')).json();
+    workflow.nodes.find(node=>node.type==='YtonReplacementPlan').outputs.push({name:'achorImages',type:'YTON_H3_ANCHOR_IMAGES',links:[]});
     await page.evaluate(async workflow=>{ await window.comfyAPI.app.app.loadGraphData(workflow); },workflow);
     const wired=await page.evaluate(async()=>{
       const app=window.comfyAPI.app.app;

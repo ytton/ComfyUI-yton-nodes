@@ -12,6 +12,7 @@ export function openReplacementAnchors(owner, config, index, save) {
   const colors = ["#f3ca52", "#ff8066", "#65cba8", "#83b5f5", "#c29af0", "#ec9cc0"];
   let closed = false, info, markers = [], frameCallback;
   const screenshots = new Map();
+  const imageURLs = new Set();
   const header = el("header", "yr-anchor-header");
   const title = el("div");
   title.id = `yr-anchors-${crypto.randomUUID()}`;
@@ -183,12 +184,20 @@ export function openReplacementAnchors(owner, config, index, save) {
   }
   async function screenshot(frame, card, download) {
     try {
-      if (!screenshots.has(frame)) screenshots.set(frame, request("replacement/anchor-frame", { config, index, frame }));
-      const data = await screenshots.get(frame);
+      if (!screenshots.has(frame)) screenshots.set(frame, request("replacement/anchor-frame", { config, index, frame }).then(async data => {
+        const response = await fetch(mediaURL(data.image), { signal: lifetime.signal });
+        if (!response.ok) throw new Error(`原帧读取失败（${response.status}）`);
+        const image = await response.blob();
+        lifetime.signal.throwIfAborted();
+        const url = URL.createObjectURL(image);
+        imageURLs.add(url);
+        return url;
+      }));
+      const url = await screenshots.get(frame);
       if (closed || !card.isConnected) return;
-      const img = el("img"); img.src = mediaURL(data.image); img.alt = `原帧 ${frame + 1}`;
+      const img = el("img"); img.src = url; img.alt = `原帧 ${frame + 1}`;
       card.prepend(img);
-      download.href = mediaURL(data.image); download.download = frameName(frame);
+      download.href = url; download.download = frameName(frame);
       download.removeAttribute("aria-disabled");
     } catch (error) { screenshots.delete(frame); if (!closed) status.textContent = error.message; }
   }
@@ -327,6 +336,7 @@ export function openReplacementAnchors(owner, config, index, save) {
     dialog.addEventListener(event, event => event.stopPropagation());
   dialog.addEventListener("close", () => {
     closed = true; lifetime.abort(); video.pause();
+    for (const url of imageURLs) URL.revokeObjectURL(url);
     if (frameCallback !== undefined) video.cancelVideoFrameCallback?.(frameCallback);
     video.removeAttribute("src"); video.load(); dialog.remove(); closeHook();
   }, { once: true });

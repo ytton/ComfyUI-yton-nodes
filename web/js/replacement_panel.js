@@ -11,6 +11,11 @@ const kind = file => file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|avi|
   : file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(file.name) ? "image" : null;
 
 export async function setupReplacementPanel(node) {
+  function configureOutputs() {
+    if (node.type === "YtonReplacementPlan")
+      while (node.outputs.length > 1) node.removeOutput(node.outputs.length - 1);
+  }
+  configureOutputs();
   const configWidget = node.widgets.find(w => w.name === "config");
   const selectedWidget = node.widgets.find(w => w.name === "selected_index");
   const loopWidget = node.widgets.find(w => w.name === "loop_generation");
@@ -358,7 +363,7 @@ export async function setupReplacementPanel(node) {
     event.preventDefault();event.stopImmediatePropagation();void upload(files,activeImage);
   },{capture:true,signal:lifetime.signal});
   const configure=node.onConfigure;
-  node.onConfigure=function(){anchorEditor?.close();configure?.apply(this,arguments);config=JSON.parse(configWidget.value);index=selectedWidget.value;renderAll();void updatePlan();};
+  node.onConfigure=function(){anchorEditor?.close();configure?.apply(this,arguments);configureOutputs();config=JSON.parse(configWidget.value);index=selectedWidget.value;renderAll();void updatePlan();};
   const executed=node.onExecuted;
   node.onExecuted=function(data){
     executed?.apply(this,arguments);
