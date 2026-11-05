@@ -1,0 +1,53 @@
+.yton-mode-parameters { width:100%; color:var(--yton-node-fg); background:var(--yton-node-bg); box-sizing:border-box; padding:3px 0 0; }
+.yton-mode-segments { display:flex; gap:3px; padding:4px; overflow-x:auto; border:1px solid color-mix(in srgb,currentColor 16%,transparent); border-radius:9px; background:color-mix(in srgb,var(--yton-node-bg) 88%,currentColor 12%); scrollbar-width:thin; }
+.yton-mode-segments button { flex:1 0 auto; min-width:55px; padding:7px 12px; border:1px solid transparent; border-radius:6px; color:inherit; background:transparent; font:inherit; font-size:13px; cursor:pointer; white-space:nowrap; }
+.yton-mode-segments button:hover { background:#8ba7cf20; }
+.yton-mode-segments button[aria-pressed="true"] { background:var(--yton-node-bg); border-color:#8ba7cf90; box-shadow:0 1px 3px #0002; color:inherit; }
+.yton-mode-footer { display:flex; justify-content:flex-end; padding-top:5px; }
+.yton-mode-gear { display:grid; place-items:center; width:27px; height:27px; padding:4px; border:0; border-radius:6px; color:inherit; background:transparent; cursor:pointer; }
+.yton-mode-gear:hover { background:#8ba7cf25; }
+.yton-mode-gear svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.6; }
+.yton-mode-dialog { --mode-accent:#88a8d7; width:min(900px,94vw); max-width:94vw; max-height:88vh; padding:0; border:1px solid #ffffff26; border-radius:14px; color:#e8eaf0; background:#25272c; box-shadow:0 24px 100px #0008; font:13px/1.5 system-ui,sans-serif; color-scheme:dark; }
+.yton-mode-dialog[open] { display:flex; flex-direction:column; }
+.yton-mode-dialog::backdrop { background:#0007; backdrop-filter:blur(3px); }
+.yton-mode-dialog * { box-sizing:border-box; }
+.yton-mode-dialog [hidden] { display:none !important; }
+.yton-mode-dialog header { display:flex; align-items:center; justify-content:space-between; padding:18px 24px 14px; }
+.yton-mode-heading { font-size:18px; font-weight:650; }
+.yton-mode-dialog button { border:1px solid #ffffff20; border-radius:7px; padding:7px 13px; color:inherit; background:#ffffff08; cursor:pointer; font:inherit; }
+.yton-mode-dialog button:hover:not(:disabled) { background:#ffffff13; border-color:#ffffff40; }
+.yton-mode-dialog button:disabled { opacity:.3; cursor:default; }
+.yton-mode-dialog button.primary { background:var(--mode-accent); border-color:var(--mode-accent); color:#182334; font-weight:600; }
+.yton-mode-dialog button.primary:hover { background:#a6bfe3; }
+.yton-mode-dialog .yton-mode-close { border:0; background:transparent; font-size:22px; padding:0 7px; }
+.yton-mode-steps { display:flex; gap:8px; padding:0 24px 16px; border-bottom:1px solid #ffffff12; }
+.yton-mode-steps button { flex:1; border-color:transparent; background:transparent; text-align:left; }
+.yton-mode-steps button[aria-current="true"] { background:#88a8d71c; color:#b7cff1; border-color:#88a8d744; }
+.yton-mode-body { padding:20px 24px 26px; min-height:300px; max-height:60vh; overflow:auto; scrollbar-width:thin; scrollbar-color:#72788755 transparent; }
+.yton-mode-body::-webkit-scrollbar,.yton-mode-segments::-webkit-scrollbar { width:3px; height:3px; }
+.yton-mode-body::-webkit-scrollbar-thumb,.yton-mode-segments::-webkit-scrollbar-thumb { background:#72788766; border-radius:4px; }
+.yton-mode-body h3 { margin:0 0 6px; font-size:14px; font-weight:600; }
+.yton-mode-hint { margin:0 0 20px; color:#9da4b2; font-size:12px; }
+.yton-mode-dialog input:not([type="checkbox"]),.yton-mode-dialog select,.yton-mode-dialog textarea { width:100%; min-width:0; padding:8px 10px; border:1px solid #ffffff20; border-radius:7px; color:#e8eaf0; background:#1c1e23; font:inherit; outline:none; }
+.yton-mode-dialog input:focus,.yton-mode-dialog select:focus,.yton-mode-dialog textarea:focus { border-color:#88a8d7; box-shadow:0 0 0 2px #88a8d71c; }
+.yton-mode-option-row { display:grid; grid-template-columns:26px minmax(0,1fr) auto; align-items:center; gap:12px; margin-top:10px; }
+.yton-mode-field-row { display:grid; grid-template-columns:minmax(0,1fr) 110px auto; align-items:center; gap:12px; margin-top:10px; }
+.yton-mode-index { color:#919aab; font-size:12px; text-align:center; }
+.yton-mode-row-actions { display:flex; gap:4px; }
+.yton-mode-row-actions button { padding:5px 10px; }
+.yton-mode-add { margin-top:16px; border-style:dashed !important; color:#b7cff1 !important; }
+.yton-mode-values-layout { display:grid; grid-template-columns:minmax(110px,160px) minmax(0,1fr); gap:24px; margin-top:18px; }
+.yton-mode-value-options { display:flex; flex-direction:column; gap:5px; }
+.yton-mode-value-options button { text-align:left; overflow-wrap:anywhere; }
+.yton-mode-value-options button[aria-pressed="true"] { background:#88a8d720; border-color:#88a8d755; color:#b7cff1; }
+.yton-mode-values { min-width:0; display:flex; flex-direction:column; gap:20px; }
+.yton-mode-value-field { display:flex; flex-direction:column; gap:7px; }
+.yton-mode-value-label { display:flex; align-items:center; gap:9px; font-weight:550; }
+.yton-mode-value-label small { font-size:10px; font-weight:400; padding:1px 5px; border-radius:4px; color:#9da4b2; background:#ffffff09; }
+.yton-mode-dialog textarea { min-height:100px; resize:vertical; scrollbar-width:thin; }
+.yton-mode-dialog input[type="checkbox"] { width:18px; height:18px; margin:1px 0; accent-color:var(--mode-accent); }
+.yton-mode-dialog footer { display:flex; align-items:center; gap:8px; padding:15px 24px; border-top:1px solid #ffffff12; }
+.yton-mode-spacer { flex:1; }
+.yton-mode-error { color:#f1a09d; padding:0 24px 12px; }
+.yton-mode-error:empty { display:none; }
+@media (max-width:600px) { .yton-mode-dialog header,.yton-mode-body,.yton-mode-dialog footer { padding-left:16px; padding-right:16px; } .yton-mode-steps { padding-left:16px; padding-right:16px; } .yton-mode-field-row { grid-template-columns:minmax(0,1fr) 85px auto; gap:5px; } .yton-mode-row-actions button { padding:5px 7px; } .yton-mode-values-layout { grid-template-columns:1fr; gap:14px; } .yton-mode-value-options { flex-direction:row; overflow-x:auto; } }
