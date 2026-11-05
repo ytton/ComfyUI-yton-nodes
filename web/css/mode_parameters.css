@@ -1,6 +1,7 @@
+.yton-widget-shell.yton-mode-shell { height:auto; overflow:visible; }
 .yton-mode-parameters { width:100%; color:var(--yton-node-fg); background:var(--yton-node-bg); box-sizing:border-box; padding:3px 0 0; }
-.yton-mode-segments { display:flex; gap:3px; padding:4px; overflow-x:auto; border:1px solid color-mix(in srgb,currentColor 16%,transparent); border-radius:9px; background:color-mix(in srgb,var(--yton-node-bg) 88%,currentColor 12%); scrollbar-width:thin; }
-.yton-mode-segments button { flex:1 0 auto; min-width:55px; padding:7px 12px; border:1px solid transparent; border-radius:6px; color:inherit; background:transparent; font:inherit; font-size:13px; cursor:pointer; white-space:nowrap; }
+.yton-mode-segments { display:grid; gap:3px; padding:4px; border:1px solid color-mix(in srgb,currentColor 16%,transparent); border-radius:9px; background:color-mix(in srgb,var(--yton-node-bg) 88%,currentColor 12%); }
+.yton-mode-segments button { min-width:0; max-width:100%; padding:7px 12px; border:1px solid transparent; border-radius:6px; color:inherit; background:transparent; font:inherit; font-size:13px; cursor:pointer; white-space:normal; overflow-wrap:anywhere; }
 .yton-mode-segments button:hover { background:#8ba7cf20; }
 .yton-mode-segments button[aria-pressed="true"] { background:var(--yton-node-bg); border-color:#8ba7cf90; box-shadow:0 1px 3px #0002; color:inherit; }
 .yton-mode-footer { display:flex; justify-content:flex-end; padding-top:5px; }
@@ -31,6 +32,10 @@
 .yton-mode-dialog input:not([type="checkbox"]),.yton-mode-dialog select,.yton-mode-dialog textarea { width:100%; min-width:0; padding:8px 10px; border:1px solid #ffffff20; border-radius:7px; color:#e8eaf0; background:#1c1e23; font:inherit; outline:none; }
 .yton-mode-dialog input:focus,.yton-mode-dialog select:focus,.yton-mode-dialog textarea:focus { border-color:#88a8d7; box-shadow:0 0 0 2px #88a8d71c; }
 .yton-mode-option-row { display:grid; grid-template-columns:26px minmax(0,1fr) auto; align-items:center; gap:12px; margin-top:10px; }
+.yton-mode-layout-settings { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:16px 0 20px; }
+.yton-mode-layout-settings label { display:flex; align-items:center; gap:7px; }
+.yton-mode-layout-settings input[type="number"] { width:76px; }
+.yton-mode-layout-times { color:#9da4b2; }
 .yton-mode-field-row { display:grid; grid-template-columns:minmax(0,1fr) 110px auto; align-items:center; gap:12px; margin-top:10px; }
 .yton-mode-index { color:#919aab; font-size:12px; text-align:center; }
 .yton-mode-row-actions { display:flex; gap:4px; }

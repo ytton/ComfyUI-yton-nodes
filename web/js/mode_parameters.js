@@ -48,6 +48,7 @@ function checkConfig(data) {
 }
 
 export function setupModeParameters(node) {
+  node.properties.ytonModeLayout = { rows: 1, columns: 2 };
   const config = node.widgets.find(w => w.name === "config");
   const selected = node.widgets.find(w => w.name === "selected");
   for (const widget of [config, selected]) {
@@ -99,6 +100,9 @@ export function setupModeParameters(node) {
     node.properties.ytonModeOutputIds = wanted.map(field => field.id);
   }
   function render() {
+    const { rows, columns } = node.properties.ytonModeLayout;
+    segments.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+    segments.style.gridTemplateRows = `repeat(${Math.max(rows, Math.ceil(data.options.length / columns))}, minmax(34px, auto))`;
     segments.replaceChildren();
     for (const option of data.options) {
       const item = button(option.label, () => {
@@ -110,15 +114,16 @@ export function setupModeParameters(node) {
         node.graph?.afterChange();
         node.graph?.change();
         node.setDirtyCanvas(true, true);
-        segments.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
       });
       item.setAttribute("aria-pressed", String(selected.value === option.id));
       segments.append(item);
     }
   }
-  function applyConfiguration(next) {
+  function applyConfiguration(next, layout = node.properties.ytonModeLayout) {
     checkConfig(next);
+    if (![layout.rows, layout.columns].every(value => Number.isSafeInteger(value) && value > 0)) throw Error("行数和列数需要填写大于 0 的整数。");
     node.graph?.beforeChange();
+    node.properties.ytonModeLayout = { rows: Math.max(layout.rows, Math.ceil(next.options.length / layout.columns)), columns: layout.columns };
     data = structuredClone(next);
     for (const item of [...data.options, ...data.outputs]) item.label = item.label.trim();
     if (!data.options.some(option => option.id === selected.value)) selected.value = data.options[0].id;
@@ -134,6 +139,7 @@ export function setupModeParameters(node) {
   function openSettings() {
     if (dialog?.open) return;
     const draft = structuredClone(data);
+    const draftLayout = { rows: node.properties.ytonModeLayout.rows, columns: node.properties.ytonModeLayout.columns };
     let activeStep = 0;
     let activeOption = draft.options[0].id;
     dialog = el("dialog", "yton-mode-dialog");
@@ -146,9 +152,9 @@ export function setupModeParameters(node) {
     error.setAttribute("role", "alert");
     const actions = el("footer");
     const previous = button("上一步", () => { activeStep--; renderStep(); });
-    const next = button("下一步", () => { activeStep++; renderStep(); }, "primary");
+    const next = button("下一步", () => { activeStep++; renderStep(); });
     const save = button("保存配置", () => {
-      try { applyConfiguration(draft); dialog.close(); }
+      try { applyConfiguration(draft, draftLayout); dialog.close(); }
       catch (e) { error.textContent = e.message; }
     }, "primary");
     actions.append(previous, el("span", "yton-mode-spacer"), button("取消", () => dialog.close()), next, save);
@@ -186,9 +192,21 @@ export function setupModeParameters(node) {
       [...tabs.children].forEach((tab, i) => tab.setAttribute("aria-current", String(i === activeStep)));
       previous.hidden = activeStep === 0;
       next.hidden = activeStep === 2;
-      save.hidden = activeStep !== 2;
       if (activeStep === 0) {
         body.append(el("h3", "", "设置模式选项"), el("p", "yton-mode-hint", "选项名称会显示在节点分段器中，同时作为模式字符串输出。索引按排列顺序从 0 开始。"));
+        const layout = el("div", "yton-mode-layout-settings");
+        layout.append(el("span", "", "节点排列"));
+        for (const [key, title] of [["rows", "行数"], ["columns", "列数"]]) {
+          if (key === "columns") layout.append(el("span", "yton-mode-layout-times", "×"));
+          const label = el("label");
+          const control = input(draftLayout[key], title, value => { draftLayout[key] = value.trim() ? Number(value) : null; }, "number");
+          control.min = "1";
+          control.step = "1";
+          label.append(control, el("span", "", key === "rows" ? "行" : "列"));
+          layout.append(label);
+        }
+        layout.title = "按行、列排列模式按钮；网格容量不足时自动补行，保证全部选项可见。";
+        body.append(layout);
         draft.options.forEach((option, index) => {
           const row = el("div", "yton-mode-option-row");
           row.append(el("span", "yton-mode-index", String(index)), input(option.label, `Option ${index + 1} 名称`, value => { option.label = value; }), rowActions(draft.options, index, () => {
@@ -286,10 +304,26 @@ export function setupModeParameters(node) {
   syncOutputs();
   render();
   followNodeColours(node, panel);
-  mountNodePanel(node, "mode_parameters_ui", panel, 340, 78);
+  mountNodePanel(node, "mode_parameters_ui", panel, 340, 78, { fitHeight: true });
+  panel.parentElement.classList.add("yton-mode-shell");
+  node.setSize([340, node.computeSize()[1]]);
 }
 
 app.registerExtension({
   name: "yton.ModeParameters",
-  nodeCreated(node) { if (node.comfyClass === TYPE) setupModeParameters(node); },
+  beforeRegisterNodeDef(nodeType, nodeData) {
+    if (nodeData.name !== TYPE) return;
+    // Previews render the definition without creating a node. Keep reserved
+    // execution slots out of the frontend definition as well as the canvas.
+    for (const key of ["output", "output_name", "output_is_list", "output_tooltips"]) {
+      nodeData[key] = nodeData[key].slice(0, 2);
+    }
+    for (const name of ["config", "selected"]) nodeData.input.required[name][1].hidden = true;
+    const created = nodeType.prototype.onNodeCreated;
+    nodeType.prototype.onNodeCreated = function () {
+      const result = created?.apply(this, arguments);
+      setupModeParameters(this);
+      return result;
+    };
+  },
 });
