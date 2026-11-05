@@ -84,4 +84,4 @@
 
 ---
 
-整理来源：本目录的 `SKILL.md`、`references/t2i_rules.md`、`references/edit_rules.md` 和 `references/cheat_sheet.md`。原规则来自 [iamyoki/qwen-image-2.1-skill](https://github.com/iamyoki/qwen-image-2.1-skill)，采用 Apache-2.0 许可证；本文件为中文精简整理版。
+来源署名：iamyoki/qwen-image-2.1-skill，Apache-2.0 许可证，中文精简改编。
