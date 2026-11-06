@@ -116,10 +116,16 @@ class LocalLLMTests(unittest.TestCase):
         node.hidden = fixture.io.HiddenHolder.from_dict({fixture.io.Hidden.unique_id: "parser", fixture.io.Hidden.dynprompt: fixture.DynamicPrompt({})})
         with patch.object(runtime, "generate", return_value="pin模式提示词") as generate:
             result = node.execute({"config": json.dumps(config), "index": 0, "llm": LocalLLMConnection("vision.gguf"), "previous_video": None})
-        self.assertEqual(result.result[1], "pin模式提示词")
-        user = generate.call_args.args[2][1]["content"][0]["text"]
+        self.assertEqual(result.result[2], "pin模式提示词")
+        content = generate.call_args.args[2][1]["content"]
+        user = content[0]["text"]
         self.assertRegex(user, r"零基帧索引\s+20")
         self.assertIn("保留原动作", user)
+        for item, channel in ((content[1], 0), (content[2], 2)):
+            with Image.open(byteio.BytesIO(base64.b64decode(item["image_url"]["url"].split(",")[1]))) as image:
+                self.assertGreater(image.getpixel((0, 0))[channel], 250)
+        with Image.open(byteio.BytesIO(base64.b64decode(content[3]["image_url"]["url"].split(",")[1]))) as sheet:
+            self.assertEqual(sheet.size, (960, 600))
 
     def test_manual_routes_use_local_connection(self):
         import server

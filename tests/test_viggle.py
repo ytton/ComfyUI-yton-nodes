@@ -13,7 +13,7 @@ import test_character_replacement as fixture
 from replacement_test_plugin.nodes.h3_video_length_node import YtonH3VideoLength, adjust
 from replacement_test_plugin.viggle.media import DEFAULT_CONFIG, parse_config, plan_for, previous_frame, references, segment, segment_metadata
 from replacement_test_plugin.viggle.nodes import CLASSES, YtonViggleReplacementSegment
-from replacement_test_plugin.viggle.prompts import optimize, signature
+from replacement_test_plugin.viggle.prompts import MEDIA_RULES, optimize, save_skill, signature
 
 torch, io, InputImpl, Types = fixture.torch, fixture.io, fixture.InputImpl, fixture.Types
 
@@ -125,16 +125,39 @@ class ViggleTests(unittest.TestCase):
             previous_frame(config,1,5,self.video(56))
 
     def test_optimizer_sees_pins_and_the_same_images(self):
-        config=self.config();config["mode"]="keyframe"
-        config["keyframes"]={"0":[{"frame":20,"image":"blue.png"},{"frame":0,"image":"red.png"}]}
-        video,_=segment(config,0);images,pins=references(config,0);llm=fixture.FakeLLM()
-        optimize(llm,config,0,video,images,pins)
-        user,options=llm.calls[0]
-        self.assertIn("<Picture 1> 对应零基帧索引 0",user)
-        self.assertIn("20",user)
-        self.assertEqual(len(options["images"]),3)
+        for mode in ("reference", "keyframe"):
+            with self.subTest(mode=mode):
+                config=self.config();config["mode"]=mode
+                config["keyframes"]={"0":[{"frame":20,"image":"blue.png"},{"frame":0,"image":"red.png"}]}
+                config["original"]="用 @图片1 替换 @视频 右侧人物。"
+                video,_=segment(config,0);images,pins=references(config,0);llm=fixture.FakeLLM()
+                optimize(llm,config,0,video,images,pins)
+                user,options=llm.calls[0]
+                self.assertEqual(len(options["images"]),3)
+                for i, image in enumerate(images, 1):
+                    self.assertIs(options["images"][i-1], image)
+                    self.assertIn(f"输入第 {i} 张图片 = <Picture {i}>，发送给 H3。", user)
+                self.assertEqual(options["images"][-1].size, (960, 600))
+                self.assertIn("输入第 3 张图片是 <Video 1> 的观察拼图", user)
+                self.assertNotIn("<Picture 3>", user)
+                self.assertIn("用 <Picture 1> 替换 <Video 1> 右侧人物。", user)
+                self.assertIn(MEDIA_RULES, options["system"])
+                if mode == "keyframe":
+                    self.assertIn("<Picture 1> 对应零基帧索引 0",user)
+                    self.assertIn("时间 0.833 秒",user)
         before=signature(config,0);config["keyframes"]["0"][0]["frame"]=21
         self.assertNotEqual(signature(config,0),before)
+
+    def test_custom_skill_preserves_media_identities(self):
+        config=self.config()
+        video,_=segment(config,0);images,pins=references(config,0);llm=fixture.FakeLLM()
+        custom="以简短的中文写提示词，重点描述两个人的互动。"
+        try:
+            save_skill(custom)
+            optimize(llm,config,0,video,images,pins)
+            self.assertEqual(llm.calls[0][1]["system"], custom + "\n\n" + MEDIA_RULES)
+        finally:
+            (fixture.ReplacementTests.root / "user/yton-viggle-skill.md").unlink(missing_ok=True)
 
     def test_parser_and_registered_schemas(self):
         config=self.config()
