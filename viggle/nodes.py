@@ -93,7 +93,7 @@ class YtonViggleReplacementSegment(io.ComfyNode):
             text = state["prompts"][key]
         else:
             optimized = config["optimized"].get(slot, {})
-            text = optimized["text"] if optimized.get("signature") == digest else source_prompt(config, index)
+            text = optimized.get("text", source_prompt(config, index))
         text = resolve_references(text, config, index)
         tensors = image_tensors(images)
         tensors += [None] * (4 - len(tensors))

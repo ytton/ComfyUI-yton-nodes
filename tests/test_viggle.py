@@ -176,6 +176,44 @@ class ViggleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"四个"):
             parse_config(config)
 
+    def test_saved_optimized_prompt_survives_configuration_changes(self):
+        config=self.config()
+        config["optimized"]={"0":{"text":"用户保留的优化提示词。", "signature":signature(config,0)},
+                             "shared":{"text":"用户保留的共用优化提示词。", "signature":"shared"}}
+        changes={"resolution":{"resolution":"480p"},"ratio":{"ratio":"9:16"},
+                 "image_scale":{"image_scale":.5},"crop":{"crop":[0,0,.8,1]},
+                 "original":{"original":"新的原始要求"},
+                 "references":{"images":["blue.png","red.png","",""]},
+                 "keyframes":{"mode":"keyframe","keyframes":{"0":[{"frame":0,"image":"red.png"}]}},
+                 "segment_plan":{"plan":{**config["plan"],"seconds":2,"overlap":6}},
+                 "shared":{"shared":True}}
+        node=type("ViggleSavedPromptParser",(YtonViggleReplacementSegment,),{})
+        node.hidden=io.HiddenHolder.from_dict({io.Hidden.unique_id:"saved-prompt",io.Hidden.dynprompt:fixture.DynamicPrompt({})})
+        with patch("replacement_test_plugin.viggle.nodes.segment",return_value=(self.video(36),{})), \
+             patch("replacement_test_plugin.viggle.nodes.optimize") as generate:
+            for name,change in changes.items():
+                with self.subTest(change=name):
+                    changed={**deepcopy(config),**change}
+                    result=node.execute({"config":json.dumps(changed),"index":0,"previous_video":None,"llm":None})
+                    slot="shared" if changed["shared"] else "0"
+                    self.assertEqual(result.result[2],config["optimized"][slot]["text"])
+                    self.assertEqual(changed["optimized"],config["optimized"])
+            generate.assert_not_called()
+
+    def test_explicit_auto_optimization_still_updates_prompt(self):
+        config=self.config()
+        config["optimized"]["0"]={"text":"已有结果", "signature":"saved"}
+        node=type("ViggleAutoPromptParser",(YtonViggleReplacementSegment,),{})
+        node.hidden=io.HiddenHolder.from_dict({io.Hidden.unique_id:"auto-prompt",io.Hidden.dynprompt:fixture.DynamicPrompt({})})
+        with patch("replacement_test_plugin.viggle.nodes.segment",return_value=(self.video(36),{})), \
+             patch("replacement_test_plugin.viggle.nodes.optimize",return_value="自动优化后的结果") as generate:
+            plan={"config":json.dumps(config),"index":0,"previous_video":None,"llm":None}
+            self.assertEqual(node.execute(plan).result[2],"已有结果")
+            generate.assert_not_called()
+            config["auto"]=True
+            self.assertEqual(node.execute({**plan,"config":json.dumps(config)}).result[2],"自动优化后的结果")
+            generate.assert_called_once()
+
     def test_parser_context_and_first_segment_outputs(self):
         node=type("ViggleContextParser",(YtonViggleReplacementSegment,),{})
         node.hidden=io.HiddenHolder.from_dict({io.Hidden.unique_id:"context-parser",io.Hidden.dynprompt:fixture.DynamicPrompt({})})

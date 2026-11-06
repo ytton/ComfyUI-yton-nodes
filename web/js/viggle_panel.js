@@ -19,21 +19,20 @@ export function setupVigglePanel(node) {
   const status=text=>{message.textContent=text;};
   const slot=()=>config.shared ? "shared" : String(index);
   const original=()=>config.prompts[slot()] ?? config.original;
-  function commit(invalidate=false) {
+  function commit() {
     node.graph?.beforeChange();
-    if(invalidate)config.optimized={};
     widgets.config.value=JSON.stringify(config);widgets.selected_index.value=index;
     node.graph?.afterChange();node.setDirtyCanvas(true,true);
   }
   const media=createViggleMedia({node,getConfig:()=>config,getIndex:()=>index,status,
-    changed({video=false}={}) {if(video)index=0;commit(true);renderEditor();if(video)void refresh();else renderControls();},
+    changed({video=false}={}) {if(video)index=0;commit();renderEditor();if(video)void refresh();else renderControls();},
     editVideo:()=>{
       if(!config.video){status("请先上传视频。");return;}
       void openReplacementEditor(config,draft=>{
         // Editing changes the source timeline, so selected local frame positions
         // are cleared instead of silently pointing at different source content.
         draft.keyframes={};
-        draft.compression.fps=24;config=draft;index=0;commit(true);void refresh();renderSwitches();renderEditor();
+        draft.compression.fps=24;config=draft;index=0;commit();void refresh();renderSwitches();renderEditor();
       }).catch(error=>status(error.message));
     }});
   const heading=el("div","yr-row"),actions=el("div","yr-prompt-actions");
@@ -79,7 +78,7 @@ export function setupVigglePanel(node) {
     editorAbort?.abort();editor?.dispose();editorAbort=new AbortController();
     const value=tab==="original" ? original() : config.optimized[slot()]?.text || "";
     const saveText=text=>{
-      if(tab==="original"){config.prompts[slot()]=text;delete config.optimized[slot()];}
+      if(tab==="original")config.prompts[slot()]=text;
       else if(config.optimized[slot()])config.optimized[slot()].text=text;
       commit();
     };
@@ -117,9 +116,9 @@ export function setupVigglePanel(node) {
       const group=el("div","yr-options");
       for(const [value,label] of options){const control=button(label,()=>change(value));control.setAttribute("aria-pressed",String(value===selected));group.append(control);}return group;
     };
-    controls.append(row("分辨率",choices([["480p","480p"],["720p","720p"],["1080p","1080p"]],config.resolution,value=>{config.resolution=value;commit(true);void refresh();})),
-      row("画面比例",choices([["原视频","原比例"],["9:16","9:16"],["16:9","16:9"]],config.ratio,value=>{config.ratio=value;commit(true);void refresh();})),
-      row("图片缩放",select([{value:.5,label:"0.5×"},{value:.75,label:"0.75×"},{value:1,label:"1× · 原尺寸"}],config.image_scale,value=>{config.image_scale=Number(value);commit(true);},"图片缩放")),
+    controls.append(row("分辨率",choices([["480p","480p"],["720p","720p"],["1080p","1080p"]],config.resolution,value=>{config.resolution=value;commit();void refresh();})),
+      row("画面比例",choices([["原视频","原比例"],["9:16","9:16"],["16:9","16:9"]],config.ratio,value=>{config.ratio=value;commit();void refresh();})),
+      row("图片缩放",select([{value:.5,label:"0.5×"},{value:.75,label:"0.75×"},{value:1,label:"1× · 原尺寸"}],config.image_scale,value=>{config.image_scale=Number(value);commit();},"图片缩放")),
       row("分段上下文",el("div","vv-value",planData?.plan.context_frames ? `${planData.plan.context_frames} 帧` : "无上下文")));
     const raw=preview?.frames || 0,overlap=preview?.segment.overlap_frames || 0;
     for(const [label,text] of [["原片段",raw?`${raw} 帧${overlap?` · 含重叠 ${overlap} 帧`:""}`:"—"],
