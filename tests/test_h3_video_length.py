@@ -25,16 +25,18 @@ class H3VideoLengthTests(unittest.TestCase):
                 source = video(count)
                 padded = adjust(source)
                 self.assertEqual(padded[0].get_frame_count(), expected)
+                self.assertEqual(padded[2], expected)
                 self.assertEqual(padded[0].get_frame_rate(), 24)
                 self.assertEqual((len(padded[1]) - 5) % 17, 0)
                 self.assertTrue(torch.equal(padded[1][:count], source.get_components().images))
                 self.assertTrue(torch.equal(padded[1][count:], padded[1][count - 1:count].expand_as(padded[1][count:])))
-                self.assertEqual(padded[2]["waveform"].shape[-1], expected * 2000)
-                self.assertEqual(torch.count_nonzero(padded[2]["waveform"][..., count * 2000:]), 0)
+                self.assertEqual(padded[3]["waveform"].shape[-1], expected * 2000)
+                self.assertEqual(torch.count_nonzero(padded[3]["waveform"][..., count * 2000:]), 0)
                 restored = adjust(padded[0], "复原", source.get_frame_count())
                 self.assertEqual(restored[0].get_frame_count(), count)
+                self.assertEqual(restored[2], count)
                 self.assertTrue(torch.equal(restored[1], source.get_components().images))
-                self.assertTrue(torch.equal(restored[2]["waveform"], source.get_components().audio["waveform"]))
+                self.assertTrue(torch.equal(restored[3]["waveform"], source.get_components().audio["waveform"]))
 
     def test_24fps_conversion_preserves_duration(self):
         for count, rate, expected in ((100, 25, 96), (25, 12, 50), (30, Fraction(30000, 1001), 25)):
@@ -42,19 +44,19 @@ class H3VideoLengthTests(unittest.TestCase):
                 padded = adjust(video(count, rate))
                 restored = adjust(padded[0], "复原", expected)
                 self.assertEqual(restored[0].get_frame_count(), expected)
-                self.assertEqual(restored[2]["waveform"].shape[-1], expected * 2000)
+                self.assertEqual(restored[3]["waveform"].shape[-1], expected * 2000)
                 expected_indices = (torch.arange(expected) * Fraction(rate).numerator // (Fraction(rate).denominator * 24)).clamp_max(count - 1)
                 self.assertTrue(torch.equal(restored[1][:, 0, 0, 0], expected_indices.float()))
 
     def test_silent_video_and_long_audio_tail(self):
         result = adjust(video(174, audio=False))
-        self.assertIsNone(result[2])
-        self.assertIsNone(adjust(result[0], "复原", 174)[2])
+        self.assertIsNone(result[3])
+        self.assertIsNone(adjust(result[0], "复原", 174)[3])
         source = video(174)
         components = source.get_components()
         components.audio["waveform"] = torch.ones((1, 2, 175 * 2000))
         result = adjust(fixture.InputImpl.VideoFromComponents(components))
-        self.assertEqual(torch.count_nonzero(result[2]["waveform"][..., 174 * 2000:]), 0)
+        self.assertEqual(torch.count_nonzero(result[3]["waveform"][..., 174 * 2000:]), 0)
 
     def test_invalid_restore_length_does_not_pad_generation_results(self):
         for value in (-1, 1.5, True):
@@ -83,8 +85,9 @@ class H3VideoLengthTests(unittest.TestCase):
                         restored = adjust(padded[0], "复原", source.get_frame_count(), context, first)
                         head = 0 if first else context
                         self.assertEqual(restored[0].get_frame_count(), count - head)
+                        self.assertEqual(restored[2], count - head)
                         self.assertTrue(torch.equal(restored[1], components.images[head:count]))
-                        self.assertTrue(torch.equal(restored[2]["waveform"], components.audio["waveform"][..., head * 2000:count * 2000]))
+                        self.assertTrue(torch.equal(restored[3]["waveform"], components.audio["waveform"][..., head * 2000:count * 2000]))
 
     def test_extension_mode_is_explicit(self):
         padded = adjust(video(174), "延长", original_frames=100, context_frames=6, first_segment=False)
@@ -96,12 +99,12 @@ class H3VideoLengthTests(unittest.TestCase):
         definition = YtonH3VideoLength.GET_NODE_INFO_V1()
         self.assertEqual(definition["category"], "yton-nodes/MiniMax H3")
         self.assertEqual(list(definition["input"]["required"]), ["video", "mode", "original_frames", "context_frames", "first_segment"])
-        self.assertEqual(definition["output"], ["VIDEO", "IMAGE", "AUDIO"])
+        self.assertEqual(definition["output"], ["VIDEO", "IMAGE", "INT", "AUDIO"])
         source = video(174)
         padded = YtonH3VideoLength.execute(source).result
         restored = YtonH3VideoLength.execute(padded[0], "复原", source.get_frame_count()).result
-        self.assertEqual(len(padded), 3)
-        self.assertEqual(len(restored), 3)
+        self.assertEqual(len(padded), 4)
+        self.assertEqual(len(restored), 4)
         self.assertEqual((padded[0].get_frame_count(), restored[0].get_frame_count()), (175, 174))
 
 

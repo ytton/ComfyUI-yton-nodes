@@ -54,7 +54,7 @@ def adjust(video, mode="延长", original_frames=0, context_frames=0, first_segm
         waveform = audio["waveform"][..., start:source_samples][..., :samples].clone()
         audio = {**audio, "waveform": F.pad(waveform, (0, max(0, samples - waveform.shape[-1])))}
     result = InputImpl.VideoFromComponents(Types.VideoComponents(images=images, frame_rate=Fraction(FPS), audio=audio))
-    return result, images, audio
+    return result, images, len(images), audio
 
 
 class YtonH3VideoLength(io.ComfyNode):
@@ -70,7 +70,8 @@ class YtonH3VideoLength(io.ComfyNode):
                                  tooltip="复原非首段时，从开头裁去这些重叠帧；可连接配置解析器的同名输出。"),
                     io.Boolean.Input("first_segment", default=True, display_name="是否首段",
                                      tooltip="复原时，首段保留开头；非首段裁去上下文。可连接配置解析器的布尔输出。")],
-            outputs=[io.Video.Output(display_name="视频"), io.Image.Output(display_name="视频帧"),
+            outputs=[io.Video.Output(display_name="视频"), io.Image.Output(display_name="视频帧序列"),
+                     io.Int.Output(display_name="视频帧长度", tooltip="处理后的视频帧数，与输出的视频帧序列长度一致。"),
                      io.Audio.Output(display_name="音频")])
 
     @classmethod

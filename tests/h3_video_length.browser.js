@@ -47,7 +47,7 @@ async (basePage) => {
     },definitions);
     check(result.defaults.pad==='延长' && result.restore.inputs.mode==='复原','两个节点明确区分延长与复原模式');
     check(result.pad.widgets.join(',')==='mode,original_frames,context_frames,first_segment','界面显示模式和三个直接可配置参数');
-    check(result.pad.outputs.join(',')==='视频,视频帧,音频' && result.pad.size[1]<300,'长度调整节点只输出视频、视频帧和音频，节点保持紧凑');
+    check(result.pad.outputs.join(',')==='视频,视频帧序列,视频帧长度,音频' && result.pad.size[1]<300,'长度调整节点按顺序输出视频、视频帧序列、视频帧长度和音频，节点保持紧凑');
     check(result.restore.inputs.original_frames[0]===String(result.parserId) && result.restore.inputs.original_frames[1]===1,'解析器帧数可直接连接复原节点');
     check(result.parser[13].name==='上下文长度' && result.parser[13].type==='INT','解析器的上下文长度显示名称正确');
     check(result.parser[14].name==='是否首段' && result.parser[14].type==='BOOLEAN','解析器提供是否首段输出');
