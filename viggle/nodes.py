@@ -66,8 +66,9 @@ class YtonViggleReplacementSegment(io.ComfyNode):
                      io.String.Output(display_name="pins"), io.Int.Output(display_name="短边尺寸"),
                      io.Int.Output(display_name="片段序号"), io.String.Output(display_name="项目目录"),
                      io.Int.Output(display_name="片段总数"), io.Custom("YTON_VIGGLE_SEGMENT").Output(display_name="片段信息"),
-                     io.Int.Output(display_name="上下文长度（帧）", tooltip="当前段开头与上一段实际重叠的帧数；首段或切镜后不承接时为 0。"),
-                     io.Boolean.Output(display_name="是否首段", tooltip="当前片段为整个分段计划的第一段时输出 true。")],
+                     io.Int.Output(display_name="上下文长度", tooltip="当前段开头与上一段实际重叠的帧数；首段或切镜后不承接时为 0。"),
+                     io.Boolean.Output(display_name="是否首段", tooltip="当前片段为整个分段计划的第一段时输出 true。"),
+                     io.Int.Output(display_name="原始片段长度（帧）", tooltip="原始片段的实际帧数，包含上下文、不含 H3 补帧；可连接长度调整节点的原长度输入。")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
 
     @classmethod
@@ -98,7 +99,7 @@ class YtonViggleReplacementSegment(io.ComfyNode):
         width, height = output_size(config, metadata)
         prefix = f"video/Viggle/%date:yyyy-MM-dd%/{input_path(config['video']).stem}/"
         return io.NodeOutput(video, text, *tensors, pins, min(width, height), index + 1, prefix,
-            info["total"], info, info["overlap_frames"], index == 0, ui={"viggle_prompt": [{"index": index, "slot": slot, "text": text,
+            info["total"], info, info["overlap_frames"], index == 0, video.get_frame_count(), ui={"viggle_prompt": [{"index": index, "slot": slot, "text": text,
                 "signature": digest, "width": width, "height": height}]})
 
 

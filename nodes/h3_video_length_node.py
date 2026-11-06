@@ -23,7 +23,7 @@ def adjust(video, mode="延长", original_frames=0, context_frames=0, first_segm
     if type(context_frames) is not int or context_frames < 0:
         raise ValueError("上下文长度须为非负整数。")
     if mode == "复原" and original_frames == 0:
-        raise ValueError("复原时请填写原长度，或连接延长节点的“原长度（帧）”输出。")
+        raise ValueError("复原时请填写补帧前的原长度，或从原视频的视频解析节点连接帧数。")
     components = video.get_components()
     rate = Fraction(components.frame_rate)
     images = components.images
@@ -54,7 +54,7 @@ def adjust(video, mode="延长", original_frames=0, context_frames=0, first_segm
         waveform = audio["waveform"][..., start:source_samples][..., :samples].clone()
         audio = {**audio, "waveform": F.pad(waveform, (0, max(0, samples - waveform.shape[-1])))}
     result = InputImpl.VideoFromComponents(Types.VideoComponents(images=images, frame_rate=Fraction(FPS), audio=audio))
-    return result, images, audio, len(images), original
+    return result, images, audio
 
 
 class YtonH3VideoLength(io.ComfyNode):
@@ -65,14 +65,13 @@ class YtonH3VideoLength(io.ComfyNode):
             inputs=[io.Video.Input("video", display_name="视频"),
                     io.Combo.Input("mode", options=["延长", "复原"], default="延长", display_name="处理模式"),
                     io.Int.Input("original_frames", default=0, min=0, display_name="原长度（帧）",
-                                 tooltip="复原时使用：连接延长节点的原长度输出，表示补帧前的总帧数（包含上下文）。延长模式自动读取视频长度。"),
-                    io.Int.Input("context_frames", default=0, min=0, display_name="上下文长度（帧）",
+                                 tooltip="复原时填写补帧前的总帧数（包含上下文），或从原视频的视频解析节点连接帧数。延长模式自动读取视频长度。"),
+                    io.Int.Input("context_frames", default=0, min=0, display_name="上下文长度",
                                  tooltip="复原非首段时，从开头裁去这些重叠帧；可连接配置解析器的同名输出。"),
                     io.Boolean.Input("first_segment", default=True, display_name="是否首段",
                                      tooltip="复原时，首段保留开头；非首段裁去上下文。可连接配置解析器的布尔输出。")],
             outputs=[io.Video.Output(display_name="视频"), io.Image.Output(display_name="视频帧"),
-                     io.Audio.Output(display_name="音频"), io.Int.Output(display_name="长度（帧）"),
-                     io.Int.Output(display_name="原长度（帧）", tooltip="输入视频按 24fps 换算后的帧数；恢复时输出指定的原长度。")])
+                     io.Audio.Output(display_name="音频")])
 
     @classmethod
     def execute(cls, video, mode="延长", original_frames=0, context_frames=0, first_segment=True):

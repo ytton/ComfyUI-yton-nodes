@@ -49,8 +49,8 @@ class ViggleTests(unittest.TestCase):
                 self.assertEqual(info["overlap_frames"], overlap)
                 self.assertEqual(info["context_frames"], overlap)
                 padded = adjust(source)
-                restored = adjust(padded[0], "复原", padded[4], info["overlap_frames"], False)
-                self.assertEqual(restored[3], source.get_frame_count() - overlap)
+                restored = adjust(padded[0], "复原", source.get_frame_count(), info["overlap_frames"], False)
+                self.assertEqual(restored[0].get_frame_count(), source.get_frame_count() - overlap)
                 self.assertTrue(torch.equal(restored[1], source.get_components().images[overlap:]))
 
     def test_reference_and_pin_order(self):
@@ -94,7 +94,7 @@ class ViggleTests(unittest.TestCase):
             "pad":{"class_type":"YtonH3VideoLength","inputs":{"video":["parse",0],"mode":"延长","original_frames":0,"context_frames":0,"first_segment":True}},
             # The padded video stands in for a generated result, preserving the
             # true source frames so duplicate removal can be verified exactly.
-            "restore":{"class_type":"YtonH3VideoLength","inputs":{"video":["pad",0],"mode":"复原","original_frames":["pad",4],"context_frames":["parse",12],"first_segment":["parse",13]}},
+            "restore":{"class_type":"YtonH3VideoLength","inputs":{"video":["pad",0],"mode":"复原","original_frames":["parse",14],"context_frames":["parse",12],"first_segment":["parse",13]}},
             "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["restore",0],"current":["parse",8],"total":["parse",10],
                     "filename_prefix":["parse",9],"container":"mp4","fps":24,"crf":18,"reuse_existing":False,"save_full":True}},
         }
@@ -141,10 +141,10 @@ class ViggleTests(unittest.TestCase):
         node=type("ViggleParserTest",(YtonViggleReplacementSegment,),{})
         node.hidden=io.HiddenHolder.from_dict({io.Hidden.unique_id:"parser",io.Hidden.dynprompt:fixture.DynamicPrompt({})})
         result=node.execute({"config":json.dumps(config),"index":0,"previous_video":None,"llm":None})
-        self.assertEqual(len(result.result),14)
+        self.assertEqual(len(result.result),15)
         self.assertIsNone(result.result[4])
         self.assertEqual(result.result[6],"")
-        self.assertEqual(result.result[12:], (0, True))
+        self.assertEqual(result.result[12:], (0, True, result.result[0].get_frame_count()))
         self.assertTrue(result.result[9].startswith("video/Viggle/"))
         for cls in CLASSES:
             self.assertEqual(cls.GET_NODE_INFO_V1()["name"],cls.__name__)
@@ -161,12 +161,17 @@ class ViggleTests(unittest.TestCase):
             for index in (0, 1):
                 with self.subTest(overlap=overlap,index=index):
                     result=node.execute({"config":json.dumps(config),"index":index,"previous_video":None,"llm":None})
-                    self.assertEqual(result.result[12:], (overlap if index else 0, index == 0))
+                    self.assertEqual(result.result[12:14], (overlap if index else 0, index == 0))
+                    source_frames = result.result[0].get_frame_count()
+                    self.assertEqual(result.result[14], source_frames)
+                    self.assertEqual(result.result[14], result.result[11]["source_frames"])
         config["plan"].update(split="shots", min_seconds=.1, cuts=[0,36,72], shot_source=config["video"])
         result=node.execute({"config":json.dumps(config),"index":1,"previous_video":None,"llm":None})
-        self.assertEqual(result.result[12:], (0, False))
+        self.assertEqual(result.result[12:14], (0, False))
+        self.assertEqual(result.result[14], result.result[0].get_frame_count())
         definition=YtonViggleReplacementSegment.GET_NODE_INFO_V1()
-        self.assertEqual(definition["output"][-2:], ["INT", "BOOLEAN"])
+        self.assertEqual(definition["output"][-3:], ["INT", "BOOLEAN", "INT"])
+        self.assertEqual(definition["output_name"][-3:], ["上下文长度", "是否首段", "原始片段长度（帧）"])
 
 
 if __name__ == "__main__":
