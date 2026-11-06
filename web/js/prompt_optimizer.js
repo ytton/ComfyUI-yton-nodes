@@ -1,3 +1,4 @@
+import { attachMenuPopover } from "./menu_popover.js";
 import { app } from "../../../scripts/app.js";
 import { mountNodePanel } from "./node_panel.js";
 import { availableModels, button, element, field, GEAR, optimizerRequest, settingsEvents } from "./prompt_optimizer_api.js";
@@ -8,34 +9,6 @@ const stylesheet = document.createElement("link");
 stylesheet.rel = "stylesheet";
 stylesheet.href = new URL("../css/prompt_optimizer.css", import.meta.url).href;
 document.head.appendChild(stylesheet);
-
-function attachMenuPopover(menu, options) {
-  const summary = menu.querySelector("summary");
-  const anchor = `--yton-menu-${crypto.randomUUID()}`;
-  summary.style.anchorName = anchor;
-  summary.setAttribute("aria-expanded", "false");
-  options.popover = "auto";
-  options.style.positionAnchor = anchor;
-  summary.addEventListener("click", event => {
-    event.preventDefault();
-    if (options.matches(":popover-open")) {
-      options.hidePopover();
-      menu.open = false;
-    } else {
-      menu.open = true;
-      options.showPopover();
-    }
-  });
-  options.addEventListener("toggle", () => {
-    const open = options.matches(":popover-open");
-    menu.open = open;
-    summary.setAttribute("aria-expanded", String(open));
-  });
-  menu.addEventListener("toggle", () => {
-    if (!menu.open && options.matches(":popover-open")) options.hidePopover();
-  });
-  options.addEventListener("wheel", event => event.stopPropagation(), { passive: true });
-}
 
 function setupOptimizer(node) {
   const local = node.comfyClass === "YtonLocalPromptOptimizer";
@@ -87,9 +60,8 @@ function setupOptimizer(node) {
     if (value === "llama.cpp" && !catalogue) void loadLocalModels();
   })));
   backendMenu.append(backendLabel, backendOptions);
-  for (const [menu, options] of [[skillMenu, skillOptions], [modelMenu, modelOptions], [backendMenu, backendOptions]]) {
-    attachMenuPopover(menu, options);
-  }
+  const closeMenus = [[skillMenu, skillOptions], [modelMenu, modelOptions], [backendMenu, backendOptions]]
+    .map(([menu, options]) => attachMenuPopover(menu, options));
   if (local) {
     const refresh = button("↻", () => void loadLocalModels(), "yton-ai-icon");
     refresh.title = "刷新本地 GGUF 模型";
@@ -224,7 +196,7 @@ function setupOptimizer(node) {
   const changed = event => { settings = event.detail; invalidate(); updateModels(); };
   if (!local) settingsEvents.addEventListener("change", changed);
   const onRemoved = node.onRemoved;
-  node.onRemoved = function () { removed = true; settingsEvents.removeEventListener("change", changed); return onRemoved?.apply(this, arguments); };
+  node.onRemoved = function () { removed = true; closeMenus.forEach(close => close()); settingsEvents.removeEventListener("change", changed); return onRemoved?.apply(this, arguments); };
   sync();
   void loadSkills();
   if (local) {

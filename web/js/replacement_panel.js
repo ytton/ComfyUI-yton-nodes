@@ -1,4 +1,5 @@
 import { app } from "../../../scripts/app.js";
+import { manualLLMConnection } from "./llm_connection.js";
 import { api } from "../../../scripts/api.js";
 import { followNodeColours, mountNodePanel } from "./node_panel.js";
 import { button, el, field, hideWidget, input, mediaURL, request, select, showReplacementDimensions, toggle } from "./replacement_common.js";
@@ -319,14 +320,7 @@ export async function setupReplacementPanel(node) {
     busy=true; optimizeButton.disabled=true; message.textContent="正在抽取当前段画面并优化…";
     try {
       if(!config.video) throw new Error("请先上传视频。");
-      const llmInput=node.inputs.find(i=>i.name==="llm");
-      const link=node.graph.links[llmInput?.link];
-      if(!link) throw new Error("请先连接【LLM 通用连接器】。");
-      const {output}=await app.graphToPrompt();
-      const source=output[String(link.origin_id)];
-      if(source?.class_type!=="YtonLLMConnector") throw new Error("手动优化需要连接【LLM 通用连接器】。");
-      const connection=Object.fromEntries(["model_ref","temperature","max_tokens"].map(k=>[k,source.inputs[k]]));
-      if(Object.values(connection).some(Array.isArray)) throw new Error("手动优化请在连接器中填写调用参数；参数由上游计算时请开启自动优化执行工作流。");
+      const connection=await manualLLMConnection(node);
       const snapshot=JSON.stringify(config), target=index, slot=slotKey();
       const data=await request("replacement/optimize",{config,index,connection});
       if(removed) return;

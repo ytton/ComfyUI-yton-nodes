@@ -8,7 +8,7 @@ import folder_paths
 
 from aiohttp import web
 
-from ..llm_connection import LLMConnection
+from ..local_llm_connection import connection_from_config
 from ..prompt_optimizer import discover_models, get_store
 from .anchors import editor_preview, frame_preview
 from .media import contact_sheet, output_size, plan_for, reference_images, segment_video
@@ -96,7 +96,7 @@ def install():
     async def optimize_prompt(request):
         data = await request.json()
         def operation():
-            connection = LLMConnection(**data["connection"])
+            connection = connection_from_config(data["connection"])
             config, index = data["config"], int(data["index"])
             video, _ = segment_video(config, index)
             return {"text": optimize(connection, config, index, video, reference_images(config)),

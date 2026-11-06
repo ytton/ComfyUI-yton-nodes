@@ -5,6 +5,7 @@ import { mountNodePanel, followNodeColours } from "./js/node_panel.js";
 import { availableModels, settingsEvents } from "./js/prompt_optimizer_api.js";
 import { openOptimizerSettings } from "./js/prompt_optimizer_settings.js";
 import { setupReplacementPanel } from "./js/replacement_panel.js";
+import { setupLocalLLMConnector } from "./js/local_llm_connector.js";
 
 for(const path of ["css/replacement.css","css/prompt_optimizer.css"]) {
   const link=document.createElement("link");link.rel="stylesheet";link.href=new URL(path,import.meta.url).href;document.head.append(link);
@@ -155,7 +156,7 @@ function setupSave(node) {
 app.registerExtension({
   name:"yton.character-replacement",
   async beforeRegisterNodeDef(nodeType,nodeData) {
-    const setup={YtonLLMConnector:setupConnector,YtonCharacterReplacement:setupReplacementPanel,YtonReplacementPlan:setupReplacementPanel,YtonReplacementSegment:setupSegment,YtonReplacementVideoSave:setupSave}[nodeData.name];
+    const setup={YtonLLMConnector:setupConnector,YtonLocalLLMConnector:setupLocalLLMConnector,YtonCharacterReplacement:setupReplacementPanel,YtonReplacementPlan:setupReplacementPanel,YtonReplacementSegment:setupSegment,YtonReplacementVideoSave:setupSave}[nodeData.name];
     if(!setup) return;
     const created=nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated=function(){created?.apply(this,arguments);void setup(this);};

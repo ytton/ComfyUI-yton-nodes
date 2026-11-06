@@ -1,4 +1,5 @@
 import { app } from "../../../scripts/app.js";
+import { manualLLMConnection } from "./llm_connection.js";
 import { button, el, field, hideWidget, input, mediaURL, request, select, toggle } from "./replacement_common.js";
 import { followNodeColours, mountNodePanel } from "./node_panel.js";
 import { openReplacementEditor } from "./replacement_editor.js";
@@ -30,7 +31,7 @@ export function setupVigglePanel(node) {
       void openReplacementEditor(config,draft=>{
         // Editing changes the source timeline, so selected local frame positions
         // are cleared instead of silently pointing at different source content.
-        draft.keyframes={};draft.plan.overlap=config.plan.overlap;draft.plan.output="完整片段";
+        draft.keyframes={};
         draft.compression.fps=24;config=draft;index=0;commit(true);void refresh();renderSwitches();renderEditor();
       }).catch(error=>status(error.message));
     }});
@@ -103,7 +104,7 @@ export function setupVigglePanel(node) {
     controls.append(row("分辨率",choices([["480p","480p"],["720p","720p"]],config.resolution,value=>{config.resolution=value;commit(true);void refresh();})),
       row("画面比例",choices([["原视频","原比例"],["9:16","9:16"],["16:9","16:9"]],config.ratio,value=>{config.ratio=value;commit(true);void refresh();})),
       row("图片缩放",select([{value:.5,label:"0.5×"},{value:.75,label:"0.75×"},{value:1,label:"1× · 原尺寸"}],config.image_scale,value=>{config.image_scale=Number(value);commit(true);},"图片缩放")),
-      row("分段上下文",select([{value:0,label:"无上下文"},{value:5,label:"5 帧"}],config.plan.overlap,value=>{config.plan.overlap=Number(value);config.keyframes={};commit(true);void refresh();},"分段上下文")));
+      row("分段上下文",el("div","vv-value",planData?.plan.context_frames ? `${planData.plan.context_frames} 帧` : "无上下文")));
     const raw=preview?.frames || 0,overlap=preview?.segment.overlap_frames || 0;
     for(const [label,text] of [["原片段",raw?`${raw} 帧${overlap?` · 含重叠 ${overlap} 帧`:""}`:"—"],
       ["有效内容",raw?`${raw-overlap} 帧 · ${((raw-overlap)/24).toFixed(3)} 秒`:"—"]])controls.append(row(label,el("div","vv-value",text)));
@@ -135,12 +136,7 @@ export function setupVigglePanel(node) {
     if(busy)return;busy=true;optimizeButton.disabled=true;renderPosition();status("正在抽帧并优化…");
     try {
       if(!config.video)throw new Error("请先上传视频。");
-      const link=node.graph?.links[node.inputs.find(item=>item.name==="llm")?.link];
-      if(!link)throw new Error("请先连接【LLM 通用连接器】。");
-      const {output}=await app.graphToPrompt(),source=output[String(link.origin_id)];
-      if(source?.class_type!=="YtonLLMConnector")throw new Error("请连接【LLM 通用连接器】。");
-      const connection=Object.fromEntries(["model_ref","temperature","max_tokens"].map(name=>[name,source.inputs[name]]));
-      if(Object.values(connection).some(Array.isArray))throw new Error("连接器参数来自上游时，请开启自动优化执行工作流。");
+      const connection=await manualLLMConnection(node);
       const snapshot=JSON.stringify(config),target=index,key=slot();
       const data=await request("viggle/optimize",{config,index,connection});
       if(removed)return;

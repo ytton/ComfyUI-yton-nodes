@@ -27,8 +27,6 @@ def parse_config(value):
     config = json.loads(value) if isinstance(value, str) else copy.deepcopy(value)
     if config["mode"] not in ("reference", "keyframe") or len(config["images"]) != 4:
         raise ValueError("请选择参考图或关键帧模式，并配置四个图片槽位。")
-    if config["plan"]["overlap"] not in (0, 5):
-        raise ValueError("Viggle 分段上下文只能选择无上下文或 5 帧。")
     return config
 
 

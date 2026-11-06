@@ -10,6 +10,11 @@ from replacement_test_plugin.viggle.media import DEFAULT_CONFIG
 from replacement_test_plugin.viggle.nodes import CLASSES
 from replacement_test_plugin.replacement.media import encode
 from replacement_test_plugin.replacement.nodes import YtonReplacementVideoSave
+from replacement_test_plugin.replacement.nodes import YtonLLMConnector, YtonLocalLLMConnector, YtonReplacementPlan
+from replacement_test_plugin.replacement import routes as replacement_routes
+from replacement_test_plugin.llama_optimizer_config import DEFAULT_OPTIONS, FIELDS
+from replacement_test_plugin.local_llm_connection import runtime
+from replacement_test_plugin.prompt_optimizer import get_store
 import server
 
 
@@ -19,11 +24,51 @@ fixture.folder_paths.set_user_directory(str(root/"user"))
 table=web.RouteTableDef()
 server.PromptServer.instance=types.SimpleNamespace(routes=table)
 routes.install()
+replacement_routes.install()
+get_store().save({"providers": [{"id": "fixture", "name": "连接器测试服务", "baseUrl": "http://127.0.0.1:8191/v1",
+                   "apiKey": "", "models": ["fixture-vision"], "enabled": True}],
+                   "defaultModel": '["fixture","fixture-vision"]'})
+
+llm_calls = []
+
+
+def local_generate(model_name, options, messages, *, has_media):
+    llm_calls.append({"model": model_name, "options": options, "system": messages[0]["content"],
+                      "user": messages[1]["content"][0]["text"], "media_count": len(messages[1]["content"]) - 1,
+                      "has_media": has_media})
+    return "本地测试优化结果：保留视频动作，按参考图替换人物。"
+
+
+runtime.generate = local_generate
+
+
+@table.post("/v1/chat/completions")
+async def completion(request):
+    body = await request.json()
+    llm_calls.append({"model": body["model"], "system": body["messages"][0]["content"],
+                      "user": body["messages"][1]["content"][0]["text"]})
+    return web.json_response({"choices": [{"message": {"content": "远程测试优化结果"}}]})
+
+
+@table.get("/yton/prompt-optimizer/llama")
+async def models(request):
+    return web.json_response({"models": ["vision-a.gguf", "vision-b.gguf"], "mmprojs": ["mmproj.gguf"],
+                              "fields": FIELDS, "defaults": DEFAULT_OPTIONS})
+
+
+@table.get("/llm-calls")
+async def calls(request):
+    return web.json_response(llm_calls)
+
+
+@table.get("/replacement-config")
+async def replacement_config(request):
+    return web.json_response(fixture.ReplacementTests().config())
 
 
 @table.get("/definitions")
 async def definitions(request):
-    return web.json_response({cls.__name__:cls.GET_NODE_INFO_V1() for cls in [*CLASSES,YtonReplacementVideoSave]})
+    return web.json_response({cls.__name__:cls.GET_NODE_INFO_V1() for cls in [*CLASSES,YtonReplacementVideoSave,YtonLLMConnector,YtonLocalLLMConnector,YtonReplacementPlan]})
 
 
 @table.get("/config")

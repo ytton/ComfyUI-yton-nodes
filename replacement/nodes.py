@@ -6,6 +6,7 @@ from comfy_api.latest import InputImpl, io, ui
 from server import PromptServer
 
 from ..llm_connection import LLMConnection
+from ..nodes.local_llm_connector_node import YtonLocalLLMConnector
 from .anchors import anchor_images
 from .loop import expand_segments
 from .media import image_tensors, input_path, inspect, output_size, plan_for, reference_images, segment_video
@@ -44,7 +45,7 @@ def prepare_segment(hidden, config, llm=None, selected_index=0, index=None):
     source_signature = signature(config, index)
     if config["auto"]:
         if llm is None:
-            raise ValueError("自动优化已开启，请连接【LLM 通用连接器】。")
+            raise ValueError("自动优化已开启，请连接 LLM 通用连接器或本地模型连接器。")
         cache = state["prompts"]
         key = (slot, source_signature, llm)
         if key not in cache:
@@ -261,5 +262,5 @@ class YtonReplacementVideoSave(io.ComfyNode):
         return io.NodeOutput(video, ui={**ui.PreviewVideo(files).as_dict(), "replacement_saved": [result]})
 
 
-CLASSES = [YtonLLMConnector, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementSegment,
+CLASSES = [YtonLLMConnector, YtonLocalLLMConnector, YtonCharacterReplacement, YtonReplacementPlan, YtonReplacementSegment,
            YtonReplacementPreviousSegment, YtonReplacementLoopStep, YtonReplacementLoopBarrier, YtonReplacementVideoSave]

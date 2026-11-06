@@ -64,7 +64,7 @@ def signature(config, index):
 
 def optimize(connection, config, index, video, images):
     if connection is None:
-        raise ValueError("请连接【LLM 通用连接器】后再优化提示词。")
+        raise ValueError("请连接 LLM 通用连接器或本地模型连接器后再优化提示词。")
     result = connection.generate(
         f"当前片段：{index + 1}。参考图片共 {len(images)} 张。\n用户要求：\n{resolve_references(source_prompt(config, index), config)}",
         system=load_skill(), images=[contact_sheet(video), *images])

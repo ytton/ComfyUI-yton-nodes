@@ -17,7 +17,7 @@ class YtonViggleReplacementPlan(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="YtonViggleReplacementPlan", display_name="Viggle 人物替换配置器 · 配置输出",
-            category="yton-nodes/Viggle", description="四张参考图或四个替换关键帧；内嵌选帧，支持 5 帧重叠分段。",
+            category="yton-nodes/Viggle", description="四张参考图或四个替换关键帧；内嵌选帧，分段上下文沿用视频编辑器的重叠帧数。",
             inputs=[io.Custom("YTON_LLM").Input("llm", optional=True, display_name="LLM 连接器"),
                     io.String.Input("config", default=json.dumps(DEFAULT_CONFIG, ensure_ascii=False), socketless=True),
                     io.Int.Input("selected_index", default=0, min=0, socketless=True),

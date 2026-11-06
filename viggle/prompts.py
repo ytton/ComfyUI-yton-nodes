@@ -55,7 +55,7 @@ def signature(config, index):
 
 def optimize(connection, config, index, video, images, pins):
     if connection is None:
-        raise ValueError("请连接【LLM 通用连接器】。")
+        raise ValueError("请连接 LLM 通用连接器或本地模型连接器。")
     if not images:
         raise ValueError("请先上传至少一张参考图或替换关键帧。")
     mapping = "普通参考图：这些图片提供人物身份与服装，不指定出现帧。"

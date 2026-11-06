@@ -39,9 +39,15 @@ def audio_range(audio, start, count):
 
 
 def adjust(video, mode, context, first_segment, segment_info=None, length_info=None):
-    if context not in ("无上下文", "5 帧"):
+    if context == "按片段配置":
+        source = segment_info if mode == "适配 H3" else length_info
+        if source is None:
+            raise ValueError("自动读取上下文需要连接片段信息或长度信息。")
+        overlap = source["context_frames"]
+    elif context in ("无上下文", "5 帧"):
+        overlap = 5 if context == "5 帧" else 0
+    else:
         raise ValueError("上下文选择无效。")
-    overlap = 5 if context == "5 帧" else 0
     components = video.get_components()
     images = at_24fps(components)
     if mode == "适配 H3":
@@ -86,7 +92,8 @@ class YtonViggleVideoLength(io.ComfyNode):
             description="生成前仅复制末帧补到 17n+5；生成后依据长度信息裁尾，并从后续段去除重复开头。全程 24fps，不重排原有帧。",
             inputs=[io.Video.Input("video", display_name="视频"),
                     io.Combo.Input("mode", options=["适配 H3", "恢复原长度"], default="适配 H3", display_name="处理模式"),
-                    io.Combo.Input("context", options=["无上下文", "5 帧"], default="5 帧", display_name="上下文"),
+                    io.Combo.Input("context", options=["按片段配置", "无上下文", "5 帧"], default="按片段配置", display_name="上下文",
+                                   tooltip="按片段配置时，从片段信息或长度信息读取视频编辑器保存的重叠帧数。"),
                     io.Boolean.Input("first_segment", default=True, display_name="首段", tooltip="未连接片段信息时使用；首段保留开头。"),
                     io.Custom("YTON_VIGGLE_SEGMENT").Input("segment_info", optional=True, display_name="片段信息"),
                     io.Custom("YTON_VIGGLE_LENGTH").Input("length_info", optional=True, display_name="长度信息")],

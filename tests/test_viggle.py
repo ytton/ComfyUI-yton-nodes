@@ -67,6 +67,23 @@ class ViggleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"长度信息"):
             adjust(self.video(200),"恢复原长度","5 帧",False)
 
+    def test_editor_context_drives_plan_and_length_restore(self):
+        for overlap in (0, 6, 12, 22):
+            with self.subTest(overlap=overlap):
+                config = self.config()
+                config["plan"]["overlap"] = overlap
+                config = parse_config(config)
+                source, _ = segment(config, 1)
+                info, _, _ = segment_metadata(config, 1)
+                self.assertEqual(info["overlap_frames"], overlap)
+                self.assertEqual(info["context_frames"], overlap)
+                padded = adjust(source, "适配 H3", "按片段配置", False, segment_info=info)
+                restored = adjust(padded[0], "恢复原长度", "按片段配置", False, length_info=padded[5])
+                self.assertEqual(restored[3], source.get_frame_count() - overlap)
+                self.assertTrue(torch.equal(restored[1], source.get_components().images[overlap:]))
+        with self.assertRaisesRegex(ValueError, "需要连接"):
+            adjust(self.video(100), "适配 H3", "按片段配置", True)
+
     def test_reference_and_pin_order(self):
         config=self.config()
         images,pins=references(config,0)

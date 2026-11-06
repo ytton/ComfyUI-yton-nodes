@@ -9,7 +9,7 @@ from aiohttp import web
 from comfy_api.latest import InputImpl
 import folder_paths
 
-from ..llm_connection import LLMConnection
+from ..local_llm_connection import connection_from_config
 from ..replacement.media import contact_sheet, input_path, output_size
 from ..replacement.save import preview
 from .media import parse_config, plan_for, preview_segment, previous_frame, references, segment, source_frame
@@ -76,7 +76,7 @@ def install():
             config, index = parse_config(data["config"]), int(data["index"])
             video, _ = segment(config, index)
             images, pins = references(config, index)
-            text = optimize(LLMConnection(**data["connection"]), config, index, video, images, pins)
+            text = optimize(connection_from_config(data["connection"]), config, index, video, images, pins)
             return {"text": text, "signature": signature(config, index)}
         return await respond(operation)
 
