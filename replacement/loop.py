@@ -74,11 +74,6 @@ def expand_segments(hidden, plan, segments, loop_generation):
                         value = step.out(socket)
                     elif source_id in copies:
                         value = copies[source_id].out(socket)
-                if plan.get("trim_overlap_on_save") and node_id in save_ids and name == "video" and index > 0:
-                    overlap = max(0, segments[index - 1]["end"] - segments[index]["start"])
-                    if overlap:
-                        value = graph.node("Video Slice", f"{position}_trim_overlap", video=value,
-                            start_time=overlap / 24, duration=0.0, strict_duration=True).out(0)
                 copied.set_input(name, value)
 
         dependencies = {}

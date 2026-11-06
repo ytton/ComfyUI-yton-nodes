@@ -49,9 +49,9 @@ class ViggleTests(unittest.TestCase):
                 self.assertEqual(info["overlap_frames"], overlap)
                 self.assertEqual(info["context_frames"], overlap)
                 padded = adjust(source)
-                restored = adjust(padded[0], padded[4])
-                self.assertEqual(restored[3], source.get_frame_count())
-                self.assertTrue(torch.equal(restored[1], source.get_components().images))
+                restored = adjust(padded[0], "复原", padded[4], info["overlap_frames"], False)
+                self.assertEqual(restored[3], source.get_frame_count() - overlap)
+                self.assertTrue(torch.equal(restored[1], source.get_components().images[overlap:]))
 
     def test_reference_and_pin_order(self):
         config=self.config()
@@ -84,7 +84,6 @@ class ViggleTests(unittest.TestCase):
     def test_real_executor_loop_restores_and_merges_once(self):
         import execution
         import nodes
-        from comfy_extras.nodes_video import VideoSlice
         from server import PromptServer
 
         config=self.config()
@@ -92,15 +91,14 @@ class ViggleTests(unittest.TestCase):
         prompt={
             "plan":{"class_type":"YtonViggleReplacementPlan","inputs":{"config":json.dumps(config),"selected_index":0,"loop_generation":True}},
             "parse":{"class_type":"YtonViggleReplacementSegment","inputs":{"plan":["plan",0]}},
-            "pad":{"class_type":"YtonH3VideoLength","inputs":{"video":["parse",0],"original_frames":0}},
+            "pad":{"class_type":"YtonH3VideoLength","inputs":{"video":["parse",0],"mode":"延长","original_frames":0,"context_frames":0,"first_segment":True}},
             # The padded video stands in for a generated result, preserving the
             # true source frames so duplicate removal can be verified exactly.
-            "restore":{"class_type":"YtonH3VideoLength","inputs":{"video":["pad",0],"original_frames":["pad",4]}},
+            "restore":{"class_type":"YtonH3VideoLength","inputs":{"video":["pad",0],"mode":"复原","original_frames":["pad",4],"context_frames":["parse",12],"first_segment":["parse",13]}},
             "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["restore",0],"current":["parse",8],"total":["parse",10],
                     "filename_prefix":["parse",9],"container":"mp4","fps":24,"crf":18,"reuse_existing":False,"save_full":True}},
         }
         mapping={cls.__name__:cls for cls in [*fixture.CLASSES,*CLASSES,YtonH3VideoLength]}
-        mapping["Video Slice"] = VideoSlice
         events=[]
         server=types.SimpleNamespace(client_id=None,last_node_id=None,send_sync=lambda *args:events.append(args),send_progress_text=lambda *args:None)
         with patch.dict(nodes.NODE_CLASS_MAPPINGS,mapping),patch.object(PromptServer,"instance",server,create=True):

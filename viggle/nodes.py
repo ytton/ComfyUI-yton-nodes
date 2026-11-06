@@ -36,7 +36,7 @@ class YtonViggleReplacementPlan(io.ComfyNode):
         value = {"config": config, "llm": llm, "index": index, "total": len(plan["segments"]),
                  "segment": plan["segments"][index], "previous_video": None,
                  "loop_step_type": "YtonViggleLoopStep", "parser_type": "YtonViggleReplacementSegment",
-                 "project_prefix": "video/Viggle", "trim_overlap_on_save": True}
+                 "project_prefix": "video/Viggle"}
         execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)
         expanded = expand_segments(cls.hidden, value, plan["segments"], loop_generation)
         return expanded if expanded is not None else io.NodeOutput(value)

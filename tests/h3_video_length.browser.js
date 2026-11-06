@@ -22,7 +22,7 @@ async (basePage) => {
     check(!definitions.YtonViggleVideoLength,'长度调整器已独立出 Viggle 节点列表');
     const definition=definitions.YtonH3VideoLength;
     check(definition.display_name==='H3 视频长度调整' && definition.category==='yton-nodes/MiniMax H3','通用节点名称和分类正确');
-    check(Object.keys(definition.input.required).join(',')==='video,original_frames','只有视频和原长度两个输入');
+    check(Object.keys(definition.input.required).join(',')==='video,mode,original_frames,context_frames,first_segment','明确提供处理模式、原长度、上下文和首段参数');
     const result=await page.evaluate(async definitions=>{
       const app=window.comfyAPI.app.app;
       await app.loadGraphData({version:.4,nodes:[],links:[],groups:[],config:{},extra:{}});
@@ -32,28 +32,32 @@ async (basePage) => {
       pad.pos=[80,140];restore.pos=[460,140];parser.pos=[840,140];
       app.canvas.ds.scale=.9;app.canvas.ds.offset=[0,0];
       const original=restore.widgets.find(w=>w.name==='original_frames');
-      const defaults={pad:pad.widgets.find(w=>w.name==='original_frames').value,restore:original.value};
-      restore.convertWidgetToInput(original);
+      const defaults={pad:pad.widgets.find(w=>w.name==='mode').value};
+      restore.widgets.find(w=>w.name==='mode').value='复原';
+      for(const name of ['original_frames','context_frames','first_segment'])restore.convertWidgetToInput(restore.widgets.find(w=>w.name===name));
       pad.connect(4,restore,restore.inputs.findIndex(i=>i.name==='original_frames'));
+      parser.connect(12,restore,restore.inputs.findIndex(i=>i.name==='context_frames'));
+      parser.connect(13,restore,restore.inputs.findIndex(i=>i.name==='first_segment'));
       const workflow=app.graph.serialize();
       const {output}=await app.graphToPrompt();
       window.lengthTest={pad,restore,parser,workflow};
       return {defaults,pad:{widgets:pad.widgets.map(w=>w.name),outputs:pad.outputs.map(o=>o.name),size:pad.size},restore:output[String(restore.id)],
         parser:parser.outputs.map(o=>({name:o.name,type:o.type})),padId:pad.id,workflow};
     },definitions);
-    check(result.defaults.pad===0 && result.defaults.restore===0,'原长度默认 0，自动补帧');
-    check(result.pad.widgets.length===1 && result.pad.widgets[0]==='original_frames','界面只显示一个原长度控件');
+    check(result.defaults.pad==='延长' && result.restore.inputs.mode==='复原','两个节点明确区分延长与复原模式');
+    check(result.pad.widgets.join(',')==='mode,original_frames,context_frames,first_segment','界面显示模式和三个直接可配置参数');
     check(result.pad.outputs.length===5 && result.pad.size[1]<300,'输出普通媒体和整数，节点保持紧凑');
     check(result.restore.inputs.original_frames[0]===String(result.padId) && result.restore.inputs.original_frames[1]===4,'补帧节点原长度可直接连接恢复节点');
     check(result.parser.at(-2).name==='上下文长度（帧）' && result.parser.at(-2).type==='INT','解析器提供上下文帧数输出');
     check(result.parser.at(-1).name==='是否首段' && result.parser.at(-1).type==='BOOLEAN','解析器提供是否首段输出');
+    check(result.restore.inputs.context_frames[1]===12 && result.restore.inputs.first_segment[1]===13,'解析器的上下文和首段布尔值可直接连接到复原节点');
     const restored=await page.evaluate(async()=>{
       const app=window.comfyAPI.app.app;
       await app.loadGraphData(window.lengthTest.workflow);
       const {output}=await app.graphToPrompt();
-      return Object.values(output).filter(node=>node.class_type==='YtonH3VideoLength').map(node=>node.inputs.original_frames);
+      return Object.values(output).filter(node=>node.class_type==='YtonH3VideoLength').map(node=>node.inputs);
     });
-    check(restored.some(value=>value===0) && restored.some(Array.isArray),'工作流保存重载后保留原长度连线');
+    check(restored.some(value=>value.mode==='延长') && restored.some(value=>value.mode==='复原' && Array.isArray(value.original_frames) && Array.isArray(value.context_frames) && Array.isArray(value.first_segment)),'工作流重载保留处理模式及全部复原连线');
     await page.screenshot({path:'F:/ComfyUI/ComfyUI/custom_nodes/ComfyUI-yton-nodes/.artifacts/h3-video-length.png',fullPage:true});
     check(!errors.length,'浏览器无运行错误：'+errors.join(';'));
     return {checks,errors};
