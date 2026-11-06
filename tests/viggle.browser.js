@@ -106,6 +106,10 @@ async (basePage) => {
     await page.waitForFunction(()=>window.viggleConfig().keyframes['1']?.[0].source==='previous');
     check(await root.locator('.vv-thumb-label').filter({hasText:'上一段重叠帧'}).count()===1,"一键取上一段对应重叠帧并直接填入");
     check(await page.locator('dialog[open]').count()===0,"选帧与使用重叠帧均不打开弹窗");
+    await root.getByRole('button',{name:'1080p',exact:true}).click();
+    await page.waitForFunction(()=>window.viggleConfig().resolution==='1080p' && document.querySelector('.vv-panel video')?.videoHeight===1088);
+    check(await root.getByRole('button',{name:'1080p',exact:true}).getAttribute('aria-pressed')==='true',"1080p 可选并保持选中状态");
+    check(await root.locator('video').evaluate(video=>video.videoWidth===1792 && video.videoHeight===1088),"1080p 预览沿用原视频比例并对齐到 32 的倍数");
     await page.screenshot({path:'F:/ComfyUI/ComfyUI/custom_nodes/ComfyUI-yton-nodes/.artifacts/viggle-node.png',fullPage:true});
     check(!errors.length,`浏览器无运行错误：${errors.join(';')}`);
     return {checks,errors};

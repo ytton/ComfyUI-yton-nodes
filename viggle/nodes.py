@@ -61,14 +61,15 @@ class YtonViggleReplacementSegment(io.ComfyNode):
         return io.Schema(node_id="YtonViggleReplacementSegment", display_name="Viggle 人物替换配置解析器",
             category="yton-nodes/Viggle", description="按实际输入顺序输出四张参考图和零基 pins；视频先经过长度调整再送入 Conditioning。",
             inputs=[io.Custom("YTON_VIGGLE_PLAN").Input("plan", display_name="本段配置")],
-            outputs=[io.Video.Output(display_name="原始片段"), io.String.Output(display_name="提示词"),
+            outputs=[io.Video.Output(display_name="视频"),
+                     io.Int.Output(display_name="帧数", tooltip="当前视频的实际帧数，包含上下文、不含 H3 补帧。"),
+                     io.String.Output(display_name="提示词"),
                      *[io.Image.Output(display_name=f"参考图 {i}") for i in range(1, 5)],
                      io.String.Output(display_name="pins"), io.Int.Output(display_name="短边尺寸"),
                      io.Int.Output(display_name="片段序号"), io.String.Output(display_name="项目目录"),
                      io.Int.Output(display_name="片段总数"), io.Custom("YTON_VIGGLE_SEGMENT").Output(display_name="片段信息"),
                      io.Int.Output(display_name="上下文长度", tooltip="当前段开头与上一段实际重叠的帧数；首段或切镜后不承接时为 0。"),
-                     io.Boolean.Output(display_name="是否首段", tooltip="当前片段为整个分段计划的第一段时输出 true。"),
-                     io.Int.Output(display_name="原始片段长度（帧）", tooltip="原始片段的实际帧数，包含上下文、不含 H3 补帧；可连接长度调整节点的原长度输入。")],
+                     io.Boolean.Output(display_name="是否首段", tooltip="当前片段为整个分段计划的第一段时输出 true。")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
 
     @classmethod
@@ -98,8 +99,8 @@ class YtonViggleReplacementSegment(io.ComfyNode):
         tensors += [None] * (4 - len(tensors))
         width, height = output_size(config, metadata)
         prefix = f"video/Viggle/%date:yyyy-MM-dd%/{input_path(config['video']).stem}/"
-        return io.NodeOutput(video, text, *tensors, pins, min(width, height), index + 1, prefix,
-            info["total"], info, info["overlap_frames"], index == 0, video.get_frame_count(), ui={"viggle_prompt": [{"index": index, "slot": slot, "text": text,
+        return io.NodeOutput(video, video.get_frame_count(), text, *tensors, pins, min(width, height), index + 1, prefix,
+            info["total"], info, info["overlap_frames"], index == 0, ui={"viggle_prompt": [{"index": index, "slot": slot, "text": text,
                 "signature": digest, "width": width, "height": height}]})
 
 

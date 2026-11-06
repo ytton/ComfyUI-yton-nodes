@@ -36,9 +36,9 @@ async (basePage) => {
       for(const name of ['original_frames','context_frames','first_segment'])restore.convertWidgetToInput(restore.widgets.find(w=>w.name===name));
       parser.connect(0,pad,0);
       pad.connect(0,restore,0);
-      parser.connect(14,restore,restore.inputs.findIndex(i=>i.name==='original_frames'));
-      parser.connect(12,restore,restore.inputs.findIndex(i=>i.name==='context_frames'));
-      parser.connect(13,restore,restore.inputs.findIndex(i=>i.name==='first_segment'));
+      parser.connect(1,restore,restore.inputs.findIndex(i=>i.name==='original_frames'));
+      parser.connect(13,restore,restore.inputs.findIndex(i=>i.name==='context_frames'));
+      parser.connect(14,restore,restore.inputs.findIndex(i=>i.name==='first_segment'));
       const workflow=app.graph.serialize();
       const {output}=await app.graphToPrompt();
       window.lengthTest={pad,restore,parser,workflow};
@@ -48,11 +48,11 @@ async (basePage) => {
     check(result.defaults.pad==='延长' && result.restore.inputs.mode==='复原','两个节点明确区分延长与复原模式');
     check(result.pad.widgets.join(',')==='mode,original_frames,context_frames,first_segment','界面显示模式和三个直接可配置参数');
     check(result.pad.outputs.join(',')==='视频,视频帧,音频' && result.pad.size[1]<300,'长度调整节点只输出视频、视频帧和音频，节点保持紧凑');
-    check(result.restore.inputs.original_frames[0]===String(result.parserId) && result.restore.inputs.original_frames[1]===14,'解析器原始片段长度可直接连接复原节点');
-    check(result.parser[12].name==='上下文长度' && result.parser[12].type==='INT','解析器的上下文长度显示名称正确');
-    check(result.parser[13].name==='是否首段' && result.parser[13].type==='BOOLEAN','解析器提供是否首段输出');
-    check(result.parser[14].name==='原始片段长度（帧）' && result.parser[14].type==='INT','解析器提供原始片段的帧数');
-    check(result.restore.inputs.context_frames[1]===12 && result.restore.inputs.first_segment[1]===13,'解析器的上下文和首段布尔值可直接连接到复原节点');
+    check(result.restore.inputs.original_frames[0]===String(result.parserId) && result.restore.inputs.original_frames[1]===1,'解析器帧数可直接连接复原节点');
+    check(result.parser[13].name==='上下文长度' && result.parser[13].type==='INT','解析器的上下文长度显示名称正确');
+    check(result.parser[14].name==='是否首段' && result.parser[14].type==='BOOLEAN','解析器提供是否首段输出');
+    check(result.parser[0].name==='视频' && result.parser[1].name==='帧数' && result.parser[1].type==='INT','解析器的帧数紧挨视频下方');
+    check(result.restore.inputs.context_frames[1]===13 && result.restore.inputs.first_segment[1]===14,'解析器的上下文和首段布尔值可直接连接到复原节点');
     const restored=await page.evaluate(async()=>{
       const app=window.comfyAPI.app.app;
       await app.loadGraphData(window.lengthTest.workflow);

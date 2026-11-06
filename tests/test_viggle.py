@@ -94,9 +94,9 @@ class ViggleTests(unittest.TestCase):
             "pad":{"class_type":"YtonH3VideoLength","inputs":{"video":["parse",0],"mode":"延长","original_frames":0,"context_frames":0,"first_segment":True}},
             # The padded video stands in for a generated result, preserving the
             # true source frames so duplicate removal can be verified exactly.
-            "restore":{"class_type":"YtonH3VideoLength","inputs":{"video":["pad",0],"mode":"复原","original_frames":["parse",14],"context_frames":["parse",12],"first_segment":["parse",13]}},
-            "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["restore",0],"current":["parse",8],"total":["parse",10],
-                    "filename_prefix":["parse",9],"container":"mp4","fps":24,"crf":18,"reuse_existing":False,"save_full":True}},
+            "restore":{"class_type":"YtonH3VideoLength","inputs":{"video":["pad",0],"mode":"复原","original_frames":["parse",1],"context_frames":["parse",13],"first_segment":["parse",14]}},
+            "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["restore",0],"current":["parse",9],"total":["parse",11],
+                    "filename_prefix":["parse",10],"container":"mp4","fps":24,"crf":18,"reuse_existing":False,"save_full":True}},
         }
         mapping={cls.__name__:cls for cls in [*fixture.CLASSES,*CLASSES,YtonH3VideoLength]}
         events=[]
@@ -142,10 +142,11 @@ class ViggleTests(unittest.TestCase):
         node.hidden=io.HiddenHolder.from_dict({io.Hidden.unique_id:"parser",io.Hidden.dynprompt:fixture.DynamicPrompt({})})
         result=node.execute({"config":json.dumps(config),"index":0,"previous_video":None,"llm":None})
         self.assertEqual(len(result.result),15)
-        self.assertIsNone(result.result[4])
-        self.assertEqual(result.result[6],"")
-        self.assertEqual(result.result[12:], (0, True, result.result[0].get_frame_count()))
-        self.assertTrue(result.result[9].startswith("video/Viggle/"))
+        self.assertIsNone(result.result[5])
+        self.assertEqual(result.result[7],"")
+        self.assertEqual(result.result[1], result.result[0].get_frame_count())
+        self.assertEqual(result.result[13:], (0, True))
+        self.assertTrue(result.result[10].startswith("video/Viggle/"))
         for cls in CLASSES:
             self.assertEqual(cls.GET_NODE_INFO_V1()["name"],cls.__name__)
         config["images"]=[""]*6
@@ -161,17 +162,19 @@ class ViggleTests(unittest.TestCase):
             for index in (0, 1):
                 with self.subTest(overlap=overlap,index=index):
                     result=node.execute({"config":json.dumps(config),"index":index,"previous_video":None,"llm":None})
-                    self.assertEqual(result.result[12:14], (overlap if index else 0, index == 0))
+                    self.assertEqual(result.result[13:], (overlap if index else 0, index == 0))
                     source_frames = result.result[0].get_frame_count()
-                    self.assertEqual(result.result[14], source_frames)
-                    self.assertEqual(result.result[14], result.result[11]["source_frames"])
+                    self.assertEqual(result.result[1], source_frames)
+                    self.assertEqual(result.result[1], result.result[12]["source_frames"])
         config["plan"].update(split="shots", min_seconds=.1, cuts=[0,36,72], shot_source=config["video"])
         result=node.execute({"config":json.dumps(config),"index":1,"previous_video":None,"llm":None})
-        self.assertEqual(result.result[12:14], (0, False))
-        self.assertEqual(result.result[14], result.result[0].get_frame_count())
+        self.assertEqual(result.result[13:], (0, False))
+        self.assertEqual(result.result[1], result.result[0].get_frame_count())
         definition=YtonViggleReplacementSegment.GET_NODE_INFO_V1()
-        self.assertEqual(definition["output"][-3:], ["INT", "BOOLEAN", "INT"])
-        self.assertEqual(definition["output_name"][-3:], ["上下文长度", "是否首段", "原始片段长度（帧）"])
+        self.assertEqual(definition["output"][:2], ["VIDEO", "INT"])
+        self.assertEqual(definition["output_name"][:2], ["视频", "帧数"])
+        self.assertEqual(definition["output"][-2:], ["INT", "BOOLEAN"])
+        self.assertEqual(definition["output_name"][-2:], ["上下文长度", "是否首段"])
 
 
 if __name__ == "__main__":

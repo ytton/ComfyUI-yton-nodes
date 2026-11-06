@@ -101,7 +101,7 @@ export function setupVigglePanel(node) {
       const group=el("div","yr-options");
       for(const [value,label] of options){const control=button(label,()=>change(value));control.setAttribute("aria-pressed",String(value===selected));group.append(control);}return group;
     };
-    controls.append(row("分辨率",choices([["480p","480p"],["720p","720p"]],config.resolution,value=>{config.resolution=value;commit(true);void refresh();})),
+    controls.append(row("分辨率",choices([["480p","480p"],["720p","720p"],["1080p","1080p"]],config.resolution,value=>{config.resolution=value;commit(true);void refresh();})),
       row("画面比例",choices([["原视频","原比例"],["9:16","9:16"],["16:9","16:9"]],config.ratio,value=>{config.ratio=value;commit(true);void refresh();})),
       row("图片缩放",select([{value:.5,label:"0.5×"},{value:.75,label:"0.75×"},{value:1,label:"1× · 原尺寸"}],config.image_scale,value=>{config.image_scale=Number(value);commit(true);},"图片缩放")),
       row("分段上下文",el("div","vv-value",planData?.plan.context_frames ? `${planData.plan.context_frames} 帧` : "无上下文")));
