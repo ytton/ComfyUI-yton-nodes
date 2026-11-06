@@ -146,6 +146,22 @@ class ReplacementTests(unittest.TestCase):
         self.assertIn(10, [s["start"] for s in retained])
         self.assertTrue(all(s["end"] - s["start"] <= 100 for s in retained))
 
+    def test_manual_segment_lengths_control_media_and_preserve_context(self):
+        config = self.config()
+        config["plan"]["manual_segments"] = [{"start": 0, "end": 30}, {"start": 25, "end": 72}]
+        _, plan = plan_for(config)
+        self.assertEqual([(s["start"], s["end"], s["context_frames"]) for s in plan["segments"]], [(0,30,0),(25,72,5)])
+        result, _ = segment_video(config, 1)
+        self.assertEqual(result.get_frame_count(), 47)
+        config["plan"]["manual_segments"][1]["start"] = 26
+        with self.assertRaisesRegex(ValueError, "上下文长度"):
+            plan_for(config)
+        config["plan"]["manual_segments"] = [{"start": 0, "end": 30}, {"start": 30, "end": 72, "cut_before": True}]
+        self.assertEqual(plan_for(config)[1]["segments"][1]["context_frames"], 0)
+        config["plan"]["manual_segments"][1]["end"] = 71
+        with self.assertRaisesRegex(ValueError, "完整覆盖"):
+            plan_for(config)
+
     def test_real_cut_detection_and_saved_plan_do_not_reanalyse_on_generation(self):
         source = camera_cut_video(self.root)
         config = self.config()

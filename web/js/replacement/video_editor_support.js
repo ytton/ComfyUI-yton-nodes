@@ -63,6 +63,9 @@ export function injectStyles() {
 .yr-pgs-ts{position:relative;width:100%;height:22px;background:#111;border-radius:4px;cursor:pointer;box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
 .yr-pgs-tf{position:absolute;height:100%;background:rgba(14,165,233,.35)}
 .yr-pgs-th{position:absolute;top:0;width:8px;height:100%;background:#38bdf8;transform:translateX(-50%);border-radius:2px}
+.yr-pgs-seg-boundary{position:absolute;top:0;width:14px;height:100%;transform:translateX(-50%);border:0;padding:0;background:transparent;cursor:ew-resize;touch-action:none;pointer-events:auto;z-index:2}
+.yr-pgs-seg-boundary:after{content:"";position:absolute;inset:3px 5px;border-radius:2px;background:#dce7ee;box-shadow:0 0 0 1px #1118}
+.yr-pgs-seg-boundary:hover:after,.yr-pgs-seg-boundary:focus-visible:after{background:#38bdf8;inset:1px 4px}
 .yr-pgs-pr{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:10px}
 .yr-pgs-pr label{display:flex;align-items:center;gap:5px;font-size:11px;color:#b8d2dc}
 .yr-pgs-pr input,.yr-pgs-pr select{background:#223744;color:#dce7ee;border:1px solid #3a5363;border-radius:4px;padding:3px 6px;font-size:11px;width:70px}

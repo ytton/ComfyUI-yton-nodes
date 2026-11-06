@@ -1,6 +1,6 @@
 import { request } from "../replacement_common.js";
 
-export function createShotControls(host, onChange) {
+export function createShotControls(host, onChange, onDetect) {
     const controls = {};
     const detailLabels = [];
     const add = (key, title, options, value) => {
@@ -19,7 +19,7 @@ export function createShotControls(host, onChange) {
             control.style.width = "64px";
         }
         control.value = value;
-        control.onchange = () => { sync(); onChange(); };
+        control.onchange = () => { sync(); onChange(key); };
         label.append(control);
         host.append(label);
         controls[key] = control;
@@ -32,11 +32,19 @@ export function createShotControls(host, onChange) {
     controls.sensitivity.step = "0.05";
     add("min_seconds", "最短镜头（秒）", null, 1);
     controls.min_seconds.title = "过短镜头可与相邻镜头合并；合并后仍不超过最长段长。";
+    const detect = document.createElement("button");
+    detect.type = "button";
+    detect.textContent = "检测镜头";
+    detect.style.cssText = "background:#223744;color:#dce7ee;border:1px solid #3a5363;border-radius:4px;padding:4px 8px;cursor:pointer;font:inherit;";
+    detect.onclick = onDetect;
+    host.append(detect);
     function sync() {
         for (const label of detailLabels) label.style.display = controls.split.value === "shots" ? "flex" : "none";
+        detect.hidden = controls.split.value !== "shots";
     }
     sync();
     return {
+        setBusy(busy) { detect.disabled = busy; detect.textContent = busy ? "检测中…" : "检测镜头"; },
         read: () => ({split: controls.split.value, detector: controls.detector.value,
             sensitivity: Number(controls.sensitivity.value), min_seconds: Number(controls.min_seconds.value)}),
         restore(settings) {
@@ -48,4 +56,8 @@ export function createShotControls(host, onChange) {
 
 export function requestShotPlan(video, settings) {
     return request("replacement/shot-plan", {video, settings});
+}
+
+export function requestSegmentPlan(video, plan) {
+    return request("replacement/plan", {video, plan});
 }

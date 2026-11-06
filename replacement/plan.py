@@ -72,7 +72,20 @@ def make_plan(settings, duration):
         raise ValueError("每段总帧数需要大于上下文重叠帧数。")
     step = raw - context
     split = settings.get("split", "fixed")
-    if enabled and split == "shots":
+    if enabled and settings.get("manual_segments") is not None:
+        segments = []
+        for item in settings["manual_segments"]:
+            left, right = item["start"], item["end"]
+            if type(left) is not int or type(right) is not int or not start <= left < right <= end:
+                raise ValueError("手动分段边界须为选择范围内的有效帧数。")
+            overlap = segments[-1]["end"] - left if segments else 0
+            if segments and (overlap not in (0, context) or right <= segments[-1]["end"] or left <= segments[-1]["start"]):
+                raise ValueError("手动分段须连续覆盖视频，并保持设置的上下文长度。")
+            segments.append({"start": left, "end": right, "cut_before": bool(item.get("cut_before")),
+                             "context_frames": overlap})
+        if not segments or segments[0]["start"] != start or segments[-1]["end"] != end:
+            raise ValueError("手动分段须完整覆盖选择的视频范围。")
+    elif enabled and split == "shots":
         if "cuts" not in settings:
             raise ValueError("请先在视频编辑器中完成镜头检测并保存分段计划。")
         minimum = float(settings.get("min_seconds", 1))

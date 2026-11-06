@@ -3,7 +3,7 @@
 
 import { widgetValue, setWidgetValue, fileUrl, fmt,
          recommendSegmentSeconds, H3_FPS } from './video_editor_support.js';
-import { createShotControls, requestShotPlan } from './shot_planner.js';
+import { createShotControls, requestShotPlan, requestSegmentPlan } from './shot_planner.js';
 
 let currentVideoEditor = null;
 
@@ -436,6 +436,7 @@ export function openVideoEditor(node) {
     let segEnabled = false;
     let segPanelInited = false;
     let segmentRevision = 0;
+    let shotData = null, manualSegments, segmentKey;
 
     const segPanel = document.createElement("div");
     segPanel.style.cssText = "border-top:1px solid #365161;padding-top:10px;margin-top:12px;display:none;";
@@ -500,7 +501,10 @@ export function openVideoEditor(node) {
     segModeSel.innerHTML = `<option value="raw">含上下文</option><option value="delivered">仅新增帧</option>`;
     segParamsRow.appendChild(segModeSel);
 
-    const shotControls = createShotControls(segParamsRow, () => { if (segEnabled) void recalcSegments(); });
+    const shotControls = createShotControls(segParamsRow, key => {
+        if (key === "detector" || key === "sensitivity") shotData = null;
+        if (segEnabled) void recalcSegments();
+    }, detectShots);
 
     const segStatus = document.createElement("div");
     segStatus.style.cssText = "font-size:11px;color:#0aa4d6;margin-bottom:8px;padding:4px 8px;background:#0d1c24;border-radius:4px;display:none;";
@@ -583,7 +587,44 @@ export function openVideoEditor(node) {
                 `background:hsla(${hue},70%,55%,0.5);` +
                 `border-right:1px solid hsla(${hue},80%,70%,0.95);`;
             segOverlay.appendChild(bar);
+            if (i < segPlan.segments.length - 1) {
+                const handle = document.createElement("button");
+                handle.type = "button";
+                handle.className = "yr-pgs-seg-boundary";
+                handle.dataset.boundary = i;
+                handle.setAttribute("aria-label", `调整第 ${i + 1}、${i + 2} 段分界`);
+                handle.title = `拖动调整分界 · 第 ${s.end} 帧（${(s.end / H3_FPS).toFixed(3)} 秒）`;
+                handle.style.left = `${s.end / totalFrames * 100}%`;
+                segOverlay.appendChild(handle);
+            }
         });
+    }
+
+    function segmentSettings() {
+        const seconds = parseFloat(segLenSel.value) || 5;
+        return {enabled: true, mode: segPresetSel.value === "minimaxh3" ? "MiniMax H3" : "普通", ...shotControls.read(),
+            frames: Math.round(seconds * H3_FPS), seconds, overlap: parseInt(segCtxSel.value) || 0,
+            output: segModeSel.value === "raw" ? "完整片段" : "仅新增片段",
+            start: Math.round(gs() * H3_FPS) / H3_FPS, end: Math.round(ge() * H3_FPS) / H3_FPS};
+    }
+
+    async function detectShots() {
+        if (!dur || !segEnabled) return;
+        const revision = ++segmentRevision;
+        shotControls.setBusy(true);
+        svb.disabled = true;
+        segStatus.textContent = "正在检测原视频镜头切换…";
+        try {
+            const result = await requestShotPlan(widgetValue(node, "filename", ""), segmentSettings());
+            if (revision !== segmentRevision || !ov.isConnected || !segEnabled) return;
+            shotData = result.settings;
+            manualSegments = undefined;
+            await recalcSegments();
+        } catch (error) {
+            if (revision === segmentRevision && ov.isConnected) segStatus.textContent = error.message;
+        } finally {
+            shotControls.setBusy(false);
+        }
     }
 
     async function recalcSegments() {
@@ -635,24 +676,28 @@ export function openVideoEditor(node) {
         let safety = 0;
         const minValidLen = (outMode === "raw" && ctx > 0) ? ctx + 1 : 1;
         const shotSettings = shotControls.read();
+        const key = JSON.stringify([rangeStartFrame, rangeEndFrame, raw, ctx, outMode, segPresetSel.value, shotSettings]);
+        if (segmentKey !== undefined && segmentKey !== key) manualSegments = undefined;
+        segmentKey = key;
         segLenLb.textContent = shotSettings.split === "shots" ? "最长段长(总长):" : "段长(总长):";
-        let detectedSettings;
-        if (shotSettings.split === "shots") {
+        if (manualSegments) {
+            finalSegs = structuredClone(manualSegments);
+        } else if (shotSettings.split === "shots") {
             svb.disabled = true;
             segPlan = null;
             segList.innerHTML = "";
             segOverlay.innerHTML = "";
-            segStatus.textContent = "正在检测原视频镜头切换…";
+            if (!shotData) {
+                segStatus.textContent = "点击“检测镜头”分析原视频。";
+                return;
+            }
+            segStatus.textContent = "正在计算分段…";
             try {
-                const detected = await requestShotPlan(widgetValue(node, "filename", ""), {
-                    enabled: true, mode: strictH3 ? "MiniMax H3" : "普通", ...shotSettings,
-                    frames: Math.round(rawLenSec * H3_FPS), seconds: rawLenSec, overlap: ctx,
-                    output: outMode === "raw" ? "完整片段" : "仅新增片段",
-                    start: rangeStartFrame / H3_FPS, end: rangeEndFrame / H3_FPS,
+                const calculated = await requestSegmentPlan(widgetValue(node, "filename", ""), {
+                    ...segmentSettings(), cuts: shotData.cuts, shot_source: shotData.shot_source,
                 });
                 if (revision !== segmentRevision || !ov.isConnected || !segEnabled) return;
-                finalSegs = detected.plan.segments;
-                detectedSettings = detected.settings;
+                finalSegs = calculated.plan.segments;
                 svb.disabled = false;
             } catch (error) {
                 if (revision === segmentRevision && ov.isConnected) segStatus.textContent = error.message;
@@ -695,7 +740,8 @@ export function openVideoEditor(node) {
             range_start_frame: rangeStartFrame,
             range_end_frame: rangeEndFrame,
             ...shotSettings,
-            ...(detectedSettings ? {cuts: detectedSettings.cuts, shot_source: detectedSettings.shot_source} : {}),
+            ...(shotData ? {cuts: shotData.cuts, shot_source: shotData.shot_source} : {}),
+            manual_segments: manualSegments,
         };
         segPlan = plan;
 
@@ -724,12 +770,18 @@ export function openVideoEditor(node) {
         if (droppedTail) {
             warnText = ` · ⚠ 尾段 ≤ ${ctx} 帧重叠已丢弃`;
         }
-        segStatus.textContent = shotSettings.split === "shots"
+        segStatus.textContent = manualSegments ? `${rangeText} · 手动调整 · 共 ${plan.segment_count} 段` : shotSettings.split === "shots"
             ? `${rangeText} · 最长 ${raw} 帧（${rawSec.toFixed(2)}s，含重叠）· 按镜头切分 ${plan.segment_count} 段 · 切镜处关闭上下文`
             : `${rangeText} · ${segLenText} · 共 ${plan.segment_count} 段${warnText}`;
 
+        renderSegmentList();
+        renderSegmentBars();
+    }
+
+    function renderSegmentList() {
+        const showFrames = mode === "frames";
         segList.innerHTML = "";
-        plan.segments.forEach((sg, i) => {
+        segPlan.segments.forEach((sg, i) => {
             const btn = document.createElement("button");
             btn.className = "yr-pgs-seg-item";
             const hue = (i * 137.508) % 360;
@@ -745,7 +797,6 @@ export function openVideoEditor(node) {
             };
             segList.appendChild(btn);
         });
-        renderSegmentBars();
     }
 
     function applySegToggle() {
@@ -795,6 +846,8 @@ export function openVideoEditor(node) {
         const saved = node.properties?.segment_plan;
         if (saved && saved.segments && saved.segments.length) {
             shotControls.restore(saved);
+            if (saved.shot_source === widgetValue(node, "filename", "") && Array.isArray(saved.cuts)) shotData = saved;
+            manualSegments = saved.manual_segments;
             segEnabled = true;
             segPresetSel.value = saved.preset || "none";
             rebuildSegLenOptions(saved.target_seconds ?? saved.segment_seconds ?? recommendSegmentSeconds(dur * H3_FPS));
@@ -1230,6 +1283,15 @@ export function openVideoEditor(node) {
 
     ts.onpointerdown = e => {
         if (!dur) return;
+        const boundary = e.target.closest(".yr-pgs-seg-boundary");
+        if (boundary) {
+            e.preventDefault();
+            const index = Number(boundary.dataset.boundary), segments = segPlan.segments;
+            drg = {boundary: index, overlap: segments[index].end - segments[index + 1].start};
+            ve.pause();
+            ts.setPointerCapture(e.pointerId);
+            return;
+        }
         const r = ts.getBoundingClientRect(),
             x = e.clientX - r.left,
             sx = gs() / dur * r.width,
@@ -1248,6 +1310,22 @@ export function openVideoEditor(node) {
         const r = ts.getBoundingClientRect(),
             x = Math.max(0, Math.min(e.clientX - r.left, r.width)),
             v = x / r.width * dur;
+        if (typeof drg === "object") {
+            const index = drg.boundary, segments = segPlan.segments, left = segments[index], right = segments[index + 1];
+            const context = index ? segments[index - 1].end - left.start : 0;
+            const upper = Math.min(right.end - 1, (segments[index + 2]?.start ?? right.end) + drg.overlap - 1);
+            const frame = Math.max(left.start + Math.max(context, drg.overlap) + 1,
+                Math.min(upper, Math.round(v * H3_FPS)));
+            left.end = frame;
+            right.start = frame - drg.overlap;
+            manualSegments = structuredClone(segments);
+            segPlan.manual_segments = manualSegments;
+            ve.currentTime = frame / H3_FPS;
+            segStatus.textContent = `手动调整 · 第 ${index + 1}、${index + 2} 段分界：${frame} 帧（${(frame / H3_FPS).toFixed(3)} 秒）`;
+            renderSegmentList();
+            renderSegmentBars();
+            return;
+        }
         if (drg === "start") {
             if (v < ge()) setWidgetValue(node, "start_time", v);
         } else if (drg === "end") {
@@ -1268,10 +1346,13 @@ export function openVideoEditor(node) {
         if (ve) ve.currentTime = gs();
     };
     ts.onpointerup = () => {
+        const boundary = typeof drg === "object" && drg !== null;
         drg = null;
+        if (boundary) return;
         if (ve) ve.currentTime = gs();
         if (segEnabled) recalcSegments();
     };
+    ts.onpointercancel = () => { drg = null; };
 
     cb.onpointerdown = e => {
         if (!cropOn) return;
