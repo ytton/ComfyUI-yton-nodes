@@ -51,14 +51,14 @@ def expand_segments(hidden, plan, segments, loop_generation):
             save_inputs = prompt[save_id]["inputs"]
             prefix = save_inputs["filename_prefix"]
             if is_link(prefix) and prefix[0] in descendants:
-                if prompt[prefix[0]]["class_type"] != "YtonReplacementSegment" or prefix[1] != 9:
+                if prompt[prefix[0]]["class_type"] != plan.get("parser_type", "YtonReplacementSegment") or prefix[1] != 9:
                     raise ValueError("重跑片段时，保存目录请连接配置解析器的项目目录，或使用固定目录。")
                 config = json.loads(plan["config"])
-                prefix = f"video/人物替换/%date:yyyy-MM-dd%/{input_path(config['video']).stem}/"
+                prefix = f"{plan.get('project_prefix', 'video/人物替换')}/%date:yyyy-MM-dd%/{input_path(config['video']).stem}/"
             previous_video = graph.node("YtonReplacementPreviousSegment", "previous",
                 filename_prefix=prefix, reuse_existing=save_inputs.get("reuse_existing", False),
                 index=index, total=plan["total"], save_id=save_id).out(0)
-        step = graph.node("YtonReplacementLoopStep", f"step_{position}",
+        step = graph.node(plan.get("loop_step_type", "YtonReplacementLoopStep"), f"step_{position}",
             plan={**plan, "index": index, "segment": segments[index]},
             previous_video=previous_video, dependency=previous_barrier)
         copies = {}

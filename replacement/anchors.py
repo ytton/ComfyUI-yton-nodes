@@ -17,7 +17,7 @@ def segment_info(config, index):
 
 
 def read_frame(path, fps, frame):
-    with av.open(str(path)) as container:
+    with av.open(str(path) if isinstance(path, (str, Path)) else path) as container:
         stream = container.streams.video[0]
         timestamp = frame / fps
         container.seek(int(timestamp / stream.time_base), stream=stream, backward=True)

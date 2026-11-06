@@ -26,6 +26,12 @@ python -m pip install -r ComfyUI-yton-nodes/requirements.txt
 
 ## 常用节点
 
+### Viggle 人物替换
+
+位于 **yton-nodes → Viggle**。独立配置器支持四张参考图或四个替换关键帧，内嵌视频帧条、按 C 选帧、拖拽与粘贴上传，以及一键使用上一段对应的重叠帧。
+
+配置解析器直接输出四张参考图和 `pins`，连接官方 Viggle Remake Conditioning。配套的视频长度调整节点在生成前补尾帧到 `17n+5`，生成后恢复原长度并去除重复的 5 帧开头；支持循环保存与合并。连接方式见 [Viggle 人物替换](docs/VIGGLE_REPLACEMENT.md)。
+
 ### 模式参数映射
 
 位于 **yton-nodes → 逻辑**。节点上用分段器切换模式，右下角齿轮按 **Option → 输出 → 参数值** 配置：先定义模式，再定义所有模式共用的输出名称与类型，最后分别填写各模式的值。

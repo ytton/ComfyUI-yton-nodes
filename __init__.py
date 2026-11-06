@@ -97,3 +97,11 @@ from .nodes.video_save_node import YtonVideoSave
 _video_save_schema = YtonVideoSave.define_schema()
 NODE_CLASS_MAPPINGS[_video_save_schema.node_id] = YtonVideoSave
 NODE_DISPLAY_NAME_MAPPINGS[_video_save_schema.node_id] = _video_save_schema.display_name
+
+from .viggle.nodes import CLASSES as _viggle_classes
+from .viggle.routes import install as _install_viggle_routes
+for _node in _viggle_classes:
+    _schema = _node.define_schema()
+    NODE_CLASS_MAPPINGS[_schema.node_id] = _node
+    NODE_DISPLAY_NAME_MAPPINGS[_schema.node_id] = _schema.display_name
+_install_viggle_routes()
