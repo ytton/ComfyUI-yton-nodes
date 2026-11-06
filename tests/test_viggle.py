@@ -10,7 +10,7 @@ import asyncio
 import uuid
 
 import test_character_replacement as fixture
-from replacement_test_plugin.viggle.length import adjust, aligned_frames
+from replacement_test_plugin.nodes.h3_video_length_node import YtonH3VideoLength, adjust
 from replacement_test_plugin.viggle.media import DEFAULT_CONFIG, parse_config, plan_for, previous_frame, references, segment, segment_metadata
 from replacement_test_plugin.viggle.nodes import CLASSES, YtonViggleReplacementSegment
 from replacement_test_plugin.viggle.prompts import optimize, signature
@@ -38,35 +38,6 @@ class ViggleTests(unittest.TestCase):
         audio = {"waveform": torch.arange(round(count / float(rate) * 48000)).float().view(1, 1, -1), "sample_rate":48000}
         return InputImpl.VideoFromComponents(Types.VideoComponents(images=images, frame_rate=Fraction(rate), audio=audio))
 
-    def test_tail_padding_and_restore_matrix(self):
-        for count in (1, 55, 56, 174, 200, 205, 345):
-            for first in (True, False):
-                if count <= 5 and not first:
-                    continue
-                with self.subTest(count=count, first=first):
-                    source = self.video(count)
-                    result = adjust(source,"适配 H3","5 帧",first)
-                    video, images, audio, frames, raw, info = result
-                    self.assertEqual(frames, aligned_frames(count))
-                    self.assertTrue(torch.equal(images[:count],source.get_components().images))
-                    self.assertTrue(torch.equal(images[count:],images[count-1:count].expand_as(images[count:])))
-                    self.assertEqual(audio["waveform"].shape[-1],frames*2000)
-                    self.assertEqual(torch.count_nonzero(audio["waveform"][...,count*2000:]),0)
-                    restored=adjust(video,"恢复原长度","5 帧",first,length_info=info)
-                    head=0 if first else 5
-                    self.assertEqual(restored[3],count-head)
-                    self.assertTrue(torch.equal(restored[1],source.get_components().images[head:]))
-                    self.assertTrue(torch.equal(restored[2]["waveform"],source.get_components().audio["waveform"][...,head*2000:]))
-
-    def test_24fps_and_validation(self):
-        self.assertEqual(adjust(self.video(100,25),"适配 H3","无上下文",True)[4],96)
-        with self.assertRaisesRegex(ValueError,"345"):
-            aligned_frames(346)
-        with self.assertRaisesRegex(ValueError,"上下文"):
-            adjust(self.video(200),"适配 H3","无上下文",False,segment_info={"context_frames":5,"source_frames":200})
-        with self.assertRaisesRegex(ValueError,"长度信息"):
-            adjust(self.video(200),"恢复原长度","5 帧",False)
-
     def test_editor_context_drives_plan_and_length_restore(self):
         for overlap in (0, 6, 12, 22):
             with self.subTest(overlap=overlap):
@@ -77,12 +48,10 @@ class ViggleTests(unittest.TestCase):
                 info, _, _ = segment_metadata(config, 1)
                 self.assertEqual(info["overlap_frames"], overlap)
                 self.assertEqual(info["context_frames"], overlap)
-                padded = adjust(source, "适配 H3", "按片段配置", False, segment_info=info)
-                restored = adjust(padded[0], "恢复原长度", "按片段配置", False, length_info=padded[5])
-                self.assertEqual(restored[3], source.get_frame_count() - overlap)
-                self.assertTrue(torch.equal(restored[1], source.get_components().images[overlap:]))
-        with self.assertRaisesRegex(ValueError, "需要连接"):
-            adjust(self.video(100), "适配 H3", "按片段配置", True)
+                padded = adjust(source)
+                restored = adjust(padded[0], padded[4])
+                self.assertEqual(restored[3], source.get_frame_count())
+                self.assertTrue(torch.equal(restored[1], source.get_components().images))
 
     def test_reference_and_pin_order(self):
         config=self.config()
@@ -115,20 +84,23 @@ class ViggleTests(unittest.TestCase):
     def test_real_executor_loop_restores_and_merges_once(self):
         import execution
         import nodes
+        from comfy_extras.nodes_video import VideoSlice
         from server import PromptServer
 
         config=self.config()
+        config["plan"]["overlap"] = 6
         prompt={
             "plan":{"class_type":"YtonViggleReplacementPlan","inputs":{"config":json.dumps(config),"selected_index":0,"loop_generation":True}},
             "parse":{"class_type":"YtonViggleReplacementSegment","inputs":{"plan":["plan",0]}},
-            "pad":{"class_type":"YtonViggleVideoLength","inputs":{"video":["parse",0],"mode":"适配 H3","context":"5 帧","first_segment":True,"segment_info":["parse",11]}},
+            "pad":{"class_type":"YtonH3VideoLength","inputs":{"video":["parse",0],"original_frames":0}},
             # The padded video stands in for a generated result, preserving the
             # true source frames so duplicate removal can be verified exactly.
-            "restore":{"class_type":"YtonViggleVideoLength","inputs":{"video":["pad",0],"mode":"恢复原长度","context":"5 帧","first_segment":True,"length_info":["pad",5]}},
+            "restore":{"class_type":"YtonH3VideoLength","inputs":{"video":["pad",0],"original_frames":["pad",4]}},
             "save":{"class_type":"YtonReplacementVideoSave","inputs":{"video":["restore",0],"current":["parse",8],"total":["parse",10],
                     "filename_prefix":["parse",9],"container":"mp4","fps":24,"crf":18,"reuse_existing":False,"save_full":True}},
         }
-        mapping={cls.__name__:cls for cls in [*fixture.CLASSES,*CLASSES]}
+        mapping={cls.__name__:cls for cls in [*fixture.CLASSES,*CLASSES,YtonH3VideoLength]}
+        mapping["Video Slice"] = VideoSlice
         events=[]
         server=types.SimpleNamespace(client_id=None,last_node_id=None,send_sync=lambda *args:events.append(args),send_progress_text=lambda *args:None)
         with patch.dict(nodes.NODE_CLASS_MAPPINGS,mapping),patch.object(PromptServer,"instance",server,create=True):
@@ -140,7 +112,7 @@ class ViggleTests(unittest.TestCase):
         manifests=list((fixture.ReplacementTests.root/"output/video/Viggle").rglob("segments.json"))
         self.assertEqual(len(manifests),1)
         manifest=json.loads(manifests[0].read_text())
-        self.assertEqual([manifest["segments"][str(i)]["frames"] for i in (1,2,3)],[36,31,5])
+        self.assertEqual([manifest["segments"][str(i)]["frames"] for i in (1,2,3)],[36,30,6])
         self.assertEqual(InputImpl.VideoFromFile(str(manifests[0].parent/"complete.mp4")).get_frame_count(),72)
 
     def test_overlap_ignores_padding_and_handles_restored_previous(self):
@@ -171,15 +143,32 @@ class ViggleTests(unittest.TestCase):
         node=type("ViggleParserTest",(YtonViggleReplacementSegment,),{})
         node.hidden=io.HiddenHolder.from_dict({io.Hidden.unique_id:"parser",io.Hidden.dynprompt:fixture.DynamicPrompt({})})
         result=node.execute({"config":json.dumps(config),"index":0,"previous_video":None,"llm":None})
-        self.assertEqual(len(result.result),12)
+        self.assertEqual(len(result.result),14)
         self.assertIsNone(result.result[4])
         self.assertEqual(result.result[6],"")
+        self.assertEqual(result.result[12:], (0, True))
         self.assertTrue(result.result[9].startswith("video/Viggle/"))
         for cls in CLASSES:
             self.assertEqual(cls.GET_NODE_INFO_V1()["name"],cls.__name__)
         config["images"]=[""]*6
         with self.assertRaisesRegex(ValueError,"四个"):
             parse_config(config)
+
+    def test_parser_context_and_first_segment_outputs(self):
+        node=type("ViggleContextParser",(YtonViggleReplacementSegment,),{})
+        node.hidden=io.HiddenHolder.from_dict({io.Hidden.unique_id:"context-parser",io.Hidden.dynprompt:fixture.DynamicPrompt({})})
+        config=self.config()
+        for overlap in (0, 6, 12, 22):
+            config["plan"]["overlap"] = overlap
+            for index in (0, 1):
+                with self.subTest(overlap=overlap,index=index):
+                    result=node.execute({"config":json.dumps(config),"index":index,"previous_video":None,"llm":None})
+                    self.assertEqual(result.result[12:], (overlap if index else 0, index == 0))
+        config["plan"].update(split="shots", min_seconds=.1, cuts=[0,36,72], shot_source=config["video"])
+        result=node.execute({"config":json.dumps(config),"index":1,"previous_video":None,"llm":None})
+        self.assertEqual(result.result[12:], (0, False))
+        definition=YtonViggleReplacementSegment.GET_NODE_INFO_V1()
+        self.assertEqual(definition["output"][-2:], ["INT", "BOOLEAN"])
 
 
 if __name__ == "__main__":

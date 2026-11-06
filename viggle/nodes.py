@@ -8,7 +8,6 @@ from ..replacement.loop import expand_segments
 from ..replacement.media import image_tensors, input_path, output_size
 from ..replacement.prompts import prompt_slot, source_prompt
 from ..replacement.save import execution_state
-from .length import YtonViggleVideoLength
 from .media import DEFAULT_CONFIG, parse_config, plan_for, references, segment, segment_metadata
 from .prompts import optimize, resolve_references, signature
 
@@ -37,7 +36,7 @@ class YtonViggleReplacementPlan(io.ComfyNode):
         value = {"config": config, "llm": llm, "index": index, "total": len(plan["segments"]),
                  "segment": plan["segments"][index], "previous_video": None,
                  "loop_step_type": "YtonViggleLoopStep", "parser_type": "YtonViggleReplacementSegment",
-                 "project_prefix": "video/Viggle"}
+                 "project_prefix": "video/Viggle", "trim_overlap_on_save": True}
         execution_state(cls.hidden.dynprompt, cls.hidden.unique_id)
         expanded = expand_segments(cls.hidden, value, plan["segments"], loop_generation)
         return expanded if expanded is not None else io.NodeOutput(value)
@@ -66,7 +65,9 @@ class YtonViggleReplacementSegment(io.ComfyNode):
                      *[io.Image.Output(display_name=f"参考图 {i}") for i in range(1, 5)],
                      io.String.Output(display_name="pins"), io.Int.Output(display_name="短边尺寸"),
                      io.Int.Output(display_name="片段序号"), io.String.Output(display_name="项目目录"),
-                     io.Int.Output(display_name="片段总数"), io.Custom("YTON_VIGGLE_SEGMENT").Output(display_name="片段信息")],
+                     io.Int.Output(display_name="片段总数"), io.Custom("YTON_VIGGLE_SEGMENT").Output(display_name="片段信息"),
+                     io.Int.Output(display_name="上下文长度（帧）", tooltip="当前段开头与上一段实际重叠的帧数；首段或切镜后不承接时为 0。"),
+                     io.Boolean.Output(display_name="是否首段", tooltip="当前片段为整个分段计划的第一段时输出 true。")],
             hidden=[io.Hidden.unique_id, io.Hidden.dynprompt])
 
     @classmethod
@@ -97,8 +98,8 @@ class YtonViggleReplacementSegment(io.ComfyNode):
         width, height = output_size(config, metadata)
         prefix = f"video/Viggle/%date:yyyy-MM-dd%/{input_path(config['video']).stem}/"
         return io.NodeOutput(video, text, *tensors, pins, min(width, height), index + 1, prefix,
-            info["total"], info, ui={"viggle_prompt": [{"index": index, "slot": slot, "text": text,
+            info["total"], info, info["overlap_frames"], index == 0, ui={"viggle_prompt": [{"index": index, "slot": slot, "text": text,
                 "signature": digest, "width": width, "height": height}]})
 
 
-CLASSES = [YtonViggleReplacementPlan, YtonViggleReplacementSegment, YtonViggleLoopStep, YtonViggleVideoLength]
+CLASSES = [YtonViggleReplacementPlan, YtonViggleReplacementSegment, YtonViggleLoopStep]

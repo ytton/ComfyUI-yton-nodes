@@ -14,6 +14,7 @@ from replacement_test_plugin.replacement.nodes import YtonLLMConnector, YtonLoca
 from replacement_test_plugin.replacement import routes as replacement_routes
 from replacement_test_plugin.llama_optimizer_config import DEFAULT_OPTIONS, FIELDS
 from replacement_test_plugin.local_llm_connection import runtime
+from replacement_test_plugin.nodes.h3_video_length_node import YtonH3VideoLength
 from replacement_test_plugin.prompt_optimizer import get_store
 import server
 
@@ -68,7 +69,7 @@ async def replacement_config(request):
 
 @table.get("/definitions")
 async def definitions(request):
-    return web.json_response({cls.__name__:cls.GET_NODE_INFO_V1() for cls in [*CLASSES,YtonReplacementVideoSave,YtonLLMConnector,YtonLocalLLMConnector,YtonReplacementPlan]})
+    return web.json_response({cls.__name__:cls.GET_NODE_INFO_V1() for cls in [*CLASSES,YtonReplacementVideoSave,YtonLLMConnector,YtonLocalLLMConnector,YtonReplacementPlan,YtonH3VideoLength]})
 
 
 @table.get("/config")

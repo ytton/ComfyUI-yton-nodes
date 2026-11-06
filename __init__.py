@@ -98,6 +98,11 @@ _video_save_schema = YtonVideoSave.define_schema()
 NODE_CLASS_MAPPINGS[_video_save_schema.node_id] = YtonVideoSave
 NODE_DISPLAY_NAME_MAPPINGS[_video_save_schema.node_id] = _video_save_schema.display_name
 
+from .nodes.h3_video_length_node import YtonH3VideoLength
+_length_schema = YtonH3VideoLength.define_schema()
+NODE_CLASS_MAPPINGS[_length_schema.node_id] = YtonH3VideoLength
+NODE_DISPLAY_NAME_MAPPINGS[_length_schema.node_id] = _length_schema.display_name
+
 from .viggle.nodes import CLASSES as _viggle_classes
 from .viggle.routes import install as _install_viggle_routes
 for _node in _viggle_classes:
