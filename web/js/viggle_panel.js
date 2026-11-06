@@ -6,13 +6,14 @@ import { openReplacementEditor } from "./replacement_editor.js";
 import { openReplacementSkill } from "./replacement_skill.js";
 import { createViggleMedia } from "./viggle_media.js";
 import { buildRichEditor } from "./replacement/prompt_editor.js";
-import { injectStyles } from "./replacement/prompt_editor_support.js";
+import { injectStyles, resolvePromptAliases, resolveNativeLabelsToAliases } from "./replacement/prompt_editor_support.js";
 
 export function setupVigglePanel(node) {
   const widgets=Object.fromEntries(node.widgets.map(widget=>[widget.name,widget]));
   for(const name of ["config","selected_index","loop_generation"])hideWidget(widgets[name]);
   let config=JSON.parse(widgets.config.value),index=widgets.selected_index.value,planData,preview;
   let removed=false,busy=false,tab="original",editor,editorAbort,revision=0;
+  let richMode=true;
   const root=el("div","yton-replacement-panel vv-panel");
   const right=el("div","vv-prompt"),message=el("div","yr-status");message.setAttribute("role","status");
   const status=text=>{message.textContent=text;};
@@ -54,8 +55,9 @@ export function setupVigglePanel(node) {
   const optimizedTab=button("本段优化",()=>{tab="optimized";renderEditor();});tabs.append(originalTab,optimizedTab);
   const toolbar=el("div","yr-prompt-toolbar");
   const reference=button("@ 引用",()=>{editor?.focus();editor?.showAliasMenu();}),dialogue=button("# 对白",()=>editor?.insertDialogue());
+  const modeButton=button("纯文本",()=>{richMode=!richMode;renderEditor();},"切换纯文本与富文本");
   for(const control of [reference,dialogue])control.addEventListener("pointerdown",event=>event.preventDefault());
-  toolbar.append(reference,dialogue,button("抽帧预览",previewFrames));
+  toolbar.append(reference,dialogue,modeButton,button("抽帧预览",previewFrames));
   const editorHost=el("div","vv-editor-host"),scope=el("div","vv-scope yr-muted");
   const controls=el("div","vv-controls");
   right.append(heading,navigation,switches,tabs,toolbar,editorHost,scope,controls);
@@ -76,16 +78,30 @@ export function setupVigglePanel(node) {
   function renderEditor() {
     editorAbort?.abort();editor?.dispose();editorAbort=new AbortController();
     const value=tab==="original" ? original() : config.optimized[slot()]?.text || "";
-    editor=buildRichEditor({initialText:value,assets:assets(),ownerGraph:node.graph,resolveLabels:true,signal:editorAbort.signal,
-      onInput:text=>{
-        if(tab==="original"){config.prompts[slot()]=text;delete config.optimized[slot()];}
-        else if(config.optimized[slot()])config.optimized[slot()].text=text;
-        commit();
-      }});
-    editor.editor.setAttribute("aria-label",tab==="original"?"Viggle 原始要求":"Viggle 优化提示词");
-    editor.editor.dataset.placeholder=tab==="original"?"描述谁替换谁，输入 @ 引用图片":"点击优化生成本段提示词";
-    editor.editor.contentEditable=String(tab==="original" || !!config.optimized[slot()]);
-    editorHost.replaceChildren(editor.editor);
+    const saveText=text=>{
+      if(tab==="original"){config.prompts[slot()]=text;delete config.optimized[slot()];}
+      else if(config.optimized[slot()])config.optimized[slot()].text=text;
+      commit();
+    };
+    const label=tab==="original"?"Viggle 原始要求":"Viggle 优化提示词";
+    const placeholder=tab==="original"?"描述谁替换谁，输入 @ 引用图片":"点击优化生成本段提示词";
+    const readOnly=tab==="optimized" && !config.optimized[slot()];
+    if(richMode) {
+      editor=buildRichEditor({initialText:value,assets:assets(),ownerGraph:node.graph,resolveLabels:true,signal:editorAbort.signal,onInput:saveText});
+      editor.editor.setAttribute("aria-label",label);
+      editor.editor.dataset.placeholder=placeholder;
+      editor.editor.contentEditable=String(!readOnly);
+      editorHost.replaceChildren(editor.editor);
+    } else {
+      editor=null;
+      const plainEditor=el("textarea","yr-plain-editor");
+      plainEditor.value=resolvePromptAliases(value,assets());
+      plainEditor.setAttribute("aria-label",label);plainEditor.placeholder=placeholder;plainEditor.readOnly=readOnly;
+      plainEditor.addEventListener("input",()=>saveText(resolveNativeLabelsToAliases(plainEditor.value,assets())));
+      editorHost.replaceChildren(plainEditor);
+    }
+    modeButton.textContent=richMode?"纯文本":"富文本";
+    reference.disabled=!richMode;dialogue.disabled=!richMode;
     originalTab.classList.toggle("active",tab==="original");optimizedTab.classList.toggle("active",tab==="optimized");
     scope.textContent=`${config.shared?"全段共用":"按片段独立保存"} · ${config.mode==="keyframe"?"关键帧模式":"参考图模式"}`;
   }

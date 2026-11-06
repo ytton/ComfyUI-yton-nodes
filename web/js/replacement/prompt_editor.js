@@ -31,12 +31,13 @@ export function tokensFromText(text, assets) {
   return parts;
 }
 
-export function editorPlainText(editor) {
+export function editorPlainText(editor, { displayLabels = false } = {}) {
   function read(node, root) {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
-    if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) return [...node.childNodes].map(child => read(child, root)).join("");
-    if (node.nodeType !== Node.ELEMENT_NODE) return "";
-    if (node.classList?.contains("yr-pgs-token")) return node.dataset.token ?? node.textContent ?? "";
+    if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return "";
+    if (node.classList?.contains("yr-pgs-token")) return displayLabels
+      ? node.querySelector(".yr-pgs-token-label")?.textContent ?? node.textContent ?? ""
+      : node.dataset.token ?? node.textContent ?? "";
     if (node.tagName === "BR") return "\n";
     let text = "";
     for (const child of node.childNodes) {
@@ -46,7 +47,8 @@ export function editorPlainText(editor) {
     if (["DIV", "P"].includes(node.tagName) && node !== root && !text.endsWith("\n")) text += "\n";
     return text;
   }
-  return read(editor, editor).replace(/\n$/, "");
+  const text = read(editor, editor);
+  return ["DIV", "P"].includes(editor.lastChild?.nodeName) ? text.replace(/\n$/, "") : text;
 }
 
 export function buildRichEditor({ initialText, assets, onInput, ownerGraph, resolveLabels = false, signal }) {
@@ -118,6 +120,16 @@ export function buildRichEditor({ initialText, assets, onInput, ownerGraph, reso
     insertPlainText(`<d>${selected}</d>`);
   }
 
+  function copySelection(event) {
+    const selection = globalThis.getSelection?.();
+    if (!event.clipboardData || !selection?.rangeCount || selection.isCollapsed) return false;
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) return false;
+    event.clipboardData.setData("text/plain", editorPlainText(range.cloneContents(), { displayLabels: true }));
+    event.preventDefault();
+    return true;
+  }
+
   function closeAliasMenu() { if (aliasMenu) { aliasMenu.remove(); aliasMenu = null; } aliasMenuItems = []; aliasMenuIndex = -1; aliasMenuAssets = []; aliasMenuRange = null; }
 
   function setAliasMenuIndex(index) {
@@ -185,6 +197,13 @@ export function buildRichEditor({ initialText, assets, onInput, ownerGraph, reso
   }
 
   editor.addEventListener("keydown", handleEditorKeydown);
+  editor.addEventListener("copy", copySelection);
+  editor.addEventListener("cut", event => {
+    if (!copySelection(event) || editor.contentEditable === "false") return;
+    const range = globalThis.getSelection().getRangeAt(0);
+    range.deleteContents(); range.collapse(true);
+    editor.dispatchEvent(new Event("input", { bubbles: true }));
+  });
   editor.addEventListener("input", event => {
     const text = editorPlainText(editor);
     onInput(text);

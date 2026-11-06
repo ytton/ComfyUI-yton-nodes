@@ -88,6 +88,48 @@ async (basePage) => {
     await page.keyboard.type("后续");
     const multilineText = await page.evaluate(() => window.savedPrompt);
     check(multilineText.includes("右侧人物替换为\n新行@图片2后续，保留原背景。"), `Enter创建新行后引用和后续文字保持原顺序：${JSON.stringify(multilineText)}`);
+
+    async function clipboard(type = "copy") {
+      return page.evaluate(type => {
+        const data = new DataTransfer();
+        const event = new ClipboardEvent(type, {bubbles:true,cancelable:true,clipboardData:data});
+        window.richEditor.editor.dispatchEvent(event);
+        return {text:data.getData("text/plain"),handled:event.defaultPrevented,prompt:window.savedPrompt};
+      }, type);
+    }
+    const selectAll = () => page.evaluate(() => {
+      const editor=window.richEditor.editor;editor.focus();
+      const range=document.createRange();range.selectNodeContents(editor);
+      getSelection().removeAllRanges();getSelection().addRange(range);
+    });
+    await selectAll();
+    const typedLines=await clipboard();
+    check(typedLines.text===multilineText.replaceAll('@视频','<Video 1>').replaceAll('@图片1','<Picture 1>').replaceAll('@图片2','<Picture 2>'),"Enter 创建的段落在复制时保留原换行");
+    const singleLine="将@视频中的人物替换为@图片1，保留<Subject 1>的身份与<d>你好</d>。";
+    const displayed="将<Video 1>中的人物替换为<Picture 1>，保留<Subject 1>的身份与<d>你好</d>。";
+    await page.evaluate(text=>{window.mountEditor(text);window.richEditor.editor.style.width="160px";},singleLine);
+    await selectAll();
+    let copied=await clipboard();
+    check(copied.handled && copied.text===displayed,"复制引用标签与对白按显示文字输出，视觉折行不会变成换行");
+    check(copied.prompt===singleLine,"复制不改变提示词保存内容和素材别名");
+    const explicitLines="第一行@视频\n\n第二行@图片1\n";
+    await page.evaluate(text=>window.mountEditor(text),explicitLines);await selectAll();
+    copied=await clipboard();
+    check(copied.text==="第一行<Video 1>\n\n第二行<Picture 1>\n","复制保留用户的空行与末尾换行");
+    check(await page.evaluate(()=>window.richEditor.getText())===explicitLines,"文本读取保留原始末尾换行");
+    await page.evaluate(()=>{
+      window.mountEditor("开头@视频中的人物替换为@图片1，结束。");
+      const editor=window.richEditor.editor,range=document.createRange();editor.focus();
+      range.setStart(editor.firstChild,2);range.setEnd(editor.querySelectorAll('.yr-pgs-token')[1].nextSibling,0);
+      getSelection().removeAllRanges();getSelection().addRange(range);
+    });
+    copied=await clipboard();
+    check(copied.text==="<Video 1>中的人物替换为<Picture 1>","局部选择只复制选中的引用和文字");
+    const cut=await clipboard("cut");
+    check(cut.text===copied.text && cut.prompt==="开头，结束。","剪切使用相同复制规则，并同步保存删除后的提示词");
+    await page.evaluate(()=>{window.mountEditor("只读@图片1");window.richEditor.editor.contentEditable="false";});await selectAll();
+    const readonly=await clipboard("cut");
+    check(readonly.text==="只读<Picture 1>" && readonly.prompt==="只读@图片1","只读提示词可复制，剪切不会删除文字");
     await page.screenshot({path:"C:/Users/YuanTong/AppData/Local/Temp/replacement-prompt-editor-fixed.png"});
     return {checks};
   } finally {await context.close();}
