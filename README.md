@@ -160,6 +160,8 @@ Option 页可设置按钮的行数与列数，网格容量不足时自动补行�
 
 [examples](examples) 中提供媒体加载与 H3 工作流示例。导入后按自己的环境选择模型、素材和保存位置；部分示例需要其他节点包。
 
+[人物替换专用流-自动循环 (viggle)](<examples/人物替换专用流-自动循环 (viggle).json>)：Viggle Remake 人物替换示例，包含模型加载与优化子图、替换／编辑 Sigma 切换、长度补帧与复原、分段循环保存。默认从第一个片段循环至末段；导入后重新上传原视频、参考图或替换关键帧，并填写人物对应关系。依赖与接线说明见 [Viggle 人物替换](docs/VIGGLE_REPLACEMENT.md)。
+
 [OLDX 人物遮罩局部替换](docs/oldx-mask-swap.md)：在多人场景里涂选一个人物，仅将该人物的局部图送入 Qwen Image 2.1，替换后按原遮罩贴回完整图片。
 
 可选的 Qwen Launcher 显存联动默认关闭，在 ComfyUI 设置的 **yton-nodes → 本地模型联动** 中开启。此功能会在执行前卸载启动器模型，并在工作流运行期间阻止其重新加载，配置与限制见 [本地模型显存联动](docs/launcher-guard.md)。

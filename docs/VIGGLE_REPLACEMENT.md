@@ -7,6 +7,12 @@
 
 通用的 **H3 视频长度调整**位于 `yton-nodes/MiniMax H3`，可在生成前补尾帧、生成后裁回原长度。
 
+## 示例工作流
+
+导入 [人物替换专用流-自动循环 (viggle)](<../examples/人物替换专用流-自动循环 (viggle).json>)，选择本机的 Viggle Remake 主模型、CLIP、视频／音频 VAE。还需要提供 `RemakeConditioning`、`RemakeNoise` 的 ComfyUI-Viggle-Remake 节点、[ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes)，以及 [LegacyWidgetWidthFix](https://github.com/pekkAi-dev/ComfyUI-LegacyWidgetWidthFix)。本地 LLM 连接器仅在优化提示词时需要匹配的 GGUF 与视觉投影文件。
+
+示例保留原流程的模型、Sigma、分段与接线配置，清空本地媒体、临时关键帧、已有优化稿和预览记录，默认从第一段循环到末段。先上传原视频并重新规划分段，再使用参考图模式上传人物图片，或在关键帧模式收集帧并上传替换图；填写人物映射后执行。模型和参考素材不随示例提供。
+
 ## 交互
 
 参考图模式固定四个等大槽，空槽、部分上传、全部上传均保持尺寸。图片支持标题按钮上传、拖拽到具体槽，以及选中节点后 Ctrl + V；点击图片槽后粘贴会替换该槽。
