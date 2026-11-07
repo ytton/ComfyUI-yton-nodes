@@ -124,6 +124,72 @@ class ViggleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"重叠"):
             previous_frame(config,1,5,self.video(56))
 
+    def test_retry_and_resume_use_connected_project_directory(self):
+        import execution
+        import nodes
+        from server import PromptServer
+
+        config = self.config()
+        config["mode"] = "keyframe"
+        config["keyframes"] = {str(i): [{"frame": 0, "image": "red.png", "source": "previous"}]
+                               for i in (1, 2)}
+        mapping = {cls.__name__: cls for cls in [*fixture.CLASSES, *CLASSES, YtonH3VideoLength]}
+        server = types.SimpleNamespace(client_id=None, last_node_id=None,
+            send_sync=lambda *args: None, send_progress_text=lambda *args: None)
+        for loop in (False, True):
+            for existing in (False, True):
+                with self.subTest(loop=loop, existing=existing):
+                    output = fixture.ReplacementTests.root / "output" / "rerun" / f"{loop}-{existing}"
+                    output.mkdir(parents=True)
+                    prefix = "video/Viggle/%date:yyyy-MM-dd%/source/"
+                    with patch.object(fixture.folder_paths, "get_output_directory", return_value=str(output)):
+                        first_file = before = None
+                        if existing:
+                            initial = dict(run=uuid.uuid4().hex,
+                                started_at=fixture.datetime.now().astimezone(), prefix=prefix)
+                            first = fixture.save_segment(segment(config, 0)[0], 1, 3, **initial)
+                            first_file = fixture.Path(first["_project_root"]) / "segment_0001.mp4"
+                            before = first_file.stat().st_mtime_ns
+                            fixture.save_segment(segment(config, 1)[0], 2, 3,
+                                **initial, project_root=first["_project_root"])
+                            second_file = first_file.with_name("segment_0002.mp4")
+                            second_before = second_file.stat().st_mtime_ns
+                        prompt = {
+                            "plan": {"class_type": "YtonViggleReplacementPlan", "inputs": {
+                                "config": json.dumps(config), "selected_index": 1, "loop_generation": loop}},
+                            "parse": {"class_type": "YtonViggleReplacementSegment", "inputs": {"plan": ["plan", 0]}},
+                            "restore": {"class_type": "YtonH3VideoLength", "inputs": {
+                                "video": ["parse", 0], "mode": "复原", "original_frames": ["parse", 1],
+                                "context_frames": ["parse", 13], "first_segment": ["parse", 14]}},
+                            "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
+                                "video": ["restore", 0], "current": ["parse", 9], "total": ["parse", 11],
+                                "filename_prefix": ["parse", 10], "container": "mp4", "fps": 24, "crf": 18,
+                                "reuse_existing": True, "save_full": True}},
+                        }
+                        with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), \
+                             patch.object(PromptServer, "instance", server, create=True), \
+                             patch("replacement_test_plugin.viggle.nodes.references", wraps=references) as observed:
+                            valid, error, outputs, errors = asyncio.run(execution.validate_prompt("viggle-retry", prompt, None))
+                            self.assertTrue(valid, (error, errors))
+                            executor = execution.PromptExecutor(server, cache_type=execution.CacheType.CLASSIC,
+                                cache_args={"ram": 0, "ram_inactive": 0})
+                            executor.execute(prompt, uuid.uuid4().hex, execute_outputs=outputs)
+                            self.assertTrue(executor.success, executor.status_messages)
+                        previous = observed.call_args_list[0].args[2]
+                        self.assertEqual(previous is not None, existing)
+                        if existing:
+                            self.assertEqual(previous.get_frame_count(), 36)
+                            self.assertEqual(first_file.stat().st_mtime_ns, before)
+                            self.assertNotEqual(second_file.stat().st_mtime_ns, second_before)
+                        manifests = list(output.rglob("segments.json"))
+                        self.assertEqual(len(manifests), 1)
+                        manifest = json.loads(manifests[0].read_text())
+                        self.assertEqual(set(manifest["segments"]),
+                            ({"1"} if existing else set()) | ({"2", "3"} if loop else {"2"}))
+                        for record in manifest["segments"].values():
+                            self.assertTrue((manifests[0].parent / record["file"]).is_file())
+                        self.assertEqual((manifests[0].parent / "complete.mp4").is_file(), loop and existing)
+
     def test_optimizer_sees_pins_and_the_same_images(self):
         for mode in ("reference", "keyframe"):
             with self.subTest(mode=mode):
@@ -172,6 +238,8 @@ class ViggleTests(unittest.TestCase):
         self.assertTrue(result.result[10].startswith("video/Viggle/"))
         for cls in CLASSES:
             self.assertEqual(cls.GET_NODE_INFO_V1()["name"],cls.__name__)
+        for cls in (fixture.YtonReplacementSegment, YtonViggleReplacementSegment):
+            self.assertEqual(cls.define_schema().outputs[cls.PROJECT_DIRECTORY_OUTPUT].display_name, "项目目录")
         config["images"]=[""]*6
         with self.assertRaisesRegex(ValueError,"四个"):
             parse_config(config)

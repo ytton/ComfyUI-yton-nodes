@@ -655,9 +655,9 @@ class ReplacementTests(unittest.TestCase):
             send_sync=lambda *args: None, send_progress_text=lambda *args: None)
         mapping = {cls.__name__: cls for cls in CLASSES}
         mapping["YtonH3TraditionalOmniGenerate"] = MockOmni
-        for loop in (False, True):
-            with self.subTest(loop=loop):
-                prefix = f"restore-context/{loop}/"
+        for loop, connected in ((False, False), (True, False), (False, True), (True, True)):
+            with self.subTest(loop=loop, connected=connected):
+                prefix = "video/人物替换/%date:yyyy-MM-dd%/source/" if connected else f"restore-context/{loop}/"
                 initial = dict(run=uuid.uuid4().hex, started_at=datetime.now().astimezone(), prefix=prefix)
                 first = save_segment(video, 1, 2, **initial)
                 if not loop:
@@ -673,7 +673,7 @@ class ReplacementTests(unittest.TestCase):
                         "video": ["segment", 1], "previous_video": ["segment", 10], "enable_context": ["segment", 11]}},
                     "save": {"class_type": "YtonReplacementVideoSave", "inputs": {
                         "video": ["generate", 0], "current": ["segment", 7], "total": ["segment", 8],
-                        "filename_prefix": prefix, "container": "mp4", "fps": 24, "crf": 18,
+                        "filename_prefix": ["segment", 9] if connected else prefix, "container": "mp4", "fps": 24, "crf": 18,
                         "reuse_existing": True, "save_full": True}},
                 }
                 with patch.dict(nodes.NODE_CLASS_MAPPINGS, mapping), patch.object(PromptServer, "instance", server, create=True):

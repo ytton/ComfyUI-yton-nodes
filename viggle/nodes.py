@@ -56,6 +56,8 @@ class YtonViggleLoopStep(io.ComfyNode):
 
 
 class YtonViggleReplacementSegment(io.ComfyNode):
+    PROJECT_DIRECTORY_OUTPUT = 10
+
     @classmethod
     def define_schema(cls):
         return io.Schema(node_id="YtonViggleReplacementSegment", display_name="Viggle 人物替换配置解析器",

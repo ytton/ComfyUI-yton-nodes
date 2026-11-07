@@ -200,6 +200,8 @@ class YtonReplacementLoopBarrier(io.ComfyNode):
 
 
 class YtonReplacementSegment(io.ComfyNode):
+    PROJECT_DIRECTORY_OUTPUT = 9
+
     @classmethod
     def define_schema(cls):
         schema = YtonCharacterReplacement.define_schema()
