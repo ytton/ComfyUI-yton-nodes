@@ -1,9 +1,11 @@
 import { app } from "../../../scripts/app.js";
 import { mountNodePanel, followNodeColours } from "./node_panel.js";
+import { commonComboChoices, comboTargets } from "./combo_options.js";
 
 const TYPE = "YtonModeParameters";
-const TYPES = [["STRING", "文本"], ["FLOAT", "小数"], ["INT", "整数"], ["BOOLEAN", "布尔"]];
-const DEFAULTS = { STRING: "", FLOAT: 0, INT: 0, BOOLEAN: false };
+const TYPES = [["STRING", "文本"], ["COMBO", "下拉选项（COMBO）"], ["FLOAT", "小数"], ["INT", "整数"], ["BOOLEAN", "布尔"]];
+const DEFAULTS = { STRING: "", COMBO: "", FLOAT: 0, INT: 0, BOOLEAN: false };
+const socketType = type => type === "STRING" ? "STRING,COMBO" : type;
 const GEAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-.6 2.4-2 .9-2.2-.7L2 9.4l1.8 1.7v2L2 14.8l2.2 3.8 2.2-.7 2 .9L9 21h4l.6-2.2 2-.9 2.2.7 2.2-3.8-1.8-1.7v-2L20 9.4l-2.2-3.8-2.2.7-2-.9L13 3Z"/><circle cx="11" cy="12" r="3"/></svg>';
 const style = document.createElement("link");
 style.rel = "stylesheet";
@@ -40,7 +42,8 @@ function checkConfig(data) {
   }
   for (const option of data.options) for (const field of data.outputs) {
     const value = data.values[option.id][field.id];
-    const valid = field.type === "STRING" ? typeof value === "string"
+    const valid = field.type === "COMBO" ? typeof value === "string" || Number.isSafeInteger(value)
+      : field.type === "STRING" ? typeof value === "string"
       : field.type === "BOOLEAN" ? typeof value === "boolean"
       : field.type === "INT" ? Number.isSafeInteger(value) : typeof value === "number" && Number.isFinite(value);
     if (!valid) throw Error(`「${option.label}」的「${field.label}」需要有效的${TYPES.find(t => t[0] === field.type)[1]}值。`);
@@ -58,6 +61,7 @@ export function setupModeParameters(node) {
   }
   let data = JSON.parse(config.value);
   let dialog;
+  let updatingOutputs = false;
   const panel = el("div", "yton-mode-parameters");
   const segments = el("div", "yton-mode-segments");
   segments.setAttribute("role", "group");
@@ -77,8 +81,9 @@ export function setupModeParameters(node) {
       ...data.outputs,
     ];
     const previousIds = node.properties.ytonModeOutputIds || ["$mode", "$index"];
-    const sameLayout = node.outputs.length === wanted.length && wanted.every((field, i) => previousIds[i] === field.id && node.outputs[i].type === field.type);
+    const sameLayout = node.outputs.length === wanted.length && wanted.every((field, i) => previousIds[i] === field.id && node.outputs[i].type === socketType(field.type));
     if (!sameLayout) {
+      updatingOutputs = true;
       const connections = node.outputs.flatMap((output, index) => (output.links || []).map(id => {
         const link = node.graph?.links[id];
         return link && { field: previousIds[index], type: output.type, target: link.target_id, slot: link.target_slot };
@@ -86,12 +91,13 @@ export function setupModeParameters(node) {
       // The current LiteGraph stores sockets by index. Reconnect by field ID
       // through its public API instead of sorting index-backed socket objects.
       while (node.outputs.length) node.removeOutput(node.outputs.length - 1);
-      for (const field of wanted) node.addOutput(field.label, field.type, { label: field.label });
+      for (const field of wanted) node.addOutput(field.label, socketType(field.type), { label: field.label });
       for (const connection of connections) {
-        const index = wanted.findIndex(field => field.id === connection.field && field.type === connection.type);
+        const index = wanted.findIndex(field => field.id === connection.field && socketType(field.type) === socketType(connection.type));
         const target = node.graph?.getNodeById(connection.target);
         if (index >= 0 && target) node.connect(index, target, connection.slot);
       }
+      updatingOutputs = false;
     }
     wanted.forEach((field, index) => {
       node.outputs[index].name = field.label;
@@ -119,6 +125,20 @@ export function setupModeParameters(node) {
       segments.append(item);
     }
   }
+  function syncComboValues() {
+    data.outputs.forEach((field, index) => {
+      if (field.type !== "COMBO") return;
+      const connections = comboTargets(node, index + 2);
+      const values = commonComboChoices(connections);
+      if (!values.length) return;
+      const { target, input } = connections[0];
+      const current = target.widgets?.find(w => w.name === input.widget?.name || w.name === input.name)?.value;
+      for (const row of Object.values(data.values)) {
+        if (!values.includes(row[field.id])) row[field.id] = values.includes(current) ? current : values[0];
+      }
+    });
+    config.value = JSON.stringify(data);
+  }
   function applyConfiguration(next, layout = node.properties.ytonModeLayout) {
     checkConfig(next);
     if (![layout.rows, layout.columns].every(value => Number.isSafeInteger(value) && value > 0)) throw Error("行数和列数需要填写大于 0 的整数。");
@@ -129,6 +149,7 @@ export function setupModeParameters(node) {
     if (!data.options.some(option => option.id === selected.value)) selected.value = data.options[0].id;
     config.value = JSON.stringify(data);
     syncOutputs();
+    syncComboValues();
     render();
     node.setSize([Math.max(340, node.size[0]), node.computeSize()[1]]);
     node.graph?.afterChange();
@@ -225,7 +246,7 @@ export function setupModeParameters(node) {
           renderStep();
         }, "yton-mode-add"));
       } else if (activeStep === 1) {
-        body.append(el("h3", "", "定义共享输出"), el("p", "yton-mode-hint", "所有模式共用这些字段。模式字符串和索引会自动输出；修改字段类型会断开该字段的现有连线。"));
+        body.append(el("h3", "", "定义共享输出"), el("p", "yton-mode-hint", "COMBO 连到目标后，可在参数值页选择目标的下拉选项。文本也可直连 STRING 和 COMBO。修改字段类型会断开现有连线。"));
         draft.outputs.forEach((field, index) => {
           const row = el("div", "yton-mode-field-row");
           const type = el("select");
@@ -268,7 +289,20 @@ export function setupModeParameters(node) {
           title.append(el("small", "", TYPES.find(t => t[0] === field.type)[1]));
           let control;
           const value = draft.values[activeOption][field.id];
-          if (field.type === "STRING") {
+          if (field.type === "COMBO") {
+            const slot = data.outputs.findIndex(item => item.id === field.id);
+            const choices = slot < 0 ? [] : commonComboChoices(comboTargets(node, slot + 2));
+            control = el("select");
+            control.disabled = !choices.length;
+            if (!choices.length) control.append(el("option", "", "先保存配置并连接到目标下拉输入"));
+            choices.forEach((choice, index) => {
+              const option = el("option", "", String(choice));
+              option.value = String(index);
+              control.append(option);
+            });
+            control.value = String(Math.max(0, choices.indexOf(value)));
+            control.onchange = () => { draft.values[activeOption][field.id] = choices[Number(control.value)]; };
+          } else if (field.type === "STRING") {
             control = el("textarea");
             control.rows = 4;
             control.value = value;
@@ -292,7 +326,18 @@ export function setupModeParameters(node) {
     dialog.showModal();
   }
 
-  node.ytonModeParameters = { configure: applyConfiguration, openSettings, getConfig: () => structuredClone(data) };
+  node.ytonModeParameters = { configure: applyConfiguration, openSettings, getConfig: () => structuredClone(data), syncComboValues };
+  const connect = node.onConnectOutput;
+  node.onConnectOutput = function (slot, type, input, target) {
+    if (data.outputs[slot - 2]?.type === "COMBO" && !commonComboChoices([...comboTargets(this, slot), { target, input }]).length) return false;
+    return connect?.apply(this, arguments);
+  };
+  const connections = node.onConnectionsChange;
+  node.onConnectionsChange = function (side) {
+    const result = connections?.apply(this, arguments);
+    if (side === LiteGraph.OUTPUT && !updatingOutputs) syncComboValues();
+    return result;
+  };
   const configure = node.onConfigure;
   node.onConfigure = function () {
     configure?.apply(this, arguments);
@@ -318,6 +363,7 @@ app.registerExtension({
     for (const key of ["output", "output_name", "output_is_list", "output_tooltips"]) {
       nodeData[key] = nodeData[key].slice(0, 2);
     }
+    nodeData.output[0] = socketType("STRING");
     for (const name of ["config", "selected"]) nodeData.input.required[name][1].hidden = true;
     const created = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function () {
@@ -325,5 +371,8 @@ app.registerExtension({
       setupModeParameters(this);
       return result;
     };
+  },
+  afterConfigureGraph() {
+    for (const node of app.graph._nodes) node.ytonModeParameters?.syncComboValues();
   },
 });

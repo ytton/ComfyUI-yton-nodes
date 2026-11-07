@@ -6,9 +6,12 @@ import json
 from pathlib import Path
 import unittest
 from unittest.mock import patch
+import types
+import uuid
 
 from comfy_api.latest import io
-from execution import merge_result_data, validate_prompt
+from execution import CacheType, PromptExecutor, merge_result_data, validate_prompt
+from server import PromptServer
 import nodes
 
 
@@ -136,6 +139,63 @@ class ModeParametersTests(unittest.TestCase):
     def test_serialized_configuration_has_identical_results(self):
         data = json.loads(json.dumps(configuration(), ensure_ascii=False))
         self.assertEqual(self.run_mode(data), self.run_mode())
+
+    def test_text_outputs_execute_as_combo_values(self):
+        received = []
+
+        class DropdownConsumer(io.ComfyNode):
+            @classmethod
+            def define_schema(cls):
+                return io.Schema(node_id="ModeDropdownTest", is_output_node=True, inputs=[
+                    io.Combo.Input("mode", options=["普通", "人物替换"]),
+                    io.Combo.Input("sampler_name", options=nodes.KSampler.INPUT_TYPES()["required"]["sampler_name"][0]),
+                    io.Combo.Input("scheduler", options=nodes.KSampler.INPUT_TYPES()["required"]["scheduler"][0]),
+                ])
+
+            @classmethod
+            def execute(cls, **kwargs):
+                received.append(kwargs)
+                return io.NodeOutput()
+
+        class DropdownConsumerV1:
+            @classmethod
+            def INPUT_TYPES(cls):
+                inputs = nodes.KSampler.INPUT_TYPES()["required"]
+                return {"required": {"mode": (["普通", "人物替换"],),
+                                     "sampler_name": inputs["sampler_name"], "scheduler": inputs["scheduler"]}}
+
+            RETURN_TYPES = ()
+            FUNCTION = "consume"
+            OUTPUT_NODE = True
+
+            def consume(self, **kwargs):
+                received.append(kwargs)
+                return ()
+
+        data = configuration()
+        data["outputs"] = [{"id": name, "label": name, "type": "COMBO" if name == "scheduler" else "STRING"}
+                           for name in ("sampler_name", "scheduler")]
+        data["values"] = {"a": {"sampler_name": "euler", "scheduler": "normal"},
+                          "b": {"sampler_name": "heun", "scheduler": "karras"}}
+        prompt = {
+            "map": {"class_type": "YtonModeParameters", "inputs": {"config": json.dumps(data), "selected": "a"}},
+            "use": {"class_type": "ModeDropdownTest", "inputs": {
+                "mode": ["map", 0], "sampler_name": ["map", 2], "scheduler": ["map", 3]}},
+        }
+        server = types.SimpleNamespace(client_id=None, last_node_id=None, send_sync=lambda *args: None)
+        with patch.dict(nodes.NODE_CLASS_MAPPINGS, YtonModeParameters=Node, ModeDropdownTest=DropdownConsumer,
+                        ModeDropdownTestV1=DropdownConsumerV1), \
+             patch.object(PromptServer, "instance", server, create=True):
+            executor = PromptExecutor(server, cache_type=CacheType.CLASSIC, cache_args={"ram": 0, "ram_inactive": 0})
+            for consumer, selected in (("ModeDropdownTest", "a"), ("ModeDropdownTestV1", "b")):
+                prompt["use"]["class_type"] = consumer
+                prompt["map"]["inputs"]["selected"] = selected
+                valid, error, outputs, errors = asyncio.run(validate_prompt("combo-mode-test", prompt, None))
+                self.assertTrue(valid, (error, errors))
+                executor.execute(prompt, uuid.uuid4().hex, execute_outputs=outputs)
+                self.assertTrue(executor.success, executor.status_messages)
+        self.assertEqual(received, [{"mode": "普通", "sampler_name": "euler", "scheduler": "normal"},
+                                    {"mode": "人物替换", "sampler_name": "heun", "scheduler": "karras"}])
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from comfy_api.latest import io
 
 
 MAX_FIELDS = 64
-VALUE_TYPES = {"STRING", "INT", "FLOAT", "BOOLEAN"}
+VALUE_TYPES = {"STRING", "COMBO", "INT", "FLOAT", "BOOLEAN"}
 DEFAULT_CONFIG = json.dumps({
     "options": [{"id": "option_a", "label": "A"}, {"id": "option_b", "label": "B"}],
     "outputs": [],
@@ -30,7 +30,7 @@ def read_configuration(config, selected):
         if any(not name for name in labels) or len(set(labels)) != len(labels):
             raise ValueError(f"{title}的名称重复或为空。")
     if any(field["type"] not in VALUE_TYPES for field in outputs):
-        raise ValueError("输出类型仅支持文本、整数、小数和布尔值。")
+        raise ValueError("输出类型仅支持文本、下拉选项、整数、小数和布尔值。")
     option_ids = {option["id"] for option in options}
     if selected not in option_ids:
         raise ValueError("当前选中的模式不存在。")
@@ -46,6 +46,7 @@ def read_configuration(config, selected):
             kind = field["type"]
             valid = (
                 (kind == "STRING" and isinstance(value, str))
+                or (kind == "COMBO" and type(value) in (str, int))
                 or (kind == "BOOLEAN" and type(value) is bool)
                 or (kind == "INT" and type(value) is int and abs(value) <= 9007199254740991)
                 or (kind == "FLOAT" and type(value) in (int, float) and math.isfinite(value))
@@ -62,7 +63,7 @@ class YtonModeParameters(io.ComfyNode):
             node_id="YtonModeParameters",
             display_name="模式参数映射",
             category="yton-nodes/逻辑",
-            description="用分段器选择模式，统一输出该模式的文本、数值和布尔参数。右下角齿轮配置选项、输出和值；模式索引从 0 开始。",
+            description="用分段器选择模式，统一输出该模式的文本、数值和布尔参数。文本可直接连接 STRING 或 COMBO 下拉输入，值需与下拉选项一致。右下角齿轮配置选项、输出和值；模式索引从 0 开始。",
             search_aliases=["模式", "映射", "combo", "preset", "mode parameters"],
             inputs=[
                 io.String.Input("config", default=DEFAULT_CONFIG, socketless=True),
@@ -70,7 +71,7 @@ class YtonModeParameters(io.ComfyNode):
             ],
             # V3 declares output slots at registration time. The UI exposes only
             # configured fields, with concrete types, in the same result order.
-            outputs=[io.String.Output(display_name="模式"), io.Int.Output(display_name="索引")]
+            outputs=[io.AnyType.Output(display_name="模式"), io.Int.Output(display_name="索引")]
             + [io.AnyType.Output(display_name=f"参数 {i + 1}") for i in range(MAX_FIELDS)],
         )
 

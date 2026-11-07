@@ -73,10 +73,13 @@ NODE_DISPLAY_NAME_MAPPINGS.update(_h3_names)
 from .node_catalog import configure_node_catalog as _configure_node_catalog
 from .nodes.weighted_lora_node import YtonWeightedLoraLoader
 from .nodes.mode_parameters_node import YtonModeParameters
+from .nodes.combo_clone_node import YtonComboClone
 NODE_CLASS_MAPPINGS["YtonWeightedLoraLoader"] = YtonWeightedLoraLoader
 NODE_DISPLAY_NAME_MAPPINGS["YtonWeightedLoraLoader"] = "权重 LoRA 加载器"
 NODE_CLASS_MAPPINGS["YtonModeParameters"] = YtonModeParameters
 NODE_DISPLAY_NAME_MAPPINGS["YtonModeParameters"] = "模式参数映射"
+NODE_CLASS_MAPPINGS["YtonComboClone"] = YtonComboClone
+NODE_DISPLAY_NAME_MAPPINGS["YtonComboClone"] = "下拉选项克隆"
 from .nodes.h3_reference_studio_node import YtonH3ReferenceStudio, YtonH3VideoConfig
 NODE_CLASS_MAPPINGS["YtonH3ReferenceStudio"] = YtonH3ReferenceStudio
 NODE_DISPLAY_NAME_MAPPINGS["YtonH3ReferenceStudio"] = "H3 参考视频工作台"

@@ -126,7 +126,7 @@ export async function runModeParameters(page, definition, baseURL = "http://127.
       assert(config.options.length === 3 && config.outputs.length === 4, "configuration saved");
       assert(config.values[config.options[1].id][config.outputs[0].id] === 0.9, "typed float saved");
       assert(config.values[config.options[1].id][config.outputs[2].id] === true, "typed boolean saved");
-      assert(node.outputs.map(o => o.type).join() === "STRING,INT,FLOAT,STRING,BOOLEAN,BOOLEAN", "concrete output types");
+      assert(JSON.stringify(node.outputs.map(o => o.type)) === JSON.stringify(["STRING,COMBO", "INT", "FLOAT", "STRING,COMBO", "BOOLEAN", "BOOLEAN"]), "concrete output types");
       assert(node.outputs.map(o => o.name).join() === "模式,索引,LoRA强度,系统提示词,启用遮罩,启用上下文", "configured output names");
       assert(node.properties.ytonModeLayout.rows === 2 && node.properties.ytonModeLayout.columns === 2, "layout saved from Option page");
       const text = LiteGraph.createNode("StringContains");
@@ -137,7 +137,7 @@ export async function runModeParameters(page, definition, baseURL = "http://127.
       const saved = app.graph.serialize();
       await app.loadGraphData(saved);
       node = app.graph.getNodeById(window.modeTestId);
-      assert(node.outputs.length === 6 && node.outputs[3].type === "STRING", "outputs restored");
+      assert(node.outputs.length === 6 && node.outputs[3].type === "STRING,COMBO", "outputs restored");
       assert(node.widgets.find(w => w.name === "selected").value === config.options[1].id, "selected mode restored");
       assert(node.properties.ytonModeLayout.rows === 2 && node.properties.ytonModeLayout.columns === 2, "layout restored with workflow");
       let api = (await app.graphToPrompt()).output;
