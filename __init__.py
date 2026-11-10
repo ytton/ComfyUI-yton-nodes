@@ -9,6 +9,7 @@ from .nodes.media_loader_node import (
     YtonAudioListParser, YtonImageParser, YtonVideoParser, YtonAudioParser,
 )
 from .nodes.minimax_h3_reference_node import YtonMiniMaxH3ReferenceToVideo
+from .nodes.h3_image_node import YtonH3ImageConfig
 from .nodes.prompt_optimizer_node import YtonPromptOptimizer
 from .nodes.local_optimizer_node import YtonLocalPromptOptimizer
 from .prompt_optimizer_routes import install as _install_prompt_optimizer_routes
@@ -27,6 +28,7 @@ NODE_CLASS_MAPPINGS = {
     "YtonVideoParser": YtonVideoParser,
     "YtonAudioParser": YtonAudioParser,
     "YtonMiniMaxH3ReferenceToVideo": YtonMiniMaxH3ReferenceToVideo,
+    "YtonH3ImageConfig": YtonH3ImageConfig,
     "YtonPromptOptimizer": YtonPromptOptimizer,
     "YtonLocalPromptOptimizer": YtonLocalPromptOptimizer,
     "YtonH3VideoReplacementPrepare": YtonH3VideoReplacementPrepare,
@@ -46,6 +48,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "YtonVideoParser": "视频解析",
     "YtonAudioParser": "音频解析",
     "YtonMiniMaxH3ReferenceToVideo": "MiniMax H3 参考生成视频",
+    "YtonH3ImageConfig": "MiniMax H3 Image 配置",
     "YtonPromptOptimizer": "提示词优化器",
     "YtonLocalPromptOptimizer": "本地提示词优化器",
     "YtonH3VideoReplacementPrepare": "H3 人物替换 · 参考视频补齐",

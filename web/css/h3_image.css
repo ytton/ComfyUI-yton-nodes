@@ -1,0 +1,83 @@
+@import url("./prompt_optimizer.css");
+
+.yton-media-panel.yton-h3-image-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  padding: 0;
+  background: #171b20;
+  color: #edf1f5;
+}
+.yton-h3-image-panel * { box-sizing: border-box; }
+.yton-h3-media-column { min-width: 0; padding: 12px; border-right: 1px solid #3b444e; }
+.yton-h3-controls-column { min-width: 0; display: flex; flex-direction: column; }
+.yton-h3-image-panel .yton-media-section { gap: 9px; }
+.yton-h3-image-panel .yton-media-row-header { min-height: 24px; cursor: default; }
+.yton-h3-image-panel .yton-media-chevron { display: none; }
+.yton-h3-image-panel .yton-media-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.yton-h3-image-panel .yton-media-item { aspect-ratio: 1; border-radius: 4px; }
+.yton-h3-image-panel .yton-media-empty { font-size: 11px; bottom: 11px; }
+.yton-h3-image-panel .yton-badge-index { font-size: 11px; }
+.yton-h3-settings-section { display: flex; flex-direction: column; gap: 7px; padding: 12px; border-bottom: 1px solid #3b444e; }
+.yton-h3-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-height: 18px; }
+.yton-h3-heading strong { font-weight: 600; }
+.yton-h3-detail { color: #a5afb9; font-size: 11px; white-space: nowrap; }
+.yton-h3-resolution-grid, .yton-h3-ratio-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.yton-h3-resolution-grid .yton-ai-button, .yton-h3-ratio-grid .yton-ai-button {
+  min-width: 0; padding: 0 3px; border: 1px solid #414b56; border-radius: 4px;
+  background: #272e36; color: #e6ebef;
+}
+.yton-h3-resolution-grid .yton-ai-button[aria-pressed="true"],
+.yton-h3-ratio-grid .yton-ai-button[aria-pressed="true"] { border-color: #7ca6ff; background: #283a59; color: #dce7ff; }
+.yton-h3-resolution { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 44px; }
+.yton-h3-k { font-size: 12px; line-height: 1.2; white-space: nowrap; }
+.yton-h3-mp { font-size: 10px; line-height: 1.1; color: #a5afb9; white-space: nowrap; }
+.yton-h3-custom {
+  display: flex; align-items: center; min-width: 0; height: 44px; padding: 0 5px;
+  border: 1px solid #414b56; border-radius: 4px; background: #272e36;
+}
+.yton-h3-custom.is-selected { border-color: #7ca6ff; background: #283a59; }
+.yton-h3-custom input { min-width: 0; width: 100%; padding: 0; border: 0; outline: none; background: transparent; color: #e6ebef; text-align: center; font: inherit; }
+.yton-h3-custom input::placeholder { color: #a5afb9; opacity: 1; }
+.yton-h3-custom span { flex: 0 0 auto; color: #a5afb9; font-size: 11px; }
+.yton-h3-ratio-grid .yton-h3-ratio { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 51px; font-size: 11px; }
+.yton-h3-ratio-shape { display: block; border: 1px solid currentColor; border-radius: 1px; color: #b1bdc9; }
+.yton-h3-ratio[aria-pressed="true"] .yton-h3-ratio-shape { color: #bad0ff; }
+.yton-h3-ratio-shape.ratio-auto { width: 23px; height: 21px; border-style: dashed; }
+.yton-h3-ratio-shape.ratio-1-1 { width: 21px; height: 21px; }
+.yton-h3-ratio-shape.ratio-4-3 { width: 27px; height: 20px; }
+.yton-h3-ratio-shape.ratio-3-4 { width: 20px; height: 27px; }
+.yton-h3-ratio-shape.ratio-3-2 { width: 28px; height: 19px; }
+.yton-h3-ratio-shape.ratio-2-3 { width: 19px; height: 28px; }
+.yton-h3-ratio-shape.ratio-16-9 { width: 31px; height: 17px; }
+.yton-h3-ratio-shape.ratio-9-16 { width: 17px; height: 30px; }
+.yton-h3-scale-row { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+.yton-h3-scale-row > span { flex: 0 0 80px; white-space: nowrap; }
+.yton-h3-scale-row select { flex: 1; min-width: 0; height: 32px; padding: 4px 7px; border-radius: 4px; }
+.yton-h3-prompt-section { position: relative; display: flex; flex: 1; flex-direction: column; min-height: 300px; padding: 0 12px 12px; }
+.yton-h3-prompt-header { display: flex; align-items: stretch; justify-content: space-between; gap: 6px; min-height: 42px; border-bottom: 1px solid #3b444e; }
+.yton-h3-tabs { display: flex; min-width: 0; gap: 2px; }
+.yton-h3-tabs .yton-ai-button { min-width: 0; padding: 0 7px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: #a5afb9; white-space: nowrap; }
+.yton-h3-tabs .yton-ai-button[aria-selected="true"] { border-bottom-color: #7ca6ff; color: #edf1f5; }
+.yton-h3-header-actions { display: flex; align-items: center; gap: 5px; }
+.yton-h3-header-actions .yton-ai-node-status { max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yton-h3-header-actions .yton-ai-button { height: 29px; padding: 0 9px; border-radius: 4px; }
+.yton-h3-header-actions .yton-ai-icon { width: 29px; padding: 5px; }
+.yton-h3-tab-panel { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.yton-h3-tab-panel[hidden] { display: none; }
+.yton-h3-editor-toolbar { display: flex; align-items: center; height: 34px; }
+.yton-h3-editor-toolbar .yton-ai-button { padding: 3px 8px; border-radius: 4px; }
+.yton-h3-prompt-wrap { position: relative; flex: 1; min-height: 0; }
+.yton-h3-prompt-section textarea.yton-h3-prompt { width: 100%; min-height: 230px; flex: 1; resize: vertical; padding: 10px; border-radius: 4px; background: #14191f; }
+.yton-h3-prompt-wrap textarea { height: 100%; }
+.yton-h3-mentions { position: absolute; top: 0; left: 8px; right: 8px; z-index: 12; max-height: 180px; overflow: auto; padding: 4px; border: 1px solid #566272; border-radius: 4px; background: #252d36; box-shadow: 0 8px 18px #0008; }
+.yton-h3-mentions[hidden] { display: none; }
+.yton-h3-mentions .yton-ai-button { display: block; width: 100%; overflow: hidden; justify-content: flex-start; border: 0; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.yton-h3-mentions .yton-ai-button[aria-selected="true"] { background: #344769; }
+.yton-h3-settings-popover { position: absolute; top: 39px; right: 12px; z-index: 13; display: flex; flex-direction: column; gap: 10px; width: min(300px, calc(100% - 24px)); padding: 12px; border: 1px solid #566272; border-radius: 5px; background: #252d36; box-shadow: 0 10px 25px #0008; }
+.yton-h3-settings-popover[hidden] { display: none; }
+.yton-h3-popover-field { display: flex; flex-direction: column; gap: 4px; }
+.yton-h3-popover-field select { width: 100%; min-width: 0; border-radius: 4px; }
+.yton-h3-settings-popover > .yton-ai-button { align-self: flex-end; border-radius: 4px; }

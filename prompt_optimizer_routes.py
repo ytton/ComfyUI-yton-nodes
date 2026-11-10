@@ -9,6 +9,7 @@ from .prompt_optimizer import OptimizerError, discover_models, get_store
 from .prompt_optimizer_skill import available_skills
 from .llama_optimizer_config import model_catalogue
 from .native_optimizer_runtime import NATIVE_FIELDS, DEFAULT_NATIVE
+from .nodes.h3_image_node import optimize_h3_image
 
 
 def install():
@@ -67,3 +68,8 @@ def install():
         data = await body(request)
         return await respond(lambda: {"modelCount": len(discover_models(get_store().draft_provider(data))),
                                       "message": "连接成功，模型列表接口可用。"})
+
+    @routes.post("/yton/prompt-optimizer/h3-image")
+    async def h3_image(request):
+        data = await body(request)
+        return await respond(lambda: optimize_h3_image(data))

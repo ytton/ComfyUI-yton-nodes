@@ -1,4 +1,5 @@
 import { app } from "../../../scripts/app.js";
+import "./h3_image.js";
 import { setupMediaLoaderNode } from "./media_loader_panel.js";
 import { mountNodePanel, followNodeColours } from "./node_panel.js";
 

@@ -30,12 +30,16 @@ function fileURL(filename) {
   return api.apiURL(`/view?${new URLSearchParams({ filename: clean.slice(slash + 1), subfolder: clean.slice(0, Math.max(0, slash)), type })}`);
 }
 
-export function setupMediaLoaderNode(node, { embedded = false, onChange = () => {} } = {}) {
+export function setupMediaLoaderNode(node, options = {}) {
+  const { embedded = false, onChange = () => {} } = options;
+  const categories = options.categories || CATEGORIES;
   node.properties.ytonMediaCollapsed = { image: false, video: !embedded, audio: !embedded };
   // ComfyUI's Vue renderer adds sockets for primitive widgets automatically.
   // These file fields belong exclusively to the slot panel.
-  if (!embedded) node.onConnectInput = () => false;
-  const widgets = new Map((node.widgets || []).filter(widget => !embedded || /^(disable_)?(image|video|audio)_\d+$/.test(widget.name)).map(widget => [widget.name, widget]));
+  if (!embedded && !options.preserveInputs) node.onConnectInput = () => false;
+  const widgets = new Map((node.widgets || []).filter(widget =>
+    (!embedded && !options.categories) || /^(disable_)?(image|video|audio)_\d+$/.test(widget.name)
+  ).map(widget => [widget.name, widget]));
   for (const widget of widgets.values()) {
     widget.type = "hidden";
     widget.hidden = true;
@@ -66,6 +70,7 @@ export function setupMediaLoaderNode(node, { embedded = false, onChange = () => 
     }
     node.graph?.afterChange();
     render();
+    options.onSlotsChanged?.();
   }
 
   function clearFeedback() {
@@ -169,7 +174,7 @@ export function setupMediaLoaderNode(node, { embedded = false, onChange = () => 
       await upload(Array.from(input.files), section, section.selectedSlot);
       input.value = "";
     };
-    header.onclick = () => {
+    header.onclick = options.fixedExpanded ? null : () => {
       node.graph?.beforeChange();
       node.properties.ytonMediaCollapsed ||= {};
       node.properties.ytonMediaCollapsed[section.kind] = !grid.hidden;
@@ -340,19 +345,20 @@ export function setupMediaLoaderNode(node, { embedded = false, onChange = () => 
   }
 
   function render() {
-    if (!embedded) while (node.inputs?.length) node.removeInput(node.inputs.length - 1);
+    if (!embedded && !options.preserveInputs) while (node.inputs?.length) node.removeInput(node.inputs.length - 1);
     for (const section of sections) {
       section.grid.querySelectorAll("audio, video").forEach(source => source.pause());
       section.grid.replaceChildren(...Array.from({ length: section.count }, (_, index) => renderCard(section, index)));
-      const collapsed = Boolean(node.properties?.ytonMediaCollapsed?.[section.kind]);
+      const collapsed = !options.fixedExpanded && Boolean(node.properties?.ytonMediaCollapsed?.[section.kind]);
       section.grid.hidden = collapsed;
       section.header.setAttribute("aria-expanded", String(!collapsed));
     }
     node.setDirtyCanvas(true, true);
     onChange();
   }
-  for (const definition of CATEGORIES) sections.push(createSection(definition));
+  for (const definition of categories) sections.push(createSection(definition));
   for (const widget of widgets.values()) {
+    if (options.categories && !/^(image_\d+|disable_image_\d+)$/.test(widget.name)) continue;
     const callback = widget.callback;
     widget.callback = function () { const result = callback?.apply(this, arguments); render(); return result; };
   }
@@ -369,8 +375,8 @@ export function setupMediaLoaderNode(node, { embedded = false, onChange = () => 
   };
   render();
   if (!embedded) {
-    node.setSize([640, node.size[1]]);
-    mountNodePanel(node, "media_loader_ui", panel, 420, 520);
+    node.setSize([options.width || 640, node.size[1]]);
+    if (options.mount !== false) mountNodePanel(node, "media_loader_ui", panel, 420, 520);
   }
   return panel;
 }
